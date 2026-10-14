@@ -33,7 +33,7 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 
 1. In Hostinger apri VPS → Docker Manager → Compose → Compose from URL e inserisci l'URL.
 2. Imposta `STUDIO_PASSWORD` con almeno 16 caratteri casuali. Non mettere password o credenziali CLI nel repository pubblico.
-3. Imposta `TRAEFIK_HOST` con il dominio base fornito da Hostinger, per esempio `srv1757745.hstgr.cloud`. Il progetto sarà disponibile su `https://<nome-progetto>.<TRAEFIK_HOST>`.
+3. Imposta `TRAEFIK_HOST` con il dominio base fornito da Hostinger, per esempio `srv0000000.hstgr.cloud`. Il progetto sarà disponibile su `https://<nome-progetto>.<TRAEFIK_HOST>`.
 4. Avvia il progetto. Hostinger scarica le quattro immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
 5. Apri il dominio e crea il primo account amministratore DeerFlow. La password `STUDIO_PASSWORD` protegge i segreti interni e non è la password dell'account DeerFlow.
 6. Apri **ArtCraft Studio** nella barra laterale, premi **Collega Codex**, apri il link ufficiale e completa il device login. Per **Collega Gemini**, apri il link Google e incolla il codice nel pannello. Non servono comandi SSH per autenticare le CLI.
