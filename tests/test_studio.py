@@ -32,6 +32,27 @@ class StudioTests(unittest.TestCase):
         self.assertFalse(self.state.connection_status('gemini'))
         self.assertEqual(len(self.state.catalog()), 13)
 
+    def test_codex_payload_matches_current_cli_contract(self):
+        from studio.codex_compat import modernize_codex_payload
+        original = {'model': 'gpt-5.4', 'tools': [{'type': 'function'}]}
+        payload = modernize_codex_payload(original)
+        self.assertEqual(payload['tool_choice'], 'auto')
+        self.assertTrue(payload['parallel_tool_calls'])
+        self.assertEqual(payload['include'], ['reasoning.encrypted_content'])
+        self.assertNotIn('tool_choice', original)
+
+    def test_existing_config_is_migrated_without_changing_model(self):
+        from studio import bootstrap
+        bootstrap = importlib.reload(bootstrap)
+        path = self.state.STATE / 'config.yaml'
+        path.write_text('models:\n- name: studio-codex\n  use: deerflow.models.openai_codex_provider:CodexChatModel\n  model: personal-model\n')
+        os.environ['STUDIO_PASSWORD'] = 'test-password-at-least-16-characters'
+        with patch.object(bootstrap, 'catalog', return_value={}):
+            bootstrap.initialize()
+        config = __import__('yaml').safe_load(path.read_text())
+        self.assertEqual(config['models'][0]['use'], 'studio.codex_provider:StudioCodexChatModel')
+        self.assertEqual(config['models'][0]['model'], 'personal-model')
+
     def test_invalid_engine_and_unknown_specialist_rejected(self):
         for identifier, engine in [('unknown', 'codex'), ('gridcraft', 'shell')]:
             with self.assertRaises(ValueError):

@@ -2,7 +2,7 @@ config_version: 6
 models:
 - name: studio-codex
   display_name: Studio · Codex
-  use: deerflow.models.openai_codex_provider:CodexChatModel
+  use: studio.codex_provider:StudioCodexChatModel
   model: gpt-5.4
   supports_thinking: true
   supports_reasoning_effort: true

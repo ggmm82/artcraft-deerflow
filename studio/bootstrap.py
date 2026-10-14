@@ -44,6 +44,20 @@ def initialize():
     if not path.exists():
         path.write_text((ROOT / 'deerflow.yaml').read_text())
         path.chmod(0o600)
+    else:
+        # Migrate installations created before the Codex wire-compatibility
+        # provider was introduced, without replacing user-selected models.
+        content = yaml.safe_load(path.read_text())
+        changed = False
+        for item in content.get('models', []):
+            if item.get('name') == 'studio-codex' and item.get('use') != 'studio.codex_provider:StudioCodexChatModel':
+                item['use'] = 'studio.codex_provider:StudioCodexChatModel'
+                changed = True
+        if changed:
+            temporary = path.with_suffix('.yaml.tmp')
+            temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
+            temporary.chmod(0o600)
+            temporary.replace(path)
     extension = STATE / 'extensions_config.json'
     if not extension.exists():
         extension.write_text((ROOT / 'extensions_config.json').read_text())

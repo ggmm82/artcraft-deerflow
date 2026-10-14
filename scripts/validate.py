@@ -29,6 +29,7 @@ def main():
     assert cfg['sandbox']['allow_host_bash'] is False
     assert cfg['subagent_runtime']['max_running']==1
     assert any(t['name']=='studio_delegate' for t in cfg['tools'])
+    assert cfg['models'][0]['use']=='studio.codex_provider:StudioCodexChatModel'
     assert not any(t['name']=='bash' for t in cfg['tools'])
     for compose in [local,remote]:
         assert compose['services']['gateway']['environment']['STUDIO_SANDBOX_IMAGE']==compose['services']['sandbox-image']['image']
