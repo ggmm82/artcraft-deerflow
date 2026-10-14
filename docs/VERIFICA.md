@@ -53,3 +53,18 @@ Le prime esecuzioni reali GridCraft e WordCraft hanno creato file validi ma ragg
 I report completi, i comandi e i file generati restano in `reports/` (esclusa da Git). Le attestazioni di qualità del modello non sono equiparate a verifiche indipendenti: il runtime controlla schema, percorsi e presenza dei file, mentre la revisione controlla separatamente formule OOXML, integrità ZIP e struttura degli artefatti. Il modello non dichiara ispezione visiva o ascolto. Nella revisione è stata aperta separatamente l’anteprima della pagina DOCX: titolo e due paragrafi leggibili, senza sovrapposizioni o testo tagliato; non è una verifica visiva di tutte le applicazioni.
 
 Il collaudo completo con login Codex/Gemini, frontend/Gateway ricostruiti, Traefik e misure RAM sulla VPS resta quello indicato sopra. I riferimenti Hostinger continuano a identificare le immagini già pubblicate: per distribuire questa revisione occorre una nuova build e l'aggiornamento dei tag dopo CI.
+
+
+Risultati finali degli incarichi DeepSeek, dopo ripresa dei file già prodotti:
+
+| Specialista | Risultato | Controllo indipendente della revisione |
+|---|---|---|
+| GridCraft | XLSX, CSV, rapporto e manifest valido | Archivio ZIP integro; celle 10, 20, 30 numeriche; formula `SUM(B2:B4)` conservata e cache pari a 60. |
+| WordCraft | DOCX, PDF, PNG e manifest valido | DOCX integro con titolo e due paragrafi; PDF presente. Il modello verifica con PdfCraft una pagina A4 e testo coincidente; anteprima aperta separatamente nella revisione. |
+| SoundCraft | Progetto, media, WAV, rapporto e manifest valido | ffprobe: 10 secondi, PCM 24 bit, stereo, 48 kHz. ffmpeg volumedetect: picco campione −4,7 dBFS, media −20 dB; controllo separato ebur128: −19,3 LUFS integrati, LRA 1,1 LU, true peak −4,7 dBFS. Nessun ascolto dichiarato. |
+
+Il caso audio ha rilevato media mancanti dopo lo spostamento del progetto; sono stati copiati insieme al progetto e la skill richiede ora esplicitamente di preservare i percorsi relativi e riaprire dalla cartella finale. Tutti e tre i manifest sono stati accettati dal validatore, con i controlli non eseguiti dichiarati. Il manifest GridCraft conserva avvisi degli errori OCI avvenuti durante la ripresa: le prove precedenti e le verifiche numeriche successive sono distinte, non considerate un'esecuzione senza errori.
+
+Una ripetizione aggiuntiva del piano WordCraft ha restituito prima l'ID del tool invece dello specialista, poi un riferimento a `handoff.json` con testo esplicativo. Il prompt del valutatore rende letterale l'ID richiesto; il controllo del nome file accetta percorsi e annotazioni conservando l'output originale. Questo illustra i limiti della serializzazione del modello e non viene presentato come prova di routing infallibile.
+
+Il modello aveva marcato loudness/true peak del master come non eseguiti, dichiarando un misuratore EBU non disponibile. La revisione ha invece misurato il master con il filtro FFmpeg `ebur128=peak=true`; la skill ora ne richiede la scoperta esplicita prima di dichiararne l’assenza e vieta di riutilizzare le misure di un bounce differente.

@@ -31,7 +31,7 @@ Usa SoundCraft per montaggio audio, mix, tracce e bounce. Il sincronismo finale 
 
 ## Controlli di accettazione
 
-- Con ffprobe verifica durata, sample rate, canali e codec. Misura picchi, loudness integrata e true peak con gli strumenti disponibili; non equiparare picco campione e true peak.
+- Con ffprobe verifica durata, sample rate, canali e codec. Controlla `ffmpeg -filters` e usa `ebur128=peak=true`, se presente, per loudness integrata e true peak sul file finale effettivo. Non equiparare picco campione e true peak e non trasferire le misure del bounce intero a un estratto. Non dichiarare assente un misuratore senza averne verificato la disponibilità.
 - Controlla clipping, silenzi iniziali/finali e fade; indica separatamente ascolto reale e controlli numerici.
 - Consegna progetto, mix/master ed eventuali stem; riporta target e misure senza dichiarare qualità percettiva non ascoltata.
 
@@ -44,6 +44,7 @@ Il `--help`, il registro e gli schemi della release installata restano la fonte 
 soundcraft-cli commands
 soundcraft-cli run --demo --bounce output.wav
 ffprobe -v error -show_format -show_streams -of json output.wav
+ffmpeg -hide_banner -nostats -i output.wav -af ebur128=peak=true -f null -
 ```
 
 ## Consegna
