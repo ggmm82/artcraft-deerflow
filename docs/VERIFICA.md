@@ -20,4 +20,10 @@ Non vengono dichiarati già eseguiti questi test senza i loro risultati reali. N
 
 ## Risultato effettivo della prima build sandbox
 
-Il job `images (sandbox)` del run [38613178438](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38613178438) ha completato con successo la build e i 52 controlli: versione, help, registro comandi e lista MCP per ciascuna delle 13 CLI. Non ha eseguito incarichi con credenziali reali. Il controllo Gateway ha rilevato un errore nel test di serializzazione del runtime interno: viene ora verificato lo schema effettivamente inviato al modello.
+Il job `images (sandbox)` del run [38613178438](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38613178438) ha completato con successo la build e i 52 controlli: versione, help, registro comandi e lista MCP per ciascuna delle 13 CLI. Non ha eseguito incarichi con credenziali reali. Il controllo Gateway di quel primo run aveva rilevato un errore nel test di serializzazione del runtime interno; il test è stato corretto per verificare lo schema effettivamente inviato al modello.
+
+## Rilascio Hostinger verificato
+
+Il run [38620200922](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38620200922) ha superato i 9 test applicativi, la validazione dei Compose, le quattro build e l'avvio completo. La prova di avvio ha scaricato i riferimenti GHCR del Compose Hostinger, inizializzato un account DeerFlow temporaneo, verificato sessione e CSRF, aperto il pannello Studio e salvato la configurazione di uno specialista attraverso il proxy. I quattro tag fissati nel Compose rispondono inoltre al pull anonimo dal registry.
+
+Restano da eseguire sulla VPS reale il login con gli abbonamenti Codex e Gemini e la misura del consumo RAM durante un incarico rappresentativo.
