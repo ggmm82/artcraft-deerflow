@@ -42,7 +42,7 @@ services:
       STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
       DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
-      AUTH_TRUSTED_PROXIES: traefik
+      AUTH_TRUSTED_PROXIES: ''
       BETTER_AUTH_URL: https://${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST:?Impostare TRAEFIK_HOST}
       LANGSMITH_TRACING: 'false'
     volumes:
@@ -54,12 +54,8 @@ services:
         condition: service_healthy
       sandbox-image:
         condition: service_completed_successfully
-    networks:
-    - default
-    - traefik-proxy
     labels:
     - traefik.enable=true
-    - traefik.docker.network=traefik-proxy
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && (PathPrefix(`/api`) || PathPrefix(`/studio`) || PathPrefix(`/health`))
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.entrypoints=websecure
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls=true
@@ -90,12 +86,8 @@ services:
     depends_on:
       gateway:
         condition: service_healthy
-    networks:
-    - default
-    - traefik-proxy
     labels:
     - traefik.enable=true
-    - traefik.docker.network=traefik-proxy
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true
@@ -107,6 +99,3 @@ volumes:
   studio-state: {}
   deerflow-data: {}
   redis-data: {}
-networks:
-  traefik-proxy:
-    external: true

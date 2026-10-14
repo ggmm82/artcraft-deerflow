@@ -40,7 +40,7 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 7. Scegli il modello del coordinatore disponibile nel tuo account Codex. Per ogni specialista seleziona Codex o Gemini, eventuale modello e preferenze.
 8. In DeerFlow seleziona **Studio · Codex**, carica un file e assegna il lavoro.
 
-Il Compose Hostinger usa la rete esterna `traefik-proxy`, pubblica Gateway e frontend tramite etichette Traefik e non occupa direttamente alcuna porta della VPS. Il proxy Caddy rimane soltanto nel Compose locale di sviluppo.
+Il Compose Hostinger pubblica Gateway e frontend tramite etichette lette dal Traefik in modalità host e non richiede una rete esterna né occupa direttamente porte della VPS. Il proxy Caddy rimane soltanto nel Compose locale di sviluppo.
 
 Hostinger documenta Compose da URL e la gestione delle variabili nella [guida ufficiale](https://www.hostinger.com/support/12040815-how-to-deploy-your-first-container-with-hostinger-docker-manager/). Le immagini del file Hostinger sono fissate al commit che le ha prodotte e sono scaricabili senza `docker login`.
 

@@ -41,8 +41,8 @@ def main():
     assert all('build' not in remote['services'][name] for name in custom)
     assert all(remote['services'][name]['image'].startswith('ghcr.io/ggmm82/artcraft-deerflow-') for name in custom)
     assert all(':sha-' in remote['services'][name]['image'] for name in custom)
-    assert remote['networks']['traefik-proxy']['external'] is True
-    assert all('traefik-proxy' in remote['services'][name]['networks'] for name in ['gateway','frontend'])
+    assert 'networks' not in remote
+    assert not any('traefik.docker.network=' in label for name in ['gateway','frontend'] for label in remote['services'][name]['labels'])
     assert not any('ports' in remote['services'][name] for name in remote['services'])
     for folder in ['scripts','studio','tests']:
         for path in (ROOT/folder).glob('*.py'):ast.parse(path.read_text(),str(path))
