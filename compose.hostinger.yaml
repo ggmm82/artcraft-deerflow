@@ -42,8 +42,8 @@ services:
       STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
       DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
-      AUTH_TRUSTED_PROXIES: proxy
-      BETTER_AUTH_URL: ${STUDIO_PUBLIC_URL:-http://localhost:2026}
+      AUTH_TRUSTED_PROXIES: traefik
+      BETTER_AUTH_URL: https://${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST:?Impostare TRAEFIK_HOST}
       LANGSMITH_TRACING: 'false'
     volumes:
     - studio-state:/studio-state
@@ -54,6 +54,19 @@ services:
         condition: service_healthy
       sandbox-image:
         condition: service_completed_successfully
+    networks:
+    - default
+    - traefik-proxy
+    labels:
+    - traefik.enable=true
+    - traefik.docker.network=traefik-proxy
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && (PathPrefix(`/api`) || PathPrefix(`/studio`) || PathPrefix(`/health`))
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.entrypoints=websecure
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls=true
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls.certresolver=letsencrypt
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.priority=100
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.service=${COMPOSE_PROJECT_NAME}-gateway
+    - traefik.http.services.${COMPOSE_PROJECT_NAME}-gateway.loadbalancer.server.port=8001
     healthcheck:
       test:
       - CMD
@@ -71,36 +84,29 @@ services:
     mem_limit: 512m
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}
-      BETTER_AUTH_URL: ${STUDIO_PUBLIC_URL:-http://localhost:2026}
+      BETTER_AUTH_URL: https://${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST:?Impostare TRAEFIK_HOST}
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
       NODE_OPTIONS: --max-old-space-size=384
     depends_on:
       gateway:
         condition: service_healthy
-  proxy:
-    restart: unless-stopped
-    init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-proxy:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
-    mem_limit: 96m
-    environment:
-      STUDIO_USER: ${STUDIO_USER:-admin}
-      STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}
-      STUDIO_SITE: ${STUDIO_DOMAIN:-:2026}
-    ports:
-    - ${STUDIO_BIND_IP:-0.0.0.0}:2026:2026
-    - ${STUDIO_BIND_IP:-0.0.0.0}:80:80
-    - ${STUDIO_BIND_IP:-0.0.0.0}:443:443
-    volumes:
-    - caddy-data:/data
-    - caddy-config:/config
-    depends_on:
-      gateway:
-        condition: service_healthy
-      frontend:
-        condition: service_started
+    networks:
+    - default
+    - traefik-proxy
+    labels:
+    - traefik.enable=true
+    - traefik.docker.network=traefik-proxy
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.entrypoints=websecure
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls=true
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.tls.certresolver=letsencrypt
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.priority=1
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.service=${COMPOSE_PROJECT_NAME}-frontend
+    - traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=3000
 volumes:
   studio-state: {}
   deerflow-data: {}
   redis-data: {}
-  caddy-data: {}
-  caddy-config: {}
+networks:
+  traefik-proxy:
+    external: true

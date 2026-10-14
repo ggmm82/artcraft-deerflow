@@ -21,6 +21,7 @@ jobs:
       - name: Compose configuration
         env:
           STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
+          TRAEFIK_HOST: srv-test.hstgr.cloud
         run: docker compose config --quiet && docker compose -f compose.hostinger.yaml config --quiet
   images:
     needs: tests

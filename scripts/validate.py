@@ -36,10 +36,14 @@ def main():
         assert not any('docker.sock' in str(v) for name,s in compose['services'].items() if name!='gateway' for v in s.get('volumes',[]))
     for name in ['gateway','frontend']:
         assert lock['deerflow']['commit'] in local['services'][name]['build']['additional_contexts']['deerflow']
-    custom={'gateway','frontend','proxy','sandbox-image'}
+    custom={'gateway','frontend','sandbox-image'}
+    assert 'proxy' not in remote['services']
     assert all('build' not in remote['services'][name] for name in custom)
     assert all(remote['services'][name]['image'].startswith('ghcr.io/ggmm82/artcraft-deerflow-') for name in custom)
     assert all(':sha-' in remote['services'][name]['image'] for name in custom)
+    assert remote['networks']['traefik-proxy']['external'] is True
+    assert all('traefik-proxy' in remote['services'][name]['networks'] for name in ['gateway','frontend'])
+    assert not any('ports' in remote['services'][name] for name in remote['services'])
     for folder in ['scripts','studio','tests']:
         for path in (ROOT/folder).glob('*.py'):ast.parse(path.read_text(),str(path))
     print('OK: 13 specialisti, 15 skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')
