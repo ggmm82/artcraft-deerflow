@@ -27,3 +27,5 @@ Il job `images (sandbox)` del run [38613178438](https://github.com/ggmm82/artcra
 Il run [38620200922](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38620200922) ha superato i 9 test applicativi, la validazione dei Compose, le quattro build e l'avvio completo. La prova di avvio ha scaricato i riferimenti GHCR del Compose Hostinger, inizializzato un account DeerFlow temporaneo, verificato sessione e CSRF, aperto il pannello Studio e salvato la configurazione di uno specialista attraverso il proxy. I quattro tag fissati nel Compose rispondono inoltre al pull anonimo dal registry.
 
 Restano da eseguire sulla VPS reale il login con gli abbonamenti Codex e Gemini e la misura del consumo RAM durante un incarico rappresentativo.
+
+Il run [38623365738](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38623365738) ha verificato la variante Hostinger con `TRAEFIK_HOST`: nessun servizio pubblica porte host, Caddy non fa parte dello stack Hostinger, Gateway e frontend sono collegati alla rete esterna `traefik-proxy` e il Compose risulta valido. Le build, i controlli delle 13 CLI e l'avvio applicativo completo sono terminati con successo.
