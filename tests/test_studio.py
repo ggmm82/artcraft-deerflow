@@ -134,6 +134,40 @@ class StudioTests(unittest.TestCase):
         self.assertTrue(self.runtime.EXECUTION_LOCK.locked())
         self.runtime.EXECUTION_LOCK.release()
 
+    def test_long_worker_response_remains_valid_json(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        class Result:
+            returncode = 0
+            stdout = json.dumps({'ok': True, 'response': 'x' * 30000})
+            stderr = ''
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=Result()), \
+             patch.object(self.runtime, 'remove'):
+            result = self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertEqual(len(json.loads(result)['response']), 30000)
+
+    def test_unsuccessful_worker_json_is_not_reported_as_success(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        class Result:
+            returncode = 0
+            stdout = '{"ok":false}'
+            stderr = ''
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=Result()), \
+             patch.object(self.runtime, 'remove'):
+            with self.assertRaisesRegex(RuntimeError, 'completamento'):
+                self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
+    def test_login_setup_errors_release_admission(self):
+        from studio import login
+        for failing_operation in ('credential_dir', 'atomic_json', 'pty.openpty'):
+            with self.subTest(operation=failing_operation), \
+                 patch('studio.login.' + failing_operation, side_effect=OSError('setup failed')):
+                with self.assertRaises(OSError):
+                    login.LoginSession('gemini')
+            self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
     def test_browser_api_rejects_cross_origin_configuration(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient

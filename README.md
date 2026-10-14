@@ -72,6 +72,8 @@ Una conversazione è uno spazio di lavoro. I container sono separati tra incaric
 
 Sono incluse 13 skills specifiche dei programmi, una procedura comune e una skill di coordinamento. I comandi e gli schemi completi vengono scoperti dalla release effettivamente installata, con `craft help`, `craft commands`, `craft tools` e `craft batch`. Il batch conserva lo stato MCP tra apertura, modifica e salvataggio.
 
+Ogni skill distingue il proprio ambito dagli specialisti vicini e definisce ispezione iniziale, procedura, controlli specifici del formato e limiti di compatibilità. Il worker assegna una cartella distinta tramite `ARTCRAFT_OUTPUT_DIR`, avvia la CLI in quella cartella e verifica `handoff.json` prima di restituire successo: gli output devono esistere, essere non vuoti e restare nella cartella assegnata. I controlli di qualità riportano `passed`, `failed` o `not_run` con evidenze; la presenza dei file non dimostra la qualità visiva o audio.
+
 ## Avvio locale
 
 ```bash
@@ -100,6 +102,19 @@ python -m pip install -r requirements-dev.txt
 python -m unittest discover -s tests -v
 python scripts/validate.py
 ```
+
+Per provare le skill con DeepSeek imposta `DEEPSEEK_API_KEY` nell'ambiente della shell (mai nel repository), poi:
+
+```bash
+python scripts/evaluate_skills.py                     # piani dei 13 specialisti
+python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound
+# Per completare un incarico interrotto senza ricreare i file:
+python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
+```
+
+I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Queste prove non aggiungono DeepSeek ai motori del pannello e non sostituiscono il collaudo dei login reali. Ogni prova consuma la quota del provider.
+
+Per verificare modifiche in produzione ricostruisci le immagini dal checkout oppure, dopo CI e pubblicazione, aggiorna i riferimenti `sha-…` del Compose Hostinger. I tag già fissati non ricevono le modifiche dei sorgenti automaticamente.
 
 Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non usare `down -v` salvo richiesta esplicita di cancellazione. Per aggiornare, modifica insieme `versions.lock.json`, versioni CLI nei Dockerfile, commit DeerFlow nei Compose/workflow e collaudi. I dati non si aggiornano automaticamente a un nuovo schema.
 

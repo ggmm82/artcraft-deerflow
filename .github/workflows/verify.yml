@@ -59,7 +59,7 @@ jobs:
       - name: Verify CLI registries and all native MCP servers
         if: matrix.component == 'sandbox'
         run: |
-          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --output /tmp/checks.json
+          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --render --output /tmp/checks.json
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |

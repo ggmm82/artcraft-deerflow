@@ -18,8 +18,17 @@ ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
 
 class LoginSession:
     def __init__(self, engine):
+        if engine not in ('codex', 'gemini'):
+            raise ValueError('Motore sconosciuto')
         if not EXECUTION_LOCK.acquire(blocking=False):
             raise RuntimeError('Un lavoro o un login è già attivo')
+        try:
+            self._start(engine)
+        except Exception:
+            EXECUTION_LOCK.release()
+            raise
+
+    def _start(self, engine):
         self.id = uuid.uuid4().hex
         self.engine = engine
         self.name = 'artcraft-login-' + self.id[:12]
@@ -29,8 +38,6 @@ class LoginSession:
         self._lock = threading.Lock()
         self._cancel = threading.Event()
         self.started = time.monotonic()
-        master, slave = pty.openpty()
-        self.fd = master
         credentials = credential_dir(engine)
         if engine == 'gemini':
             atomic_json(credentials / 'settings.json',
@@ -39,11 +46,8 @@ class LoginSession:
             cli = ['gemini', '--prompt', 'Rispondi solo OK', '--output-format', 'json']
         elif engine == 'codex':
             cli = ['codex', 'login', '--device-auth']
-        else:
-            os.close(master)
-            os.close(slave)
-            EXECUTION_LOCK.release()
-            raise ValueError('Motore sconosciuto')
+        master, slave = pty.openpty()
+        self.fd = master
         try:
             installation = (STATE / 'installation-id').read_text().strip()
             args = base_arguments(self.name) + ['-it', '--label',
@@ -54,7 +58,6 @@ class LoginSession:
                                             stderr=slave, start_new_session=True)
         except Exception:
             os.close(master)
-            EXECUTION_LOCK.release()
             raise
         finally:
             os.close(slave)

@@ -5,24 +5,35 @@ description: "Composizioni, keyframe, motion graphics ed effetti video. Usa ques
 
 # Animazione ed effetti
 
+Specialista: `effectcraft` per `studio_delegate`; nome della skill: `artcraft-effectcraft`.
 CLI: `effectcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Quando usarla
+
+Usa EffectCraft per composizioni, motion graphics, keyframe ed effetti. Il montaggio finale di molte clip appartiene a FilmCraft.
 
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
 2. Esegui `craft help effectcraft` e consulta `/opt/artcraft/reference/effectcraft/help.txt`.
-3. Salva il registro reale con `craft commands effectcraft > /mnt/user-data/work/effectcraft-commands.txt`.
+3. Salva il registro reale con `craft commands effectcraft > "$ARTCRAFT_OUTPUT_DIR/work/effectcraft-commands.txt"`.
 4. Cerca nel registro solo i comandi pertinenti. I parametri non sono uniformi tra applicazioni.
-5. Per i tool MCP nativi usa `craft tools effectcraft --out /mnt/user-data/work/effectcraft-tools.json`.
+5. Per i tool MCP nativi usa `craft tools effectcraft --out "$ARTCRAFT_OUTPUT_DIR/work/effectcraft-tools.json"`.
    È un processo locale nella sandbox: non occorre un server sempre acceso.
 6. Per una sequenza MCP con stato usa `craft batch effectcraft sequenza.json`; tutte le chiamate della sequenza condividono la stessa sessione.
    La sequenza deve includere il salvataggio del documento prima dell'uscita.
 
 ## Procedura professionale
 
-- Definisci durata, frame rate, risoluzione e composizione principale.
-- Verifica frame iniziale, intermedio e finale prima di esportare il video.
-- Controlla dipendenze, media collegati, alpha e formato di consegna.
+1. Definisci composizione principale, risoluzione, fps, durata e sfondo/alpha. Elenca livelli, media, font e dipendenze prima di impostare animazioni.
+2. Organizza livelli e precomposizioni; imposta valori iniziali/finali, keyframe e interpolazione in unità temporali esplicite. Controlla punti di ancoraggio e trasformazioni.
+3. Renderizza frame iniziale, centrale e finale e i punti di cambio prima della sequenza completa. Per loop verifica continuità; per alpha scegli un formato che lo conservi.
+
+## Controlli di accettazione
+
+- Confronta durata e numero frame attesi con l’export; verifica fps, risoluzione e alpha tramite metadati e riapertura.
+- Controlla dipendenze mancanti, bordi, testi e interpolazione sui frame campione; registra visione non eseguita.
+- Consegna progetto modificabile, asset necessari ed export; indica effetti non supportati o sostituiti.
 
 ## Sintassi di riferimento
 
@@ -37,7 +48,7 @@ effectcraft-cli render --comp Main --out output.mp4 input.ecproj
 
 ## Consegna
 
-Restituisci al coordinatore: file sorgente, export, anteprime, controlli superati, controlli non eseguiti ed eventuali perdite di compatibilità.
+Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
 Non presentare una semplice anteprima come documento modificabile.
 
 ## Fonti

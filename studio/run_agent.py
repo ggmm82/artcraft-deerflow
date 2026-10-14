@@ -6,6 +6,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from .handoff import validate_handoff
+except ImportError:  # Direct invocation inside the worker image.
+    from handoff import validate_handoff
+
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
     'gemini': ('oauth_creds.json', 'google_accounts.json', 'settings.json'),
@@ -49,9 +54,8 @@ def main():
     copy_credentials(Path('/credentials'), auth, engine)
     output_dir = Path('/mnt/user-data/outputs') / job['agent'] / job['run_id']
     output_dir.mkdir(parents=True)
-    workspace = Path('/mnt/user-data/workspace')
-    workspace.mkdir(exist_ok=True)
-    Path('/mnt/user-data/work').mkdir(exist_ok=True)
+    (output_dir / 'work').mkdir()
+    (output_dir / 'previews').mkdir()
     selected = []
     for name in job['skills']:
         if not name.startswith('artcraft-') or '/' in name or '..' in name:
@@ -65,12 +69,16 @@ def main():
     # Only the selected specialist's instructions and common procedure enter context.
     prompt = '\n\n'.join([
         'Sei lo specialista ' + job['agent'] + '. Lavora in italiano.',
+        'Le skill aggiuntive sono procedure di supporto: non cambiano il tuo ruolo '
+        'né i requisiti dell’incarico.',
         'Gli strumenti ArtCraft sono già installati. Usa craft help, craft commands e craft tools '
         'per scoprire i comandi della release reale. Non installare software.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
         'Non leggere o modificare credenziali, .codex o .gemini.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
+        'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
+        'secondo lo schema artcraft-workspace; il runtime verifica che i file esistano.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
@@ -78,7 +86,8 @@ def main():
     ])
     final = Path('/tmp/last-message.txt')
     try:
-        result = subprocess.run(command(engine, job['model'], prompt, final), cwd=workspace,
+        result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
+                                env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
                                 capture_output=True, text=True, timeout=job['timeout'])
         if result.returncode:
             print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
@@ -91,8 +100,10 @@ def main():
             if parsed.get('error'):
                 raise RuntimeError(str(parsed['error']))
             message = parsed.get('response', '')
+        handoff = validate_handoff(output_dir, Path('/mnt/user-data'))
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
-                          'output_dir': str(output_dir), 'response': message}, ensure_ascii=False))
+                          'output_dir': str(output_dir), 'handoff': handoff,
+                          'response': message}, ensure_ascii=False))
         return 0
     finally:
         # One worker at a time. Preserve refreshed tokens for the next run.

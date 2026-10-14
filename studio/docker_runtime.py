@@ -96,11 +96,17 @@ def delegate(agent_id, task, workspace):
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
         completed = subprocess.run(['docker', *args], capture_output=True, text=True,
                                    timeout=1560)
-        response = completed.stdout[-24000:]
+        response = completed.stdout
         if completed.returncode:
             raise RuntimeError('Lo specialista ha fallito: ' +
                                (response or completed.stderr)[-3000:])
-        return response
+        try:
+            result = json.loads(response)
+        except (ValueError, TypeError):
+            raise RuntimeError('Risposta JSON dello specialista non valida') from None
+        if not isinstance(result, dict) or result.get('ok') is not True:
+            raise RuntimeError('Lo specialista non ha confermato il completamento')
+        return json.dumps(result, ensure_ascii=False)
     except subprocess.TimeoutExpired:
         raise RuntimeError('Timeout dello specialista; il container viene rimosso') from None
     finally:

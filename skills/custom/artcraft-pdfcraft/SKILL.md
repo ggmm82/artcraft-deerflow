@@ -5,24 +5,35 @@ description: "Ispezione, estrazione, unione, moduli e trasformazioni PDF. Usa qu
 
 # Documenti PDF
 
+Specialista: `pdfcraft` per `studio_delegate`; nome della skill: `artcraft-pdfcraft`.
 CLI: `pdfcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Quando usarla
+
+Usa PdfCraft per ispezione, estrazione, unione, pagine e moduli PDF. Per riscrivere un documento usa WordCraft; per impaginazione da stampa usa DesignCraft.
 
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
 2. Esegui `craft help pdfcraft` e consulta `/opt/artcraft/reference/pdfcraft/help.txt`.
-3. Salva il registro reale con `craft commands pdfcraft > /mnt/user-data/work/pdfcraft-commands.txt`.
+3. Salva il registro reale con `craft commands pdfcraft > "$ARTCRAFT_OUTPUT_DIR/work/pdfcraft-commands.txt"`.
 4. Cerca nel registro solo i comandi pertinenti. I parametri non sono uniformi tra applicazioni.
-5. Per i tool MCP nativi usa `craft tools pdfcraft --out /mnt/user-data/work/pdfcraft-tools.json`.
+5. Per i tool MCP nativi usa `craft tools pdfcraft --out "$ARTCRAFT_OUTPUT_DIR/work/pdfcraft-tools.json"`.
    È un processo locale nella sandbox: non occorre un server sempre acceso.
 6. Per una sequenza MCP con stato usa `craft batch pdfcraft sequenza.json`; tutte le chiamate della sequenza condividono la stessa sessione.
    La sequenza deve includere il salvataggio del documento prima dell'uscita.
 
 ## Procedura professionale
 
-- Rileva pagine, testo, moduli e restrizioni del documento.
-- Controlla le pagine coinvolte e verifica il numero pagine dopo le modifiche.
-- Non dichiarare una redazione sicura soltanto perché il testo è coperto visivamente: verifica il contenuto estratto.
+1. Rileva pagine, ordine, rotazione, dimensioni, testo, moduli, allegati, restrizioni e firme. Distingui PDF testuale e scansione; non inventare testo quando serve OCR non disponibile.
+2. Esegui modifiche su una copia; mantieni una mappa delle pagine prima/dopo. Per moduli distingui valori compilati e campi interattivi; avvisa se una modifica invalida firme o appiattisce campi.
+3. Per oscuramenti permanenti controlla che il contenuto sia rimosso da testo e oggetti: un rettangolo nero non basta. Non attestare redazione sicura se la release o i controlli non lo consentono.
+
+## Controlli di accettazione
+
+- Riapri il PDF, verifica conteggio/ordine pagine e valori dei campi; estrai il testo per confrontare i contenuti attesi.
+- Renderizza tutte le pagine modificate e controlla tagli, rotazioni e leggibilità.
+- Consegna PDF e rapporto con pagine coinvolte, controlli, firme/moduli alterati e limiti OCR o redazione.
 
 ## Sintassi di riferimento
 
@@ -38,7 +49,7 @@ pdfcraft-cli text output.pdf
 
 ## Consegna
 
-Restituisci al coordinatore: file sorgente, export, anteprime, controlli superati, controlli non eseguiti ed eventuali perdite di compatibilità.
+Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
 Non presentare una semplice anteprima come documento modificabile.
 
 ## Fonti

@@ -5,24 +5,35 @@ description: "Disegno tecnico, geometrie, quote e scambio DXF. Usa questa skill 
 
 # Disegno CAD
 
+Specialista: `cadcraft` per `studio_delegate`; nome della skill: `artcraft-cadcraft`.
 CLI: `cadcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Quando usarla
+
+Usa CADCraft per disegno tecnico, geometrie, layer, quote e DXF. Una rappresentazione grafica non sostituisce la verifica delle dimensioni.
 
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
 2. Esegui `craft help cadcraft` e consulta `/opt/artcraft/reference/cadcraft/help.txt`.
-3. Salva il registro reale con `craft commands cadcraft > /mnt/user-data/work/cadcraft-commands.txt`.
+3. Salva il registro reale con `craft commands cadcraft > "$ARTCRAFT_OUTPUT_DIR/work/cadcraft-commands.txt"`.
 4. Cerca nel registro solo i comandi pertinenti. I parametri non sono uniformi tra applicazioni.
-5. Per i tool MCP nativi usa `craft tools cadcraft --out /mnt/user-data/work/cadcraft-tools.json`.
+5. Per i tool MCP nativi usa `craft tools cadcraft --out "$ARTCRAFT_OUTPUT_DIR/work/cadcraft-tools.json"`.
    È un processo locale nella sandbox: non occorre un server sempre acceso.
 6. Per una sequenza MCP con stato usa `craft batch cadcraft sequenza.json`; tutte le chiamate della sequenza condividono la stessa sessione.
    La sequenza deve includere il salvataggio del documento prima dell'uscita.
 
 ## Procedura professionale
 
-- Dichiara unità, scala, origine e tolleranze del disegno.
-- Controlla dimensioni geometriche e quote, non soltanto l’immagine.
-- Registra eventuali perdite di dati nell’import/export dei formati.
+1. Definisci unità, scala, origine, sistema di coordinate e tolleranze. Se mancano misure essenziali non inventarle: esplicita le assunzioni o segnala il blocco.
+2. Organizza layer e geometrie; verifica chiusura dei contorni, intersezioni, duplicati e coerenza delle quote. Distingui unità del modello e scala di stampa.
+3. Misura entità e ingombri numericamente prima dell’export. Conserva geometria editabile e controlla le entità supportate dal formato di scambio.
+
+## Controlli di accettazione
+
+- Riapri DXF e confronta unità, bounding box, conteggio entità e distanze campione con i requisiti e le tolleranze.
+- Genera un’anteprima con quote leggibili, verificando scala e orientamento; la sola anteprima non prova accuratezza metrica.
+- Consegna disegno sorgente, DXF e riepilogo delle misure; segnala spline, quote o layer persi in conversione.
 
 ## Sintassi di riferimento
 
@@ -37,7 +48,7 @@ cadcraft-cli convert input.dxf output.svg
 
 ## Consegna
 
-Restituisci al coordinatore: file sorgente, export, anteprime, controlli superati, controlli non eseguiti ed eventuali perdite di compatibilità.
+Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
 Non presentare una semplice anteprima come documento modificabile.
 
 ## Fonti
