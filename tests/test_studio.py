@@ -91,6 +91,20 @@ class StudioTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             copy_credentials(source, destination, 'codex')
 
+    def test_unconfirmed_cleanup_blocks_new_worker(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        class Result:
+            returncode = 0
+            stdout = '{"ok":true}'
+            stderr = ''
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=Result()), \
+             patch.object(self.runtime, 'remove', side_effect=RuntimeError('cleanup failed')):
+            with self.assertRaisesRegex(RuntimeError, 'cleanup failed'):
+                self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertTrue(self.runtime.EXECUTION_LOCK.locked())
+        self.runtime.EXECUTION_LOCK.release()
+
     def test_browser_api_rejects_cross_origin_configuration(self):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient

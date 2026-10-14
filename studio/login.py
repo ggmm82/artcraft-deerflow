@@ -34,7 +34,8 @@ class LoginSession:
         credentials = credential_dir(engine)
         if engine == 'gemini':
             atomic_json(credentials / 'settings.json',
-                        {'security': {'auth': {'selectedType': 'oauth-personal'}}})
+                        {'security': {'auth': {'selectedType': 'oauth-personal'},
+                                      'folderTrust': {'enabled': False}}})
             cli = ['gemini', '--prompt', 'Rispondi solo OK', '--output-format', 'json']
         elif engine == 'codex':
             cli = ['codex', 'login', '--device-auth']

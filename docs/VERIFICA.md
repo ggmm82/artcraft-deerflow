@@ -17,3 +17,7 @@ I controlli eseguiti vengono riportati nel commit e nei log del workflow. La sui
 - Accesso HTTPS, registrazione DeerFlow e collegamento dalla barra laterale.
 
 Non vengono dichiarati già eseguiti questi test senza i loro risultati reali. Nessuna API key o credenziale di un account è inclusa nel repository.
+
+## Risultato effettivo della prima build sandbox
+
+Il job `images (sandbox)` del run [38613178438](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38613178438) ha completato con successo la build e i 52 controlli: versione, help, registro comandi e lista MCP per ciascuna delle 13 CLI. Non ha eseguito incarichi con credenziali reali. Il controllo Gateway ha rilevato un errore nel test di serializzazione del runtime interno: viene ora verificato lo schema effettivamente inviato al modello.

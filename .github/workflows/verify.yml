@@ -45,7 +45,7 @@ jobs:
       - name: Validate DeerFlow schema and injected tool
         if: matrix.component == 'gateway'
         run: |
-          docker run --rm --entrypoint python -e STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 artcraft-deerflow-gateway:0.1.0 -c 'from studio.bootstrap import initialize; initialize(); from deerflow.config.app_config import AppConfig; AppConfig.from_file("/studio-state/config.yaml"); from studio.tools import studio_delegate; print(studio_delegate.args_schema.model_json_schema()); from studio.app import app; print(len(app.routes))'
+          docker run --rm --entrypoint python -e STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 artcraft-deerflow-gateway:0.1.0 -c 'from studio.bootstrap import initialize; initialize(); from deerflow.config.app_config import AppConfig; AppConfig.from_file("/studio-state/config.yaml"); from studio.tools import studio_delegate; from langchain_core.utils.function_calling import convert_to_openai_tool; schema=convert_to_openai_tool(studio_delegate); assert "runtime" not in schema["function"]["parameters"]["properties"]; print(schema); from studio.app import app; print(len(app.routes))'
       - name: Verify CLI registries and all native MCP servers
         if: matrix.component == 'sandbox'
         run: |

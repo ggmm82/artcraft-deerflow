@@ -50,7 +50,11 @@ def base_arguments(name):
 
 
 def remove(name):
-    subprocess.run(['docker', 'rm', '-f', name], capture_output=True, timeout=30)
+    result = subprocess.run(['docker', 'rm', '-f', name], capture_output=True,
+                            text=True, timeout=30)
+    if result.returncode and 'No such container' not in result.stderr:
+        # Do not admit another worker unless reclamation was confirmed.
+        raise RuntimeError('Rimozione sandbox non confermata; riavvia il Gateway per recuperarla')
 
 
 def cleanup_orphans():
