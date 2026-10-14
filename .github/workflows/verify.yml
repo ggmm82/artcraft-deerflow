@@ -1,0 +1,56 @@
+name: Verify and build Studio
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python scripts/validate.py
+      - name: Compose configuration
+        env:
+          STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
+        run: docker compose config --quiet && docker compose -f compose.hostinger.yaml config --quiet
+  images:
+    needs: tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [gateway, frontend, sandbox, proxy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build pinned runtime
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.component }}
+          tags: artcraft-deerflow-${{ matrix.component }}:0.1.0
+          load: true
+          build-contexts: |
+            deerflow=https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+      - name: Validate DeerFlow schema and injected tool
+        if: matrix.component == 'gateway'
+        run: |
+          docker run --rm --entrypoint python -e STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 artcraft-deerflow-gateway:0.1.0 -c 'from studio.bootstrap import initialize; initialize(); from deerflow.config.app_config import AppConfig; AppConfig.from_file("/studio-state/config.yaml"); from studio.tools import studio_delegate; print(studio_delegate.args_schema.model_json_schema()); from studio.app import app; print(len(app.routes))'
+      - name: Verify CLI registries and all native MCP servers
+        if: matrix.component == 'sandbox'
+        run: |
+          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --output /tmp/checks.json
+      - name: Validate proxy configuration
+        if: matrix.component == 'proxy'
+        run: |
+          docker run --rm --entrypoint caddy -e STUDIO_SITE=:2026 -e STUDIO_USER=admin -e STUDIO_PASSWORD_HASH='$2a$14$7TqSh37TK/yl18PM9eaMOu/fA7YKMsBFUMDsHRUZTiZoFoRL66Eu6' artcraft-deerflow-proxy:0.1.0 validate --config /etc/caddy/Caddyfile --adapter caddyfile

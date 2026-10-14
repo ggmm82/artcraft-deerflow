@@ -1,0 +1,552 @@
+{
+  "schema_version": 1,
+  "verified_date": "2026-10-14",
+  "deerflow": {
+    "repository": "https://github.com/bytedance/deer-flow.git",
+    "commit": "0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d"
+  },
+  "sandbox_base": "node:22-bookworm-slim",
+  "applications": [
+    {
+      "id": "photocraft",
+      "name": "PhotoCraft",
+      "role": "Immagini e ritocco",
+      "description": "Livelli, maschere, correzioni, compositing e PSD.",
+      "repository": "https://github.com/storytold/photocraft",
+      "version": "v0.8.2",
+      "executable": "photocraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--automation-read-root",
+        "/mnt/user-data",
+        "--automation-write-root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "photocraft-0.8.2-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/photocraft/releases/download/v0.8.2/photocraft-0.8.2-linux-x86_64.tar.gz",
+          "sha256": "16c3089976eee2d290dbe73986db4835c1ec5a043c5c16b017b24848ff5ea827",
+          "size_bytes": 79671114
+        },
+        "arm64": {
+          "name": "photocraft-0.8.2-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/photocraft/releases/download/v0.8.2/photocraft-0.8.2-linux-aarch64.tar.gz",
+          "sha256": "f3920f31406574d1d3f9ca152d46703c8e7f3b504e0d2b2e394f0ad10f0df348",
+          "size_bytes": 75507878
+        }
+      },
+      "checks": [
+        "Ispeziona dimensioni, profilo colore, livelli e trasparenza prima delle modifiche.",
+        "Conserva il sorgente con livelli e salva gli export separatamente.",
+        "Verifica l’anteprima, il ritaglio e la leggibilità alla risoluzione di consegna."
+      ],
+      "examples": [
+        "photocraft-cli info input.psd",
+        "photocraft-cli commands --filter blur",
+        "photocraft-cli convert input.psd output.png"
+      ]
+    },
+    {
+      "id": "vectorcraft",
+      "name": "VectorCraft",
+      "role": "Grafica vettoriale",
+      "description": "Loghi, icone, tracciati, illustrazioni e SVG.",
+      "repository": "https://github.com/storytold/vectorcraft",
+      "version": "v0.11.0",
+      "executable": "vectorcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--automation-read-root",
+        "/mnt/user-data",
+        "--automation-write-root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "vectorcraft-0.11.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.11.0/vectorcraft-0.11.0-linux-x86_64.tar.gz",
+          "sha256": "83ca62a455bbb1d1c61c6b05133bc41ceda1d1d99e4be7509d287c364ceb8f39",
+          "size_bytes": 120177805
+        },
+        "arm64": {
+          "name": "vectorcraft-0.11.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.11.0/vectorcraft-0.11.0-linux-aarch64.tar.gz",
+          "sha256": "fd594494e2f1498cb7dab01a3a10a70ec8ee69e8dd26a8ed468219a0f4192b53",
+          "size_bytes": 115307344
+        }
+      },
+      "checks": [
+        "Definisci dimensioni delle tavole, palette e tipografia.",
+        "Mantieni tracciati e testo modificabili nel sorgente.",
+        "Controlla viewBox, margini, font e rasterizzazioni nell’export SVG/PDF."
+      ],
+      "examples": [
+        "vectorcraft-cli commands",
+        "vectorcraft-cli run --in input.vectorcraft --export output.pdf"
+      ]
+    },
+    {
+      "id": "filmcraft",
+      "name": "FilmCraft",
+      "role": "Montaggio video",
+      "description": "Timeline, montaggio, transizioni, colore ed esportazione video.",
+      "repository": "https://github.com/storytold/filmcraft",
+      "version": "v0.7.2",
+      "executable": "filmcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "filmcraft-0.7.2-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-0.7.2-linux-x86_64.tar.gz",
+          "sha256": "4171c4bf5f57fd29475655f8a6df4719feda8c8f3ed95b2475d8dc112ad3be86",
+          "size_bytes": 69427996
+        },
+        "arm64": {
+          "name": "filmcraft-0.7.2-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-0.7.2-linux-aarch64.tar.gz",
+          "sha256": "4af56f649a6fb19dcae386abd59921ec6c9190b725014517075fa4d81123c68a",
+          "size_bytes": 66526008
+        }
+      },
+      "checks": [
+        "Ispeziona tutti i media: durata, codec, frame rate, dimensioni e canali audio.",
+        "Lavora su un progetto salvato; usa frame di prova prima di render lunghi.",
+        "Verifica durata, sincronizzazione, media mancanti e file finale con ffprobe."
+      ],
+      "examples": [
+        "filmcraft-cli probe input.mp4",
+        "filmcraft-cli commands --json",
+        "filmcraft-cli --project input.fcproj inspect",
+        "filmcraft-cli --project input.fcproj export output.mp4 --gpu-rendering off"
+      ]
+    },
+    {
+      "id": "lightcraft",
+      "name": "LightCraft",
+      "role": "Fotografia e RAW",
+      "description": "Cataloghi fotografici, sviluppo RAW e lavorazioni in serie.",
+      "repository": "https://github.com/storytold/lightcraft",
+      "version": "v0.8.0",
+      "executable": "lightcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "lightcraft-0.8.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/lightcraft/releases/download/v0.8.0/lightcraft-0.8.0-linux-x86_64.tar.gz",
+          "sha256": "9fe0ecc69b7f1f3a35a1c630429b3c52fdb4419ba208b5579b4501b938f518d1",
+          "size_bytes": 104280626
+        },
+        "arm64": {
+          "name": "lightcraft-0.8.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/lightcraft/releases/download/v0.8.0/lightcraft-0.8.0-linux-aarch64.tar.gz",
+          "sha256": "ce563498ee01c16ba94520c823123e18c2e6d846edc58e7d1a0475828181c1c3",
+          "size_bytes": 99916376
+        }
+      },
+      "checks": [
+        "Mantieni gli originali e gli eventuali sidecar intatti.",
+        "Controlla esposizione, bilanciamento del bianco e clipping sui campioni.",
+        "Applica elaborazioni in serie solo dopo avere verificato un’immagine campione."
+      ],
+      "examples": [
+        "lightcraft-cli commands --json",
+        "lightcraft-cli render input.jpg -o output.jpg --set light.exposure=0.5"
+      ]
+    },
+    {
+      "id": "pdfcraft",
+      "name": "PdfCraft",
+      "role": "Documenti PDF",
+      "description": "Ispezione, estrazione, unione, moduli e trasformazioni PDF.",
+      "repository": "https://github.com/storytold/pdfcraft",
+      "version": "v0.8.0",
+      "executable": "pdfcraft-cli",
+      "registry_args": [
+        "tools"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "pdfcraft-cli-0.8.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.8.0/pdfcraft-cli-0.8.0-linux-x86_64.tar.gz",
+          "sha256": "e57630c62e23288bacb1591ef86f0c530da1bd63743b800cae3ebc875a4708cd",
+          "size_bytes": 30371117
+        },
+        "arm64": {
+          "name": "pdfcraft-cli-0.8.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.8.0/pdfcraft-cli-0.8.0-linux-aarch64.tar.gz",
+          "sha256": "b09ee57a56ad268c9f0d86fe78016d05dbf62a7ac175b574195fd38c392f63be",
+          "size_bytes": 28880799
+        }
+      },
+      "checks": [
+        "Rileva pagine, testo, moduli e restrizioni del documento.",
+        "Controlla le pagine coinvolte e verifica il numero pagine dopo le modifiche.",
+        "Non dichiarare una redazione sicura soltanto perché il testo è coperto visivamente: verifica il contenuto estratto."
+      ],
+      "examples": [
+        "pdfcraft-cli info input.pdf",
+        "pdfcraft-cli tools",
+        "pdfcraft-cli combine input.pdf appendix.pdf --out output.pdf",
+        "pdfcraft-cli text output.pdf"
+      ]
+    },
+    {
+      "id": "effectcraft",
+      "name": "EffectCraft",
+      "role": "Animazione ed effetti",
+      "description": "Composizioni, keyframe, motion graphics ed effetti video.",
+      "repository": "https://github.com/storytold/effectcraft",
+      "version": "v0.10.0",
+      "executable": "effectcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--automation-read-root",
+        "/mnt/user-data",
+        "--automation-write-root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "effectcraft-0.10.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/effectcraft/releases/download/v0.10.0/effectcraft-0.10.0-linux-x86_64.tar.gz",
+          "sha256": "76fbfc0a9ad34399701a18efeb1c178557d01d0a0f4b403514f2dac5d887572e",
+          "size_bytes": 63418958
+        },
+        "arm64": {
+          "name": "effectcraft-0.10.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/effectcraft/releases/download/v0.10.0/effectcraft-0.10.0-linux-aarch64.tar.gz",
+          "sha256": "967be5222b2e5480b7b1a0743e47379a0fa0ef018017ce31b2eda45046af019b",
+          "size_bytes": 59208803
+        }
+      },
+      "checks": [
+        "Definisci durata, frame rate, risoluzione e composizione principale.",
+        "Verifica frame iniziale, intermedio e finale prima di esportare il video.",
+        "Controlla dipendenze, media collegati, alpha e formato di consegna."
+      ],
+      "examples": [
+        "effectcraft-cli commands",
+        "effectcraft-cli info input.ecproj",
+        "effectcraft-cli render --comp Main --out output.mp4 input.ecproj"
+      ]
+    },
+    {
+      "id": "designcraft",
+      "name": "DesignCraft",
+      "role": "Impaginazione editoriale",
+      "description": "Brochure, pubblicazioni, layout multipagina e stampa.",
+      "repository": "https://github.com/storytold/designcraft",
+      "version": "v0.8.0",
+      "executable": "designcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "designcraft-0.8.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/designcraft/releases/download/v0.8.0/designcraft-0.8.0-linux-x86_64.tar.gz",
+          "sha256": "96a835fd89ebf6970b7dec93652e1b2f081123a69c78e19998ca6c84ca322d77",
+          "size_bytes": 71523941
+        },
+        "arm64": {
+          "name": "designcraft-0.8.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/designcraft/releases/download/v0.8.0/designcraft-0.8.0-linux-aarch64.tar.gz",
+          "sha256": "86419263db3b4c7dfd0bf61948eb1931b32cea56ce9caca5b4b03cd146dd3926",
+          "size_bytes": 68368373
+        }
+      },
+      "checks": [
+        "Definisci formato, margini, colonne, abbondanze e stili.",
+        "Verifica overflow del testo, immagini mancanti e font.",
+        "Esamina tutte le pagine renderizzate; usa validate-pdf per il controllo PDF/X supportato."
+      ],
+      "examples": [
+        "designcraft-cli commands",
+        "designcraft-cli run --in input.designcraft --all-pages preview",
+        "designcraft-cli run --in input.designcraft --export output.pdf",
+        "designcraft-cli validate-pdf output.pdf"
+      ]
+    },
+    {
+      "id": "gridcraft",
+      "name": "GridCraft",
+      "role": "Fogli di calcolo",
+      "description": "Dati, formule, tabelle, grafici e file XLSX.",
+      "repository": "https://github.com/storytold/gridcraft",
+      "version": "v0.7.0",
+      "executable": "gridcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "gridcraft-0.7.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/gridcraft/releases/download/v0.7.0/gridcraft-0.7.0-linux-x86_64.tar.gz",
+          "sha256": "c01bc2dc4295556f53810dfed4a85a3f58388552c157a103e10626c069b39e1c",
+          "size_bytes": 19864229
+        },
+        "arm64": {
+          "name": "gridcraft-0.7.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/gridcraft/releases/download/v0.7.0/gridcraft-0.7.0-linux-aarch64.tar.gz",
+          "sha256": "b77591dba5f35c85ee8f227360e60bd6da342c48cc7d54394083bc2ee74768ce",
+          "size_bytes": 18367027
+        }
+      },
+      "checks": [
+        "Conserva i valori numerici come numeri; unità e descrizioni nelle intestazioni.",
+        "Presenta numeri con convenzioni italiane; nelle API mantieni la sintassi canonica richiesta dalla CLI.",
+        "Controlla formule, riferimenti, totali e valori di errore dopo il ricalcolo.",
+        "Consegna XLSX con formule e, se richiesto, CSV UTF-8 con separatore esplicito."
+      ],
+      "examples": [
+        "gridcraft-cli info input.xlsx --json",
+        "gridcraft-cli commands --json",
+        "gridcraft-cli functions --json",
+        "gridcraft-cli eval \"=SUM(1,2,3)\"",
+        "gridcraft-cli cat input.xlsx --range A1:D20 --csv",
+        "gridcraft-cli check input.xlsx --json"
+      ]
+    },
+    {
+      "id": "wordcraft",
+      "name": "WordCraft",
+      "role": "Testi e documenti",
+      "description": "Documenti strutturati, stili, tabelle, DOCX e PDF.",
+      "repository": "https://github.com/storytold/wordcraft",
+      "version": "v0.7.0",
+      "executable": "wordcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--automation-read-root",
+        "/mnt/user-data",
+        "--automation-write-root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "wordcraft-0.7.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.7.0/wordcraft-0.7.0-linux-x86_64.tar.gz",
+          "sha256": "63009f88e3dbaea70ac1378fabc8555ae14775d32829175c5da2551abe03932f",
+          "size_bytes": 97305034
+        },
+        "arm64": {
+          "name": "wordcraft-0.7.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.7.0/wordcraft-0.7.0-linux-aarch64.tar.gz",
+          "sha256": "b5fce7f31bbbf38828c1714d7d43244ae85f034bbe761dfa401e044f976ba45e",
+          "size_bytes": 94686149
+        }
+      },
+      "checks": [
+        "Scrivi in italiano salvo diversa richiesta; usa stili e titoli strutturati.",
+        "Separa contenuti, riferimenti e dati da elementi decorativi.",
+        "Verifica testo, numerazione, interruzioni, tabelle e anteprime delle pagine esportate."
+      ],
+      "examples": [
+        "wordcraft-cli commands --json",
+        "wordcraft-cli inspect input.docx",
+        "wordcraft-cli convert input.docx output.pdf",
+        "wordcraft-cli render input.docx preview.png --page 1"
+      ]
+    },
+    {
+      "id": "deckcraft",
+      "name": "DeckCraft",
+      "role": "Presentazioni",
+      "description": "Struttura narrativa, slide, layout, grafici e PPTX.",
+      "repository": "https://github.com/storytold/deckcraft",
+      "version": "v0.7.0",
+      "executable": "deckcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "deckcraft-0.7.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.7.0/deckcraft-0.7.0-linux-x86_64.tar.gz",
+          "sha256": "330a2fb2ef8890daded91084e5bfd29dfa411e33a2b27c01ac3b9e520ff98d9f",
+          "size_bytes": 76310611
+        },
+        "arm64": {
+          "name": "deckcraft-0.7.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.7.0/deckcraft-0.7.0-linux-aarch64.tar.gz",
+          "sha256": "cde1f7e27468e8e0da01bc954172aa66fbea57e719c09dc2320cf4f97b326d60",
+          "size_bytes": 74113266
+        }
+      },
+      "checks": [
+        "Definisci pubblico, obiettivo e formato prima delle slide.",
+        "Usa dati e asset verificati dagli altri specialisti.",
+        "Controlla tutte le slide renderizzate per tagli, sovrapposizioni e leggibilità."
+      ],
+      "examples": [
+        "deckcraft-cli commands",
+        "deckcraft-cli info input.pptx",
+        "deckcraft-cli render input.pptx --all preview",
+        "deckcraft-cli convert input.deckcraft output.pptx"
+      ]
+    },
+    {
+      "id": "cadcraft",
+      "name": "CADCraft",
+      "role": "Disegno CAD",
+      "description": "Disegno tecnico, geometrie, quote e scambio DXF.",
+      "repository": "https://github.com/storytold/cadcraft",
+      "version": "v0.7.0",
+      "executable": "cadcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "cadcraft-0.7.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/cadcraft/releases/download/v0.7.0/cadcraft-0.7.0-linux-x86_64.tar.gz",
+          "sha256": "cf8d4aa86d046f34eb770ae6cd2df3eee17d1f3b129257f1558543046c955cc0",
+          "size_bytes": 60757626
+        },
+        "arm64": {
+          "name": "cadcraft-0.7.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/cadcraft/releases/download/v0.7.0/cadcraft-0.7.0-linux-aarch64.tar.gz",
+          "sha256": "15c3cb08735d91090c6507aaa2338094aa2aa4a38788872689c153b2e8f2f6ce",
+          "size_bytes": 58319543
+        }
+      },
+      "checks": [
+        "Dichiara unità, scala, origine e tolleranze del disegno.",
+        "Controlla dimensioni geometriche e quote, non soltanto l’immagine.",
+        "Registra eventuali perdite di dati nell’import/export dei formati."
+      ],
+      "examples": [
+        "cadcraft-cli commands",
+        "cadcraft-cli info input.dxf",
+        "cadcraft-cli convert input.dxf output.svg"
+      ]
+    },
+    {
+      "id": "soundcraft",
+      "name": "SoundCraft",
+      "role": "Produzione audio",
+      "description": "Montaggio, mix, tracce, elaborazione e bounce audio.",
+      "repository": "https://github.com/storytold/soundcraft",
+      "version": "v0.7.0",
+      "executable": "soundcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp",
+        "--automation-read-root",
+        "/mnt/user-data",
+        "--automation-write-root",
+        "/mnt/user-data"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "soundcraft-0.7.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/soundcraft/releases/download/v0.7.0/soundcraft-0.7.0-linux-x86_64.tar.gz",
+          "sha256": "8d7afbe5fe433cb338b7ccee0820285d6ce1bfc8c006d551ca8840c27a911ab2",
+          "size_bytes": 16365271
+        },
+        "arm64": {
+          "name": "soundcraft-0.7.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/soundcraft/releases/download/v0.7.0/soundcraft-0.7.0-linux-aarch64.tar.gz",
+          "sha256": "5b5152464bd6a3ae6c48be026d80e0c4e0da58d581a45fe4b5803d6fcfbbe006",
+          "size_bytes": 14975129
+        }
+      },
+      "checks": [
+        "Rileva frequenza di campionamento, canali e durata delle sorgenti.",
+        "Mantieni margine di livello, evita clipping e conserva il progetto multitraccia.",
+        "Controlla durata, picchi e formato; non dichiarare ascolto o qualità percettiva verificati senza un controllo audio reale."
+      ],
+      "examples": [
+        "soundcraft-cli commands",
+        "soundcraft-cli run --demo --bounce output.wav",
+        "ffprobe -v error -show_format -show_streams -of json output.wav"
+      ]
+    },
+    {
+      "id": "figcraft",
+      "name": "FigCraft",
+      "role": "Interfacce e prototipi",
+      "description": "Layout UI, componenti, variabili, frame e prototipi.",
+      "repository": "https://github.com/storytold/figcraft",
+      "version": "v0.6.0",
+      "executable": "figcraft-cli",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "figcraft-0.6.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/figcraft/releases/download/v0.6.0/figcraft-0.6.0-linux-x86_64.tar.gz",
+          "sha256": "b66dfa68fa5ee54e275f9270168974d54cdbe8b1f431c8b0e962cb7b6baa0660",
+          "size_bytes": 86466552
+        },
+        "arm64": {
+          "name": "figcraft-0.6.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/figcraft/releases/download/v0.6.0/figcraft-0.6.0-linux-aarch64.tar.gz",
+          "sha256": "1bb4c2364c8ac5133b52db14f6a1314d5802df1e0ee87e8fb8893ae7d5b635cb",
+          "size_bytes": 83671880
+        }
+      },
+      "checks": [
+        "Definisci viewport, griglia, componenti e stili condivisi.",
+        "Verifica spaziature, vincoli, stati e contrasto dei componenti.",
+        "Consegna sorgente modificabile e anteprime; segnala i limiti dell’export .fig."
+      ],
+      "examples": [
+        "figcraft-cli commands --json",
+        "figcraft-cli info input.figcraft --json",
+        "figcraft-cli render input.figcraft -o preview.png --scale 2",
+        "figcraft-cli export input.figcraft -o exports --format svg"
+      ]
+    }
+  ],
+  "cli_runtimes": {
+    "codex": "0.162.1",
+    "gemini": "0.64.0"
+  }
+}

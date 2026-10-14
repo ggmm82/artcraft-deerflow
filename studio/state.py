@@ -1,0 +1,70 @@
+"""Small persistent configuration catalog. No credentials in public responses."""
+import json
+import os
+import tempfile
+import threading
+from pathlib import Path
+
+STATE = Path(os.getenv('STUDIO_STATE', '/studio-state'))
+ROOT = Path(__file__).resolve().parent
+LOCK = threading.RLock()
+
+
+def atomic_json(path, value):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=path.parent)
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.write('\n')
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def applications():
+    return json.loads((ROOT / 'versions.lock.json').read_text())['applications']
+
+
+def catalog():
+    with LOCK:
+        path = STATE / 'agents.json'
+        if not path.exists():
+            atomic_json(path, {app['id']: {'engine': 'codex', 'model': '',
+                        'instructions': '', 'enabled': True} for app in applications()})
+        return json.loads(path.read_text())
+
+
+def update_agent(identifier, value):
+    if identifier not in {a['id'] for a in applications()}:
+        raise ValueError('Specialista sconosciuto')
+    if value['engine'] not in ('codex', 'gemini'):
+        raise ValueError('Motore sconosciuto')
+    model = value.get('model', '').strip()
+    if len(model) > 200 or any(ord(c) < 32 for c in model):
+        raise ValueError('Modello non valido')
+    if len(value.get('instructions', '')) > 20000:
+        raise ValueError('Istruzioni troppo lunghe')
+    with LOCK:
+        agents = catalog()
+        agents[identifier] = {'engine': value['engine'], 'model': model,
+                              'instructions': value.get('instructions', ''),
+                              'enabled': bool(value.get('enabled', True))}
+        atomic_json(STATE / 'agents.json', agents)
+    return agents[identifier]
+
+
+def credential_dir(engine):
+    if engine not in ('codex', 'gemini'):
+        raise ValueError('Motore sconosciuto')
+    directory = STATE / 'credentials' / ('.codex' if engine == 'codex' else '.gemini')
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return directory
+
+
+def connection_status(engine):
+    filename = 'auth.json' if engine == 'codex' else 'oauth_creds.json'
+    return (credential_dir(engine) / filename).is_file()

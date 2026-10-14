@@ -1,0 +1,50 @@
+{
+  "mcpServers": {},
+  "skills": {
+    "artcraft-studio": {
+      "enabled": true
+    },
+    "artcraft-workspace": {
+      "enabled": true
+    },
+    "artcraft-photocraft": {
+      "enabled": true
+    },
+    "artcraft-vectorcraft": {
+      "enabled": true
+    },
+    "artcraft-filmcraft": {
+      "enabled": true
+    },
+    "artcraft-lightcraft": {
+      "enabled": true
+    },
+    "artcraft-pdfcraft": {
+      "enabled": true
+    },
+    "artcraft-effectcraft": {
+      "enabled": true
+    },
+    "artcraft-designcraft": {
+      "enabled": true
+    },
+    "artcraft-gridcraft": {
+      "enabled": true
+    },
+    "artcraft-wordcraft": {
+      "enabled": true
+    },
+    "artcraft-deckcraft": {
+      "enabled": true
+    },
+    "artcraft-cadcraft": {
+      "enabled": true
+    },
+    "artcraft-soundcraft": {
+      "enabled": true
+    },
+    "artcraft-figcraft": {
+      "enabled": true
+    }
+  }
+}

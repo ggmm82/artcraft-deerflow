@@ -1,0 +1,5 @@
+FROM caddy:2.10-alpine
+COPY docker/Caddyfile /etc/caddy/Caddyfile
+COPY docker/proxy-entrypoint.sh /usr/local/bin/studio-proxy
+RUN chmod 755 /usr/local/bin/studio-proxy
+ENTRYPOINT ["/usr/local/bin/studio-proxy"]

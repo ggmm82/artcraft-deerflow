@@ -1,0 +1,30 @@
+{$STUDIO_SITE} {
+    basic_auth {
+        {$STUDIO_USER} {$STUDIO_PASSWORD_HASH}
+    }
+    handle /studio* {
+        reverse_proxy gateway:8001 {
+            header_up -Authorization
+            header_up Host {hostport}
+            flush_interval -1
+        }
+    }
+    handle /health* {
+        reverse_proxy gateway:8001 {
+            header_up -Authorization
+        }
+    }
+    handle /api/* {
+        reverse_proxy gateway:8001 {
+            header_up -Authorization
+            header_up Host {hostport}
+            flush_interval -1
+        }
+    }
+    handle {
+        reverse_proxy frontend:3000 {
+            header_up -Authorization
+            header_up Host {hostport}
+        }
+    }
+}

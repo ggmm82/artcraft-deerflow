@@ -1,0 +1,122 @@
+name: artcraft-studio
+services:
+  sandbox-image:
+    image: artcraft-deerflow-sandbox:0.1.0
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sandbox
+    command:
+    - python3
+    - -c
+    - print("Immagine ArtCraft pronta")
+    restart: 'no'
+    mem_limit: 128m
+  redis:
+    restart: unless-stopped
+    init: true
+    image: redis:7.4-alpine
+    command:
+    - redis-server
+    - --appendonly
+    - 'yes'
+    - --maxmemory
+    - 64mb
+    - --maxmemory-policy
+    - noeviction
+    mem_limit: 128m
+    volumes:
+    - redis-data:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  gateway:
+    restart: unless-stopped
+    init: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gateway
+      additional_contexts:
+        deerflow: https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
+    image: artcraft-deerflow-gateway:0.1.0
+    mem_limit: 1024m
+    stop_grace_period: 30s
+    environment:
+      STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare una password di almeno 16 caratteri}
+      STUDIO_SANDBOX_IMAGE: artcraft-deerflow-sandbox:0.1.0
+      DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
+      DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
+      AUTH_TRUSTED_PROXIES: proxy
+      BETTER_AUTH_URL: ${STUDIO_PUBLIC_URL:-http://localhost:2026}
+      LANGSMITH_TRACING: 'false'
+    volumes:
+    - studio-state:/studio-state
+    - deerflow-data:/app/backend/.deer-flow
+    - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_healthy
+      sandbox-image:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+      - CMD
+      - python
+      - -c
+      - import urllib.request; urllib.request.urlopen("http://127.0.0.1:8001/health/ready",timeout=8)
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
+  frontend:
+    restart: unless-stopped
+    init: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      additional_contexts:
+        deerflow: https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
+    image: artcraft-deerflow-frontend:0.1.0
+    mem_limit: 512m
+    environment:
+      STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}
+      BETTER_AUTH_URL: ${STUDIO_PUBLIC_URL:-http://localhost:2026}
+      DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
+      NODE_OPTIONS: --max-old-space-size=384
+    depends_on:
+      gateway:
+        condition: service_healthy
+  proxy:
+    restart: unless-stopped
+    init: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    image: artcraft-deerflow-proxy:0.1.0
+    mem_limit: 96m
+    environment:
+      STUDIO_USER: ${STUDIO_USER:-admin}
+      STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}
+      STUDIO_SITE: ${STUDIO_DOMAIN:-:2026}
+    ports:
+    - ${STUDIO_BIND_IP:-0.0.0.0}:2026:2026
+    - ${STUDIO_BIND_IP:-0.0.0.0}:80:80
+    - ${STUDIO_BIND_IP:-0.0.0.0}:443:443
+    volumes:
+    - caddy-data:/data
+    - caddy-config:/config
+    depends_on:
+      gateway:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+volumes:
+  studio-state: {}
+  deerflow-data: {}
+  redis-data: {}
+  caddy-data: {}
+  caddy-config: {}
