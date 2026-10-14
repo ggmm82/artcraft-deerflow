@@ -1,10 +1,7 @@
 name: artcraft-studio
 services:
   sandbox-image:
-    image: artcraft-deerflow-sandbox:0.1.0
-    build:
-      context: https://github.com/ggmm82/artcraft-deerflow.git#main
-      dockerfile: docker/Dockerfile.sandbox
+    image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
     command:
     - python3
     - -c
@@ -37,17 +34,12 @@ services:
   gateway:
     restart: unless-stopped
     init: true
-    build:
-      context: https://github.com/ggmm82/artcraft-deerflow.git#main
-      dockerfile: docker/Dockerfile.gateway
-      additional_contexts:
-        deerflow: https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
-    image: artcraft-deerflow-gateway:0.1.0
+    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
     mem_limit: 1024m
     stop_grace_period: 30s
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare una password di almeno 16 caratteri}
-      STUDIO_SANDBOX_IMAGE: artcraft-deerflow-sandbox:0.1.0
+      STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
       DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
       AUTH_TRUSTED_PROXIES: proxy
@@ -75,12 +67,7 @@ services:
   frontend:
     restart: unless-stopped
     init: true
-    build:
-      context: https://github.com/ggmm82/artcraft-deerflow.git#main
-      dockerfile: docker/Dockerfile.frontend
-      additional_contexts:
-        deerflow: https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
-    image: artcraft-deerflow-frontend:0.1.0
+    image: ghcr.io/ggmm82/artcraft-deerflow-frontend:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
     mem_limit: 512m
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}
@@ -93,10 +80,7 @@ services:
   proxy:
     restart: unless-stopped
     init: true
-    build:
-      context: https://github.com/ggmm82/artcraft-deerflow.git#main
-      dockerfile: docker/Dockerfile.proxy
-    image: artcraft-deerflow-proxy:0.1.0
+    image: ghcr.io/ggmm82/artcraft-deerflow-proxy:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
     mem_limit: 96m
     environment:
       STUDIO_USER: ${STUDIO_USER:-admin}

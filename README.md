@@ -34,7 +34,7 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 1. In Hostinger apri VPS → Docker Manager → Compose → Compose from URL e inserisci l'URL.
 2. Imposta `STUDIO_PASSWORD` con almeno 16 caratteri casuali e `STUDIO_USER` (predefinito `admin`). Non mettere password o credenziali CLI nel repository pubblico.
 3. Per HTTPS imposta `STUDIO_DOMAIN` con il dominio, per esempio `studio.example.org`, e `STUDIO_PUBLIC_URL` con `https://studio.example.org`. Il DNS deve puntare alla VPS e le porte 80/443 devono essere disponibili. Caddy ottiene e rinnova il certificato.
-4. Avvia il progetto. Il primo deploy **costruisce le immagini dai sorgenti**, incluso DeerFlow fissato a commit e le 13 applicazioni. Richiede spazio disco e tempo; non è un semplice download di immagini già pubblicate. Compose deve supportare BuildKit e `additional_contexts`.
+4. Avvia il progetto. Hostinger scarica le quattro immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
 5. Apri il dominio, accedi con utente/password Studio e completa la registrazione del tuo account DeerFlow.
 6. Apri **ArtCraft Studio** nella barra laterale, premi **Collega Codex**, apri il link ufficiale e completa il device login. Per **Collega Gemini**, apri il link Google e incolla il codice nel pannello. Non servono comandi SSH per autenticare le CLI.
 7. Scegli il modello del coordinatore disponibile nel tuo account Codex. Per ogni specialista seleziona Codex o Gemini, eventuale modello e preferenze.
@@ -42,7 +42,7 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 
 Senza `STUDIO_DOMAIN`, il proxy serve HTTP sulla porta 2026. Usa questa modalità soltanto per prove locali o dietro un proxy HTTPS già configurato. Se 80/443 sono già occupate, rimuovi i relativi mapping e usa il proxy esistente.
 
-Hostinger documenta Compose da URL e la gestione delle variabili, ma la build di questo progetto nel suo Docker Manager deve essere collaudata: [guida ufficiale](https://www.hostinger.com/support/12040815-how-to-deploy-your-first-container-with-hostinger-docker-manager/).
+Hostinger documenta Compose da URL e la gestione delle variabili nella [guida ufficiale](https://www.hostinger.com/support/12040815-how-to-deploy-your-first-container-with-hostinger-docker-manager/). Le immagini del file Hostinger sono fissate al commit che le ha prodotte e sono scaricabili senza `docker login`.
 
 ## Prova di collaborazione
 
@@ -81,11 +81,11 @@ docker compose build
 docker compose up -d
 ```
 
-`compose.hostinger.yaml` usa contesti Git remoti; `docker-compose.yaml` usa il checkout locale. Entrambi usano volumi nominati: non richiedono una cartella del repository montata sul server.
+`compose.hostinger.yaml` usa immagini pubbliche GHCR già costruite; `docker-compose.yaml` usa il checkout locale per sviluppo. Entrambi usano volumi nominati: non richiedono una cartella del repository montata sul server.
 
 ## Risorse e confini
 
-Limiti configurati: Gateway 1.024 MiB, frontend 512 MiB, Redis 128 MiB, proxy 96 MiB e un worker 1.536 MiB. Sono limiti di progetto, **non misure di RAM reali** né una garanzia che ogni rendering rientri in 4 GB. L'immagine contiene tutta la suite e richiede diversi GB su disco; la build può richiedere più memoria del runtime. Per video, RAW e composizioni grandi sarà necessario ridurre i lavori o aumentare le risorse.
+Limiti configurati: Gateway 1.024 MiB, frontend 512 MiB, Redis 128 MiB, proxy 96 MiB e un worker 1.536 MiB. Sono limiti di progetto, **non misure di RAM reali** né una garanzia che ogni rendering rientri in 4 GB. L'immagine contiene tutta la suite e richiede diversi GB su disco. Per video, RAW e composizioni grandi sarà necessario ridurre i lavori o aumentare le risorse.
 
 L'installazione è per **un proprietario fidato**. Il Gateway controlla Docker; gli specialisti non ricevono il socket Docker, hanno un solo spazio di conversazione montato, un limite RAM/CPU e nessuna capability Linux. Le CLI devono accedere alle proprie credenziali e alla rete per usare l'abbonamento: questa non è una sandbox per codice ostile con segreti inaccessibili. Non condividere l'accesso Studio con persone non fidate.
 
