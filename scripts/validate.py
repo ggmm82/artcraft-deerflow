@@ -44,6 +44,12 @@ def main():
     assert 'networks' not in remote
     assert not any('traefik.docker.network=' in label for name in ['gateway','frontend'] for label in remote['services'][name]['labels'])
     assert not any('ports' in remote['services'][name] for name in remote['services'])
+    gateway_labels='\n'.join(remote['services']['gateway']['labels'])
+    assert 'PathPrefix(`/api/langgraph/`)' in gateway_labels
+    assert 'replacepathregex.regex=^/api/langgraph/(.*)' in gateway_labels
+    assert 'replacepathregex.replacement=/api/$${1}' in gateway_labels
+    caddy=(ROOT/'docker/Caddyfile').read_text()
+    assert 'handle /api/langgraph/*' in caddy and 'uri replace /api/langgraph /api' in caddy
     for folder in ['scripts','studio','tests']:
         for path in (ROOT/folder).glob('*.py'):ast.parse(path.read_text(),str(path))
     print('OK: 13 specialisti, 15 skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')

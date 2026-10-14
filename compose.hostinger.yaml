@@ -56,6 +56,15 @@ services:
         condition: service_completed_successfully
     labels:
     - traefik.enable=true
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && PathPrefix(`/api/langgraph/`)
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.entrypoints=websecure
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.tls=true
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.tls.certresolver=letsencrypt
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.priority=110
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.middlewares=${COMPOSE_PROJECT_NAME}-langgraph-rewrite
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.service=${COMPOSE_PROJECT_NAME}-gateway
+    - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-langgraph-rewrite.replacepathregex.regex=^/api/langgraph/(.*)
+    - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-langgraph-rewrite.replacepathregex.replacement=/api/$${1}
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && (PathPrefix(`/api`) || PathPrefix(`/studio`) || PathPrefix(`/health`))
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.entrypoints=websecure
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls=true
