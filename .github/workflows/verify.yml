@@ -54,3 +54,43 @@ jobs:
         if: matrix.component == 'proxy'
         run: |
           docker run --rm --entrypoint caddy -e STUDIO_SITE=:2026 -e STUDIO_USER=admin -e STUDIO_PASSWORD_HASH='$2a$14$7TqSh37TK/yl18PM9eaMOu/fA7YKMsBFUMDsHRUZTiZoFoRL66Eu6' artcraft-deerflow-proxy:0.1.0 validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  startup:
+    needs: images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.gateway
+          tags: artcraft-deerflow-gateway:0.1.0
+          load: true
+          build-contexts: |
+            deerflow=https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
+          cache-from: type=gha,scope=gateway
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.frontend
+          tags: artcraft-deerflow-frontend:0.1.0
+          load: true
+          build-contexts: |
+            deerflow=https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
+          cache-from: type=gha,scope=frontend
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.sandbox
+          tags: artcraft-deerflow-sandbox:0.1.0
+          load: true
+          cache-from: type=gha,scope=sandbox
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.proxy
+          tags: artcraft-deerflow-proxy:0.1.0
+          load: true
+          cache-from: type=gha,scope=proxy
+      - name: Boot full Compose without model credentials
+        run: bash scripts/ci_boot.sh
