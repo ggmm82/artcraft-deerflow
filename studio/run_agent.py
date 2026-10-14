@@ -14,6 +14,7 @@ except ImportError:  # Direct invocation inside the worker image.
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
     'gemini': ('oauth_creds.json', 'google_accounts.json', 'settings.json'),
+    'deepseek': ('api.json',),
 }
 
 
@@ -50,8 +51,9 @@ def command(engine, model, prompt, output):
 def main():
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
-    auth = Path('/root') / ('.codex' if engine == 'codex' else '.gemini')
-    copy_credentials(Path('/credentials'), auth, engine)
+    auth = Path('/root') / ('.' + engine)
+    if engine != 'deepseek':
+        copy_credentials(Path('/credentials'), auth, engine)
     output_dir = Path('/mnt/user-data/outputs') / job['agent'] / job['run_id']
     output_dir.mkdir(parents=True)
     (output_dir / 'work').mkdir()
@@ -63,9 +65,10 @@ def main():
         source = Path('/mnt/skills/custom') / name
         selected.append((source / 'SKILL.md').read_text())
         # Native skill discovery for either CLI, scoped to this disposable run.
-        skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'skills'
-        target = skills_root / name
-        shutil.copytree(source, target, dirs_exist_ok=True)
+        if engine != 'deepseek':
+            skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'skills'
+            target = skills_root / name
+            shutil.copytree(source, target, dirs_exist_ok=True)
     # Only the selected specialist's instructions and common procedure enter context.
     prompt = '\n\n'.join([
         'Sei lo specialista ' + job['agent'] + '. Lavora in italiano.',
@@ -74,32 +77,43 @@ def main():
         'Gli strumenti ArtCraft sono già installati. Usa craft help, craft commands e craft tools '
         'per scoprire i comandi della release reale. Non installare software.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
-        'Non leggere o modificare credenziali, .codex o .gemini.',
+        'Non leggere o modificare credenziali, /credentials, .codex, .gemini o .deepseek.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
         'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
         'secondo lo schema artcraft-workspace; il runtime verifica che i file esistano.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
+        'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
+        'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
+        + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.'
     ])
     final = Path('/tmp/last-message.txt')
     try:
-        result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
+        if engine == 'deepseek':
+            try:
+                from .deepseek import run
+            except ImportError:
+                from deepseek import run
+            os.environ['ARTCRAFT_OUTPUT_DIR'] = str(output_dir)
+            message = run(job['model'], prompt, output_dir, job['timeout'])
+        else:
+            result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
                                 env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
                                 capture_output=True, text=True, timeout=job['timeout'])
-        if result.returncode:
-            print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
+            if result.returncode:
+                print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
                               'error': (result.stderr or result.stdout)[-2500:]}))
-            return result.returncode
-        if engine == 'codex':
-            message = final.read_text() if final.exists() else result.stdout
-        else:
-            parsed = json.loads(result.stdout)
-            if parsed.get('error'):
-                raise RuntimeError(str(parsed['error']))
-            message = parsed.get('response', '')
+                return result.returncode
+            if engine == 'codex':
+                message = final.read_text() if final.exists() else result.stdout
+            else:
+                parsed = json.loads(result.stdout)
+                if parsed.get('error'):
+                    raise RuntimeError(str(parsed['error']))
+                message = parsed.get('response', '')
         handoff = validate_handoff(output_dir, Path('/mnt/user-data'))
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
                           'output_dir': str(output_dir), 'handoff': handoff,
@@ -107,7 +121,8 @@ def main():
         return 0
     finally:
         # One worker at a time. Preserve refreshed tokens for the next run.
-        copy_credentials(auth, Path('/credentials'), engine)
+        if engine != 'deepseek':
+            copy_credentials(auth, Path('/credentials'), engine)
 
 
 if __name__ == '__main__':

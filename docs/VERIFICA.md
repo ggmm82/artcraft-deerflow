@@ -42,9 +42,9 @@ Verifiche locali sul checkout di revisione:
 
 Le CLI provengono dall'immagine sandbox fissata nel Compose Hostinger, digest `sha256:35765781f2b83e25b09817d28921418500a4a379515adde3e22976878ae97d4d`. Il driver VFS dell'ambiente di prova duplicava vari GB per container e ha esaurito il disco. Per continuare è stato esportato lo stesso filesystem e reimportato in una sola layer locale (`artcraft-review-flat:local`), senza modificare driver o configurazione del deploy. Le prove incomplete per spazio disco restano nei report; il valutatore ora impedisce esecuzioni Docker contemporanee nello stesso checkout e interrompe i tentativi su errori di infrastruttura.
 
-### DeepSeek
+### DeepSeek — prima fase con banco di prova
 
-La chiave è rimasta fuori dal repository. Le chiamate usano il modello `deepseek-flash`, effettivamente esposto dall'endpoint `/models` della chiave fornita. DeepSeek è un banco di prova opzionale, non un terzo motore aggiunto al pannello Studio.
+La chiave è rimasta fuori dal repository. Le chiamate usano il modello `deepseek-flash`, effettivamente esposto dall'endpoint `/models` della chiave fornita. In questa prima fase DeepSeek era un banco di prova opzionale. La successiva integrazione nel prodotto e il collaudo browser sono documentati in [COLLAUDO-UTENTE-DEEPSEEK.md](COLLAUDO-UTENTE-DEEPSEEK.md).
 
 La serie di pianificazione ha verificato i 13 specialisti: 11 risposte inizialmente valide, una risposta LightCraft con JSON malformato e una GridCraft con oggetto annidato; entrambe sono risultate valide ripetendo i due casi con un contratto di risposta più esplicito e sintetico. Sono controllati ID, scoperta help/commands/tools, presenza di passi, controlli e handoff. Non è una valutazione automatica della qualità professionale del piano né una prova degli export di tutte le 13 applicazioni.
 

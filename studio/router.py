@@ -4,7 +4,7 @@ from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from . import login
 from .state import applications, catalog, update_agent, connection_status, available_skills
@@ -32,11 +32,11 @@ def get_catalog():
         {k: a[k] for k in ('id', 'name', 'role', 'description', 'version')}
         for a in applications()], 'connections': {
             engine: {'credentials_present': connection_status(engine)}
-            for engine in ('codex', 'gemini')}}
+            for engine in ('codex', 'gemini', 'deepseek')}}
 
 
 class AgentConfig(BaseModel):
-    engine: str = Field(pattern='^(codex|gemini)$')
+    engine: str = Field(pattern='^(codex|gemini|deepseek)$')
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
     enabled: bool = True
@@ -109,3 +109,29 @@ def set_coordinator(value: CoordinatorConfig, request: Request):
     from .bootstrap import configure_coordinator
     configure_coordinator(value.model)
     return {'ok': True, 'model': value.model}
+
+
+class DeepSeekConfig(BaseModel):
+    api_key: SecretStr
+    model: str = Field(default='', max_length=200)
+
+
+@router.put('/api/providers/deepseek')
+def connect_deepseek(value: DeepSeekConfig, request: Request):
+    same_origin(request)
+    from .deepseek import models
+    from .bootstrap import configure_deepseek
+    key = value.api_key.get_secret_value().strip()
+    if not key or len(key) > 512 or any(ord(c) < 33 for c in key):
+        raise HTTPException(400, 'Chiave DeepSeek non valida')
+    try:
+        available = models(key)
+        chosen = value.model.strip() or next((m for m in ('deepseek-chat', 'deepseek-flash') if m in available), available[0] if available else '')
+        if not chosen or chosen not in available:
+            raise ValueError('Seleziona un modello DeepSeek disponibile')
+        configure_deepseek(key, chosen)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from None
+    return {'ok': True, 'model': chosen, 'models': available}

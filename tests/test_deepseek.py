@@ -1,0 +1,101 @@
+import importlib
+import json
+import os
+from pathlib import Path
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+
+class DeepSeekTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.environment = patch.dict(os.environ, {'STUDIO_STATE': self.temp.name,
+            'STUDIO_PASSWORD': 'test-password-at-least-16-characters'})
+        self.environment.start()
+        from studio import state, bootstrap, router
+        self.state = importlib.reload(state)
+        self.bootstrap = importlib.reload(bootstrap)
+        self.bootstrap.initialize()
+        self.router = importlib.reload(router)
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+        app = FastAPI()
+        app.include_router(self.router.router)
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        self.client.close()
+        self.environment.stop()
+        self.temp.cleanup()
+
+    def test_browser_connection_configures_real_provider_without_exposing_key(self):
+        key = 'test-only-secret-value'
+        with patch('studio.deepseek.models', return_value=['deepseek-flash']):
+            response = self.client.put('/studio/api/providers/deepseek', json={'api_key': key},
+                headers={'origin': 'http://testserver'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['model'], 'deepseek-flash')
+        config = (self.state.STATE / 'config.yaml').read_text()
+        self.assertIn('studio.deepseek_provider:StudioDeepSeekChatModel', config)
+        public = self.client.get('/studio/api/catalog').text + response.text + config
+        self.assertNotIn(key, public)
+        self.assertTrue(self.state.connection_status('deepseek'))
+        self.state.update_agent('gridcraft', {'engine': 'deepseek'})
+        self.assertEqual(self.state.catalog()['gridcraft']['engine'], 'deepseek')
+        self.assertEqual((self.state.credential_dir('deepseek') / 'api.json').stat().st_mode & 0o777, 0o600)
+
+    def test_rejected_key_and_cross_origin_do_not_change_credentials(self):
+        with patch('studio.deepseek.models', side_effect=ValueError('Chiave DeepSeek rifiutata')) as models:
+            response = self.client.put('/studio/api/providers/deepseek', json={'api_key': 'bad-key'},
+                headers={'origin': 'https://other.example'})
+            self.assertEqual(response.status_code, 403)
+            models.assert_not_called()
+            response = self.client.put('/studio/api/providers/deepseek', json={'api_key': 'bad-key'},
+                headers={'origin': 'http://testserver'})
+            self.assertEqual(response.status_code, 400)
+        self.assertFalse(self.state.connection_status('deepseek'))
+
+    def test_worker_executes_tools_and_retries_a_premature_final_response(self):
+        from studio import deepseek
+        root = Path(self.temp.name)
+        output = root / 'output'
+        (output / 'work').mkdir(parents=True)
+        credentials = root / 'api.json'
+        credentials.write_text(json.dumps({'api_key': 'test-only-key'}))
+        def path(value):
+            return credentials if value == '/credentials/api.json' else Path(value)
+        import shlex
+        manifest = {'task': 'Report', 'source_files': [], 'output_files': [str(output / 'report.txt')],
+                    'checks': [{'name': 'Content', 'status': 'passed', 'evidence': 'Read report.txt'}], 'warnings': []}
+        command = 'echo verified > report.txt; printf %s ' + shlex.quote(json.dumps(manifest)) + ' > handoff.json'
+        responses = [
+            {'choices': [{'message': {'role': 'assistant', 'content': 'Premature completion'}}]},
+            {'choices': [{'message': {'role': 'assistant', 'content': None,
+                'tool_calls': [{'id': '1', 'type': 'function', 'function': {
+                    'name': 'run_command', 'arguments': json.dumps({'command': command})}}]}}]},
+            {'choices': [{'message': {'role': 'assistant', 'content': 'Completed'}}]},
+        ]
+        with patch.object(deepseek, 'Path', side_effect=path), \
+             patch.object(deepseek, 'request', side_effect=responses) as request:
+            self.assertEqual(deepseek.run('deepseek-flash', 'Make report', output, 30), 'Completed')
+        self.assertEqual((output / 'report.txt').read_text().strip(), 'verified')
+        self.assertEqual(request.call_count, 3)
+        self.assertTrue(any('La consegna non è ancora valida' in (m.get('content') or '')
+            for m in request.call_args.args[2]['messages']))
+        self.assertEqual(request.call_args.args[2]['messages'][-2]['role'], 'tool')
+
+    def test_transport_does_not_reflect_provider_error_body(self):
+        import io
+        import urllib.error
+        from studio import deepseek
+        error = urllib.error.HTTPError('https://api.deepseek.com/models', 401, 'Unauthorized', {},
+            io.BytesIO(b'provider-reflected-test-key'))
+        with patch.object(deepseek.urllib.request, 'urlopen', side_effect=error):
+            with self.assertRaisesRegex(ValueError, '^Chiave DeepSeek rifiutata$'):
+                deepseek.models('test-key')
+
+
+if __name__ == '__main__':
+    unittest.main()

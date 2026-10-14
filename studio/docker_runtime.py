@@ -86,12 +86,16 @@ def delegate(agent_id, task, workspace):
         payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500}
+        if engine == 'deepseek' and not payload['model']:
+            import yaml
+            config = yaml.safe_load((STATE / 'config.yaml').read_text())
+            payload['model'] = next(m['model'] for m in config['models'] if m['name'] == 'studio-deepseek')
         from .state import atomic_json
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(workspace, '/mnt/user-data'),
-            '--mount', mount(credential_dir(engine), '/credentials'),
+            '--mount', mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek'),
             '--mount', mount(job, '/job.json', True),
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
         completed = subprocess.run(['docker', *args], capture_output=True, text=True,

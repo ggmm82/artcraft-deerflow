@@ -57,7 +57,7 @@ def catalog():
 def update_agent(identifier, value):
     if identifier not in {a['id'] for a in applications()}:
         raise ValueError('Specialista sconosciuto')
-    if value['engine'] not in ('codex', 'gemini'):
+    if value['engine'] not in ('codex', 'gemini', 'deepseek'):
         raise ValueError('Motore sconosciuto')
     model = value.get('model', '').strip()
     if len(model) > 200 or any(ord(c) < 32 for c in model):
@@ -78,13 +78,13 @@ def update_agent(identifier, value):
 
 
 def credential_dir(engine):
-    if engine not in ('codex', 'gemini'):
+    if engine not in ('codex', 'gemini', 'deepseek'):
         raise ValueError('Motore sconosciuto')
-    directory = STATE / 'credentials' / ('.codex' if engine == 'codex' else '.gemini')
+    directory = STATE / 'credentials' / ('.' + engine)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     return directory
 
 
 def connection_status(engine):
-    filename = 'auth.json' if engine == 'codex' else 'oauth_creds.json'
+    filename = {'codex': 'auth.json', 'gemini': 'oauth_creds.json', 'deepseek': 'api.json'}[engine]
     return (credential_dir(engine) / filename).is_file()

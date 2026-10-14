@@ -18,7 +18,7 @@ RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \
     && fc-cache -f \
     && python3 /opt/artcraft/smoke.py --output /opt/artcraft/build-checks.json
 COPY skills /mnt/skills
-COPY studio/run_agent.py studio/handoff.py /opt/studio/
+COPY studio/run_agent.py studio/handoff.py studio/deepseek.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
 WORKDIR /mnt/user-data
 CMD ["python3", "/opt/artcraft/smoke.py", "--mcp", "--output", "/tmp/smoke.json"]

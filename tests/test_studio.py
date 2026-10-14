@@ -146,6 +146,27 @@ class StudioTests(unittest.TestCase):
             result = self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
         self.assertEqual(len(json.loads(result)['response']), 30000)
 
+    def test_deepseek_credentials_are_read_only_and_absent_from_job(self):
+        key = 'test-only-api-credential'
+        (self.state.credential_dir('deepseek') / 'api.json').write_text(json.dumps({'api_key': key}))
+        self.state.update_agent('gridcraft', {'engine': 'deepseek', 'model': 'deepseek-flash'})
+        captured = []
+        class Result:
+            returncode = 0
+            stdout = '{"ok":true}'
+            stderr = ''
+        def execute(argv, **kwargs):
+            captured.append(argv)
+            jobs = list((self.state.STATE / 'jobs').glob('*.json'))
+            self.assertEqual(len(jobs), 1)
+            self.assertNotIn(key, jobs[0].read_text())
+            return Result()
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute), \
+             patch.object(self.runtime, 'remove'):
+            self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertTrue(any('dst=/credentials,readonly' in arg for arg in captured[0]))
+
     def test_unsuccessful_worker_json_is_not_reported_as_success(self):
         (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
         class Result:

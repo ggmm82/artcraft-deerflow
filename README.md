@@ -3,14 +3,14 @@
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
 [![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinger.yaml)
 
-DeerFlow con **13 specialisti ArtCraft**, CLI **Codex e Gemini**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
+DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Gemini e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
 ## Come funziona
 
 - DeerFlow offre conversazioni, caricamento file, progetti, consegna degli artefatti, modelli e skills.
 - Il pannello **ArtCraft Studio**, nella barra laterale di DeerFlow, collega Codex e Gemini tramite le procedure di autenticazione delle CLI originali.
-- Ogni specialista ha motore, modello, skills aggiuntive, istruzioni e stato attivo configurabili dal browser. Le skills scelte sono installate anche nel percorso nativo della CLI per quel solo incarico.
-- Il coordinatore usa il provider Codex di DeerFlow e invoca `studio_delegate`. Puoi aggiungere altri modelli API da Impostazioni → Modelli.
+- Ogni specialista ha motore, modello, skills aggiuntive, istruzioni e stato attivo configurabili dal browser. Le skills scelte entrano nel contesto del motore; per Codex e Gemini sono installate anche nel percorso nativo della CLI per quel solo incarico.
+- Il coordinatore usa Codex oppure DeepSeek e invoca `studio_delegate`. Puoi aggiungere altri modelli API da Impostazioni → Modelli.
 - Studio avvia un container per incarico, carica la procedura del programma pertinente e rimuove il container al termine, anche in caso di errore o timeout.
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
 - Il profilo iniziale esegue **un solo specialista alla volta**, per la VPS da 4 GB. Non sono previsti modelli locali.
@@ -43,6 +43,19 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 Il Compose Hostinger pubblica Gateway e frontend tramite etichette lette dal Traefik in modalità host e non richiede una rete esterna né occupa direttamente porte della VPS. Il proxy Caddy rimane soltanto nel Compose locale di sviluppo.
 
 Hostinger documenta Compose da URL e la gestione delle variabili nella [guida ufficiale](https://www.hostinger.com/support/12040815-how-to-deploy-your-first-container-with-hostinger-docker-manager/). Le immagini del file Hostinger sono fissate al commit che le ha prodotte e sono scaricabili senza `docker login`.
+
+## Uso con DeepSeek API
+
+Non serve collegare account Codex/Gemini per usare DeepSeek:
+
+1. Apri **ArtCraft Studio → DeepSeek API**, inserisci la chiave e premi **Collega DeepSeek**. Il modello vuoto viene scelto tra quelli effettivamente disponibili nell’account. Una chiave rifiutata non viene salvata.
+2. Per gli specialisti desiderati scegli **DeepSeek API** nel campo Motore e salva. Il modello vuoto usa quello collegato; puoi indicare un altro ID DeepSeek disponibile.
+3. Apri una nuova chat e seleziona **Studio · DeepSeek** nel selettore del modello.
+4. Carica i file, richiedi il lavoro e scarica i risultati consegnati in chat. Il coordinatore usa `studio_delegate`; il worker esegue davvero le CLI ArtCraft con le procedure selezionate.
+
+Il [collaudo utente documentato](docs/COLLAUDO-UTENTE-DEEPSEEK.md) verifica dal browser un CSV passato a GridCraft e WordCraft, con download e controllo indipendente di XLSX/DOCX/PDF.
+
+La chiave resta nel volume privato `studio-state`, separata dalla configurazione dei modelli e dalle risposte pubbliche. Il worker DeepSeek riceve la cartella credenziali in sola lettura; come gli altri motori è destinato a un proprietario fidato. Le richieste del coordinatore e degli specialisti consumano la quota API DeepSeek. Un incarico ha timeout e limite di turni; errori, file mancanti o manifest non validi non vengono presentati come successo.
 
 ## Prova di collaborazione
 
@@ -112,7 +125,7 @@ python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/S
 python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
 ```
 
-I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Queste prove non aggiungono DeepSeek ai motori del pannello e non sostituiscono il collaudo dei login reali. Ogni prova consuma la quota del provider.
+I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Questo banco di prova è distinto dal percorso DeepSeek integrato nel pannello e non sostituisce il collaudo utente né i login delle CLI. Ogni prova consuma la quota del provider.
 
 Per verificare modifiche in produzione ricostruisci le immagini dal checkout oppure, dopo CI e pubblicazione, aggiorna i riferimenti `sha-…` del Compose Hostinger. I tag già fissati non ricevono le modifiche dei sorgenti automaticamente.
 

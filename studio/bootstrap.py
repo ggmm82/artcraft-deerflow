@@ -25,6 +25,23 @@ def configure_coordinator(model):
         temporary.replace(path)
 
 
+def configure_deepseek(api_key, model):
+    """Validate at the router first; persist key separately from the public model."""
+    from .state import LOCK, atomic_json, credential_dir
+    with LOCK:
+        atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
+        path = STATE / 'config.yaml'
+        content = yaml.safe_load(path.read_text())
+        entry = {'name': 'studio-deepseek', 'display_name': 'Studio · DeepSeek',
+                 'use': 'studio.deepseek_provider:StudioDeepSeekChatModel',
+                 'model': model, 'supports_thinking': False, 'request_timeout': 1800}
+        content['models'] = [m for m in content['models'] if m['name'] != entry['name']] + [entry]
+        temporary = path.with_suffix('.yaml.tmp')
+        temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
+        temporary.chmod(0o600)
+        temporary.replace(path)
+
+
 def initialize():
     STATE.mkdir(parents=True, exist_ok=True)
     password = os.getenv('STUDIO_PASSWORD', '')
