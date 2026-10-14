@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import login
-from .state import applications, catalog, update_agent, connection_status
+from .state import applications, catalog, update_agent, connection_status, available_skills
 
 router = APIRouter(prefix='/studio', tags=['ArtCraft Studio'])
 
@@ -28,7 +28,7 @@ def page():
 
 @router.get('/api/catalog')
 def get_catalog():
-    return {'agents': catalog(), 'applications': [
+    return {'agents': catalog(), 'skills': available_skills(), 'applications': [
         {k: a[k] for k in ('id', 'name', 'role', 'description', 'version')}
         for a in applications()], 'connections': {
             engine: {'credentials_present': connection_status(engine)}
@@ -40,6 +40,7 @@ class AgentConfig(BaseModel):
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
     enabled: bool = True
+    skills: list[str] = Field(default_factory=list, max_length=14)
 
 
 @router.put('/api/agents/{identifier}')

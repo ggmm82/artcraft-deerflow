@@ -24,8 +24,11 @@ class StudioTests(unittest.TestCase):
 
     def test_configurable_engines_persist_without_credentials(self):
         self.state.update_agent('gridcraft', {'engine': 'gemini', 'model': 'custom-model',
-                                            'instructions': 'Usa euro', 'enabled': True})
+                                            'instructions': 'Usa euro', 'enabled': True,
+                                            'skills': ['artcraft-vectorcraft']})
         self.assertEqual(self.state.catalog()['gridcraft']['engine'], 'gemini')
+        self.assertIn('artcraft-vectorcraft', self.state.catalog()['gridcraft']['skills'])
+        self.assertIn('artcraft-gridcraft', self.state.catalog()['gridcraft']['skills'])
         self.assertFalse(self.state.connection_status('gemini'))
         self.assertEqual(len(self.state.catalog()), 13)
 
@@ -33,6 +36,11 @@ class StudioTests(unittest.TestCase):
         for identifier, engine in [('unknown', 'codex'), ('gridcraft', 'shell')]:
             with self.assertRaises(ValueError):
                 self.state.update_agent(identifier, {'engine': engine})
+
+    def test_skill_paths_cannot_escape_the_catalog(self):
+        with self.assertRaisesRegex(ValueError, 'Skill sconosciuta'):
+            self.state.update_agent('gridcraft', {'engine': 'codex',
+                                                'skills': ['../../credentials']})
 
     def test_volume_resolution_excludes_host_paths_and_traversal(self):
         self.runtime._mounts = [{'Destination': '/studio-state', 'Source': '/host/state'}]

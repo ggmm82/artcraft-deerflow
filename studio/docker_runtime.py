@@ -84,7 +84,7 @@ def delegate(agent_id, task, workspace):
         jobs.mkdir(exist_ok=True)
         job = jobs / (name + '.json')
         payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
-                   'instructions': settings['instructions'], 'task': task,
+                   'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500}
         from .state import atomic_json
         atomic_json(job, payload)

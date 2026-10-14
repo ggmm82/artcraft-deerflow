@@ -52,8 +52,16 @@ def main():
     workspace = Path('/mnt/user-data/workspace')
     workspace.mkdir(exist_ok=True)
     Path('/mnt/user-data/work').mkdir(exist_ok=True)
-    specific = Path('/mnt/skills/custom') / ('artcraft-' + job['agent']) / 'SKILL.md'
-    common = Path('/mnt/skills/custom/artcraft-workspace/SKILL.md')
+    selected = []
+    for name in job['skills']:
+        if not name.startswith('artcraft-') or '/' in name or '..' in name:
+            raise ValueError('Nome skill non valido')
+        source = Path('/mnt/skills/custom') / name
+        selected.append((source / 'SKILL.md').read_text())
+        # Native skill discovery for either CLI, scoped to this disposable run.
+        skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'skills'
+        target = skills_root / name
+        shutil.copytree(source, target, dirs_exist_ok=True)
     # Only the selected specialist's instructions and common procedure enter context.
     prompt = '\n\n'.join([
         'Sei lo specialista ' + job['agent'] + '. Lavora in italiano.',
@@ -63,7 +71,7 @@ def main():
         'Non leggere o modificare credenziali, .codex o .gemini.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
-        common.read_text(), specific.read_text(), job['instructions'],
+        *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.'

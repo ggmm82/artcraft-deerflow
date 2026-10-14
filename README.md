@@ -9,7 +9,7 @@ DeerFlow con **13 specialisti ArtCraft**, CLI **Codex e Gemini**, configurazione
 
 - DeerFlow offre conversazioni, caricamento file, progetti, consegna degli artefatti, modelli e skills.
 - Il pannello **ArtCraft Studio**, nella barra laterale di DeerFlow, collega Codex e Gemini tramite le procedure di autenticazione delle CLI originali.
-- Ogni specialista ha motore, modello, istruzioni aggiuntive e stato attivo configurabili dal browser.
+- Ogni specialista ha motore, modello, skills aggiuntive, istruzioni e stato attivo configurabili dal browser. Le skills scelte sono installate anche nel percorso nativo della CLI per quel solo incarico.
 - Il coordinatore usa il provider Codex di DeerFlow e invoca `studio_delegate`. Puoi aggiungere altri modelli API da Impostazioni → Modelli.
 - Studio avvia un container per incarico, carica la procedura del programma pertinente e rimuove il container al termine, anche in caso di errore o timeout.
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.

@@ -29,13 +29,29 @@ def applications():
     return json.loads((ROOT / 'versions.lock.json').read_text())['applications']
 
 
+def default_skills(identifier):
+    return ['artcraft-workspace', 'artcraft-' + identifier]
+
+
+def available_skills():
+    return ['artcraft-workspace', *['artcraft-' + a['id'] for a in applications()]]
+
+
 def catalog():
     with LOCK:
         path = STATE / 'agents.json'
         if not path.exists():
             atomic_json(path, {app['id']: {'engine': 'codex', 'model': '',
-                        'instructions': '', 'enabled': True} for app in applications()})
-        return json.loads(path.read_text())
+                        'instructions': '', 'enabled': True, 'skills': default_skills(app['id'])} for app in applications()})
+        agents = json.loads(path.read_text())
+        changed = False
+        for identifier, config in agents.items():
+            if 'skills' not in config:
+                config['skills'] = default_skills(identifier)
+                changed = True
+        if changed:
+            atomic_json(path, agents)
+        return agents
 
 
 def update_agent(identifier, value):
@@ -48,11 +64,15 @@ def update_agent(identifier, value):
         raise ValueError('Modello non valido')
     if len(value.get('instructions', '')) > 20000:
         raise ValueError('Istruzioni troppo lunghe')
+    skills = value.get('skills') or default_skills(identifier)
+    if not isinstance(skills, list) or not all(isinstance(s, str) and s in available_skills() for s in skills):
+        raise ValueError('Skill sconosciuta')
+    skills = list(dict.fromkeys(['artcraft-workspace', 'artcraft-' + identifier, *skills]))
     with LOCK:
         agents = catalog()
         agents[identifier] = {'engine': value['engine'], 'model': model,
                               'instructions': value.get('instructions', ''),
-                              'enabled': bool(value.get('enabled', True))}
+                              'enabled': bool(value.get('enabled', True)), 'skills': skills}
         atomic_json(STATE / 'agents.json', agents)
     return agents[identifier]
 
