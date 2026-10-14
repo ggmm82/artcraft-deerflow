@@ -25,3 +25,4 @@ case "$status" in
   401|403) echo 'DeerFlow requires its authenticated account before opening Studio' ;;
   *) cat /tmp/studio-http; exit 1 ;;
 esac
+python scripts/ci_http.py
