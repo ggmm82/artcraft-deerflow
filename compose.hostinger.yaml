@@ -34,7 +34,7 @@ services:
   gateway:
     restart: unless-stopped
     init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
+    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-ca3e1d501f125d258005592385be0f54f44a5a6e
     mem_limit: 1024m
     stop_grace_period: 30s
     environment:
