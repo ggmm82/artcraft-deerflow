@@ -47,7 +47,9 @@ def command(engine, model, prompt, output):
         return args + ['-']
     if engine == 'gemini':
         args = ['agy', '--dangerously-skip-permissions', '--input-format', 'stream-json', '--output-format', 'stream-json',
-                '--add-dir', '/mnt/user-data', '--print-timeout', '25m']
+                '--add-dir', '/mnt/user-data', '--print-timeout', '25m',
+                '--json-schema', json.dumps({'type': 'object', 'properties': {
+                    'summary': {'type': 'string'}}, 'required': ['summary']})]
         if model and model != 'auto':
             args += ['--model', model]
         return args
@@ -149,6 +151,11 @@ def main():
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.'
     ])
+    if engine == 'gemini':
+        prompt += ('\nChiusura obbligatoria Antigravity: quando file e handoff.json sono pronti, '
+                   'chiama il tool nativo finish e consegna un oggetto con summary contenente '
+                   'percorsi, verifiche e limiti. Non limitarti a ripetere un messaggio testuale: '
+                   'finish conclude il processo. Non ricreare i file già verificati.')
     final = Path('/tmp/last-message.txt')
     try:
         if engine == 'deepseek':
@@ -174,7 +181,9 @@ def main():
                 parsed = result_envelope(result.stdout)
                 if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
                     raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
-                message = parsed.get('response', '')
+                message = parsed.get('structured_output', {}).get('summary')
+                if not isinstance(message, str) or not message.strip():
+                    raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except ValueError as exc:

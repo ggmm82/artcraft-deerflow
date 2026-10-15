@@ -29,6 +29,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(args[args.index('--model') + 1], 'chosen-model')
         self.assertIn('--input-format', args)
         self.assertEqual(args[0], 'agy')
+        self.assertIn('summary', json.loads(args[args.index('--json-schema') + 1])['required'])
         self.assertEqual(login_command('codex'), ['codex', 'login', '--device-auth'])
 
     def test_hostinger_release_checks_every_image_before_replacing_output(self):
