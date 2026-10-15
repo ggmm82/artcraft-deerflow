@@ -17,7 +17,8 @@ class CodexProviderTests(unittest.TestCase):
         failure = httpx.HTTPStatusError('Rate limited', request=request, response=response)
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
             model = StudioCodexChatModel(model='gpt-6.1-sol')
-        with patch('studio.codex_provider.request_codex', side_effect=[failure, {'output': []}]) as transport, \
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential), \
+             patch('studio.codex_provider.request_codex', side_effect=[failure, {'output': []}]) as transport, \
              patch('deerflow.models.openai_codex_provider.time.sleep') as backoff:
             self.assertEqual(model._call_codex_api([HumanMessage('Prova')]), {'output': []})
         self.assertEqual(transport.call_count, 2)
