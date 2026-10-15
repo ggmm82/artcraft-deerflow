@@ -19,3 +19,9 @@ filmcraft-cli --project "$ARTCRAFT_OUTPUT_DIR/montaggio.fcproj" export "$ARTCRAF
 Prova eseguita: due clip reali di test con audio, sequenza salvata e riaperta, export H.264 160×90 a 25 fps per 1,2 secondi con audio a 48 kHz; misure indipendenti con ffprobe. Adatta dimensioni, durata e fps agli input reali. `file.newSequenceFromClip` richiede una selezione nel Project panel: per automazione usa `file.newSequence` con `fromItems` ottenuti dall’import, evitando ID inventati e dipendenze dalla selezione GUI. Un export con media offline viene rifiutato; non usare `--allow-offline` per nasconderlo.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `filmcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.fcproj` con timeline, sequenze e tutte le clip/audio/immagini collegate necessari, oltre al video esportato. Prepara un archivio ZIP autosufficiente con percorsi relativi supportati; estrailo in una cartella nuova e riapri il progetto con FilmCraft, verificando che i media siano online e la timeline conservata. Indica di estrarre l’archivio prima di aprire il progetto. Non consegnare soltanto MP4 né un progetto che dipende da `/mnt/user-data/uploads`, percorsi assoluti della sandbox o cache temporanee; non mascherare media mancanti con `--allow-offline`.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

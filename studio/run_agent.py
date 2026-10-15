@@ -125,7 +125,11 @@ def main():
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
         'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
-        'secondo lo schema artcraft-workspace; il runtime verifica che i file esistano.',
+        'secondo lo schema artcraft-workspace, incluso delivery obbligatorio per ogni output; '
+        'il runtime verifica file e metadati. Consegna anche il sorgente modificabile '
+        'riaperto nell’app reale, con dipendenze necessarie. Un export o un viewer '
+        'non dimostra compatibilità con l’app dello specialista. Se impossibile, '
+        'dichiara source_status unavailable, motivo e limiti senza fingere un sorgente.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
         'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
@@ -161,7 +165,7 @@ def main():
                     raise RuntimeError(str(parsed['error']))
                 message = parsed.get('response', '')
         try:
-            handoff = validate_handoff(output_dir, Path('/mnt/user-data'))
+            handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except ValueError as exc:
             print(json.dumps({'ok': False, 'agent': job['agent'], 'engine': engine,
                               'output_dir': str(output_dir),

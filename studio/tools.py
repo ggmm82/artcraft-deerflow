@@ -12,6 +12,9 @@ def studio_delegate(agent: str, task: str, runtime: Runtime) -> str:
 
     Use the exact specialist ID from the configured operational catalog in the
     lead instructions. Give input paths, required outputs and acceptance checks.
+    Request editable sources and dependencies as downloadable outputs, not only exports.
+    Require delivery metadata: format, actual opening app, editability, reopening evidence
+    and limitations. A GLB/viewer is not evidence of CADCraft compatibility.
     Specialists share files in this conversation; pass result paths to the next one.
     The runtime assigns a separate output directory per task: request filenames,
     not fixed absolute output locations. Use the paths returned by the specialist.

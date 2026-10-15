@@ -30,7 +30,7 @@ def sync(root=ROOT):
         app['id']: {
             'description': f"{app['role']}: {app['description']} Usa {app['executable']}.",
             'system_prompt': f"Sei lo specialista {app['id']}. Per eseguire il lavoro invoca "
-                f"studio_delegate con agent=\"{app['id']}\", includendo input, percorsi e criteri "
+                f"studio_delegate con agent=\"{app['id']}\", includendo input, percorsi, sorgenti modificabili, app di apertura e criteri "
                 'di accettazione. Eredita il modello unico della squadra. Non eseguire CLI nel '
                 'Gateway. Riporta risultati e limiti della delega.',
             'skills': ['artcraft-workspace', 'artcraft-' + app['id']],

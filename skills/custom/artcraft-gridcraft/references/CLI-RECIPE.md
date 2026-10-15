@@ -20,3 +20,9 @@ gridcraft-cli check "$ARTCRAFT_OUTPUT_DIR/totali.xlsx" --json
 Prova eseguita: il test legge indipendentemente `xl/worksheets/sheet1.xml` nel contenitore XLSX, trova formula `SUM(A1:A3)` e cache numerica 60. I numeri JSON sono numeri, non stringhe formattate. Non trasferire valori dimostrativi agli input reali e non sostituire una formula con una costante per far passare il controllo.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `gridcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il file XLSX modificabile con fogli, celle, formule, tabelle e grafici realmente presenti, oltre agli export richiesti. Riaprilo con GridCraft e verifica formule e valori ricalcolati; dichiara riferimenti esterni o dati da aggiornare. CSV/PDF/immagini non sostituiscono un workbook con formule e più fogli: non sostituire formule con i soli valori né presentare un CSV come sorgente equivalente.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

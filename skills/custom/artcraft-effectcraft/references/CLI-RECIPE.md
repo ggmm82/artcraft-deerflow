@@ -13,3 +13,9 @@ effectcraft-cli --project "$ARTCRAFT_OUTPUT_DIR/animazione.ecproj" render --comp
 Prova eseguita: sorgente modificabile, frame a 0 e 0,5 secondi diversi con alpha, GIF di sei fotogrammi. Le misure, durate e colori sono dimostrativi: adatta al brief. I tempi qui sono secondi. Il percorso del progetto è un’opzione `--project`, non un argomento posizionale finale di `render` o `info`. Per MCP usa i tool pubblicati: non aggirare le restrizioni degli script del server.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `effectcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.ecproj`, le risorse collegate necessarie e gli export richiesti (GIF/video/frame). Riapri con `effectcraft-cli --project ... info` e verifica composizioni, livelli e keyframe, non soltanto un frame renderizzato. Per media esterni prepara e prova un pacchetto autosufficiente estratto in una nuova cartella. Un video/GIF non conserva di per sé livelli o keyframe modificabili; registra font, plugin o effetti non disponibili.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

@@ -12,9 +12,9 @@ BASE_URL = 'https://api.deepseek.com'
 MAX_TURNS = 64
 
 try:
-    from .handoff import validate_handoff
+    from .handoff import DELIVERY_SCHEMA, validate_handoff
 except ImportError:
-    from handoff import validate_handoff
+    from handoff import DELIVERY_SCHEMA, validate_handoff
 
 
 def request(key, path, payload=None, timeout=120):
@@ -43,9 +43,10 @@ def models(key):
 
 HANDOFF_TOOL = {'type': 'function', 'function': {
     'name': 'submit_handoff',
-    'description': 'Consegna i file già prodotti. Scrive handoff.json e verifica percorsi e file. Riporta soltanto controlli effettivi; usa not_run per quelli non svolti.',
+    'description': 'Consegna i file già prodotti. Scrive handoff.json e verifica percorsi e file. Includi sorgenti modificabili e delivery con formato, app di apertura, modificabilità e riapertura per ogni output. Riporta soltanto controlli effettivi; usa not_run per quelli non svolti.',
     'parameters': {'type': 'object', 'properties': {
         'task': {'type': 'string'},
+        'delivery': DELIVERY_SCHEMA,
         'source_files': {'type': 'array', 'items': {'type': 'string'}},
         'output_files': {'type': 'array', 'minItems': 1, 'items': {'type': 'string'}},
         'previews': {'type': 'array', 'items': {'type': 'string'}},
@@ -53,7 +54,7 @@ HANDOFF_TOOL = {'type': 'function', 'function': {
             'name': {'type': 'string'}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'not_run']},
             'evidence': {'type': 'string'}}, 'required': ['name', 'status', 'evidence'], 'additionalProperties': False}},
         'warnings': {'type': 'array', 'items': {'type': 'string'}}},
-        'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings'],
+        'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings', 'delivery'],
         'additionalProperties': False}}}
 
 
@@ -66,7 +67,7 @@ def submit_handoff(output_dir, value):
             json.dump(value, stream, ensure_ascii=False, allow_nan=False)
         os.replace(temporary, path)
         try:
-            return validate_handoff(output_dir, Path('/mnt/user-data'))
+            return validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except (OSError, ValueError):
             path.unlink(missing_ok=True)
             raise
@@ -94,7 +95,7 @@ def run(model, prompt, output_dir, timeout):
         if finalizing and not finalization_notice:
             finalization_notice = True
             messages.append({'role': 'user', 'content':
-                'Concludi ora la produzione: esegui subito i batch già preparati e gli export essenziali. '
+                'Concludi ora la produzione: esegui subito i batch già preparati, il salvataggio del sorgente modificabile con dipendenze e gli export essenziali. '
                 'Non esplorare altri comandi e non avviare perfezionamenti. '
                 'Usa submit_handoff per consegnare i prodotti reali nella cartella ' + str(output_dir) +
                 '. Riporta i controlli già svolti con le loro evidenze; indica not_run per gli altri '
@@ -116,7 +117,7 @@ def run(model, prompt, output_dir, timeout):
         calls = message.get('tool_calls', [])
         if not calls:
             try:
-                validate_handoff(output_dir, Path('/mnt/user-data'))
+                validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
             except (OSError, ValueError) as error:
                 messages.append({'role': 'user', 'content':
                     'La consegna non è ancora valida: ' + str(error).replace(key, '[REDACTED]')[:800] +

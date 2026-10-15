@@ -6,7 +6,7 @@ from pathlib import Path
 from studio.handoff import validate_handoff
 
 
-class HandoffTests(unittest.TestCase):
+class HandoffFixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.workspace = Path(self.temp.name)
@@ -28,6 +28,8 @@ class HandoffTests(unittest.TestCase):
         (self.output / 'handoff.json').write_text(json.dumps(self.value))
         return validate_handoff(self.output, self.workspace)
 
+
+class HandoffTests(HandoffFixture):
     def test_valid_report_preserves_quality_failures(self):
         self.value['checks'][0]['status'] = 'failed'
         self.assertEqual(self.validate()['checks'][0]['status'], 'failed')
@@ -67,6 +69,90 @@ class HandoffTests(unittest.TestCase):
         (self.output / 'handoff.json').symlink_to(external)
         with self.assertRaisesRegex(ValueError, 'esterno'):
             validate_handoff(self.output, self.workspace)
+
+
+class DeliveryTests(HandoffFixture):
+    def metadata(self, path=None, role='editable_source'):
+        return {'path': str(path or self.file), 'role': role, 'format': 'DXF',
+                'open_with': 'CADCraft', 'editability': 'Polilinee e layer',
+                'reopen': {'status': 'passed', 'evidence': 'cadcraft-cli run: riaperto e modificato'},
+                'limitations': []}
+
+    def delivery(self, files=None, status='included'):
+        self.value['delivery'] = {'source_status': status, 'source_note': 'Sorgente del risultato',
+                                  'files': files if files is not None else [self.metadata()]}
+
+    def test_new_worker_requires_metadata_but_legacy_reading_still_works(self):
+        self.validate()
+        with self.assertRaisesRegex(ValueError, 'delivery'):
+            validate_handoff(self.output, self.workspace, require_delivery=True)
+        self.delivery()
+        self.assertEqual(self.validate()['delivery']['source_status'], 'included')
+
+    def test_glb_export_and_input_dxf_do_not_count_as_delivered_source(self):
+        glb = self.output / 'robot.glb'
+        glb.write_bytes(b'glTF export fixture')
+        self.value['output_files'] = [str(glb)]
+        self.value['source_files'] = [str(self.source)]
+        export = self.metadata(glb, role='export')
+        export.update(format='GLB', open_with='GLB viewer', editability='Mesh di scambio; compatibilità CADCraft non verificata')
+        self.delivery([export])
+        with self.assertRaisesRegex(ValueError, 'sorgenti consegnati'):
+            self.validate()
+        # A source actually delivered, separately from its export, satisfies the contract.
+        self.value['output_files'].append(str(self.file))
+        self.value['delivery']['files'].append(self.metadata())
+        self.assertEqual(len(self.validate()['delivery']['files']), 2)
+
+    def test_sources_must_be_downloadable_not_only_inputs_or_previews(self):
+        self.delivery([self.metadata(self.source)])
+        with self.assertRaisesRegex(ValueError, 'già elencato'):
+            self.validate()
+        self.value['previews'] = [str(self.file)]
+        self.value['output_files'] = [str(self.output / 'final.pdf')]
+        (self.output / 'final.pdf').write_bytes(b'export')
+        self.delivery([self.metadata(), self.metadata(self.output / 'final.pdf', 'export')])
+        with self.assertRaisesRegex(ValueError, 'scaricabile'):
+            self.validate()
+
+    def test_every_output_requires_unique_metadata_and_opening_instructions(self):
+        self.delivery()
+        self.value['delivery']['files'] *= 2
+        with self.assertRaisesRegex(ValueError, 'unico'):
+            self.validate()
+        self.delivery([self.metadata(role='export')])
+        other = self.output / 'native.dxf'
+        other.write_text('native fixture')
+        self.value['output_files'].append(str(other))
+        with self.assertRaisesRegex(ValueError, 'mancano metadati'):
+            self.validate()
+        self.value['output_files'].pop()
+        self.delivery()
+        self.value['delivery']['files'][0]['open_with'] = ' '
+        with self.assertRaisesRegex(ValueError, 'open_with'):
+            self.validate()
+
+    def test_missing_sources_are_explicit_partial_delivery_not_silent_success(self):
+        self.delivery([self.metadata(role='export')], status='unavailable')
+        with self.assertRaisesRegex(ValueError, 'warnings'):
+            self.validate()
+        self.value['warnings'] = ['Sorgente equivalente non disponibile: consegna parziale']
+        self.assertEqual(self.validate()['delivery']['source_status'], 'unavailable')
+        self.value['delivery']['source_status'] = 'not_applicable'
+        with self.assertRaisesRegex(ValueError, 'prodotto esportato'):
+            self.validate()
+
+    def test_unverified_source_keeps_failure_and_requires_limit_and_warning(self):
+        self.delivery()
+        item = self.value['delivery']['files'][0]
+        item['reopen'] = {'status': 'failed', 'evidence': 'Importazione fallita nella release installata'}
+        with self.assertRaisesRegex(ValueError, 'limite esplicito'):
+            self.validate()
+        item['limitations'] = ['Apribilità non confermata; non presentare come compatibile']
+        with self.assertRaisesRegex(ValueError, 'warnings'):
+            self.validate()
+        self.value['warnings'] = ['Riapertura fallita: revisione necessaria']
+        self.assertEqual(self.validate()['delivery']['files'][0]['reopen']['status'], 'failed')
 
 
 if __name__ == '__main__':

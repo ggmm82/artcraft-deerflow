@@ -16,3 +16,9 @@ Lista MCP verificata per `craft batch figcraft`:
 Prova eseguita: frame 320×180 con testo figlio; file salvato e riaperto in una nuova sessione con `open_file` e `inspect_document`, marcatore testuale presente, PNG delle dimensioni esatte. `ids` richiede ID, non il nome «Panel». Il ritorno di `create_node` è JSON in `content[0].text`: usa `$json` per ricavarne l’ID numerico senza assumerlo. Il formato di consegna editabile verificato è `.figcraft`; `.fig` resta un export sperimentale distinto.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `figcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.figcraft` con frame, nodi, gerarchie, testo e componenti realmente presenti, insieme agli export PNG/SVG richiesti. Riapri il file con `open_file` e `inspect_document` in una nuova sessione FigCraft e verifica testo e gerarchie. `.fig` è un export sperimentale distinto: non garantirne l’apertura in Figma o FigCraft senza una prova nella destinazione reale. Un PNG o un mockup appiattito non è un’interfaccia modificabile per componenti.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.
