@@ -24,6 +24,8 @@ def validate_handoff(output_dir, workspace):
                 raise ValueError(f'handoff.json: percorso esterno in {field}')
             if not path.is_file() or (field != 'source_files' and path.stat().st_size == 0):
                 raise ValueError(f'handoff.json: file mancante o vuoto in {field}')
+            if field == 'output_files' and path.resolve().is_relative_to(output_dir / 'work'):
+                raise ValueError('handoff.json: i file tecnici in work/ non sono prodotti finali')
     checks = value.get('checks')
     if not isinstance(checks, list) or not checks:
         raise ValueError('handoff.json: checks obbligatori')

@@ -16,11 +16,14 @@ class TeamTests(unittest.TestCase):
         self.environment = patch.dict(os.environ, {'STUDIO_STATE': self.temp.name,
             'STUDIO_PASSWORD': 'test-password-at-least-16-characters'})
         self.environment.start()
+        self.native_models = patch('studio.docker_runtime.codex_models', return_value=[
+            {'id': 'gpt-5.4', 'label': 'GPT-5.4', 'default': True}])
         from studio import state, bootstrap, router, docker_runtime
         self.state = importlib.reload(state)
         self.bootstrap = importlib.reload(bootstrap)
         self.bootstrap.initialize()
         self.runtime = importlib.reload(docker_runtime)
+        self.native_models.start()
         self.router = importlib.reload(router)
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
@@ -30,11 +33,23 @@ class TeamTests(unittest.TestCase):
 
     def tearDown(self):
         self.client.close()
+        self.native_models.stop()
         self.environment.stop()
         self.temp.cleanup()
 
     def save(self, **values):
         return self.client.put('/studio/api/team', json=values, headers={'origin': 'http://testserver'})
+
+    def test_codex_catalog_ids_and_labels_are_distinct_and_invalid_names_are_not_saved(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        entries = [{'id': 'gpt-6.1-sol', 'label': 'GPT-6.1-Sol', 'default': True}]
+        with patch.object(self.runtime, 'codex_models', return_value=entries):
+            response = self.client.get('/studio/api/team/models?engine=codex')
+            self.assertEqual(response.json()['models'], ['gpt-6.1-sol'])
+            self.assertEqual(self.save(engine='codex', model='GPT-6.1 Sol').status_code, 400)
+            self.assertEqual(self.save(engine='codex', model='gpt-5.4').status_code, 400)
+            self.assertEqual(self.save(engine='codex', model='GPT-6.1-Sol').status_code, 200)
+        self.assertEqual(self.state.team()['model'], 'gpt-6.1-sol')
 
     def test_single_save_resets_legacy_overrides_preserves_skills_and_reaches_worker(self):
         self.state.update_agent('wordcraft', {'engine': 'gemini', 'model': 'legacy-model',

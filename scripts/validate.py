@@ -30,6 +30,8 @@ def main():
         assert (skill.parent/'references/CLI-RECIPE.md').is_file()
         front=yaml.safe_load(skill.read_text().split('---',2)[1])
         assert front['name']==skill.parent.name and front['description']
+        for path in [skill, skill.parent/'references/CLI-RECIPE.md']:
+            assert '/opt/artcraft/bin/' not in path.read_text(), f'Percorso CLI inesistente: {path}'
     assert cfg['sandbox']['allow_host_bash'] is False
     assert cfg['subagent_runtime']['max_running']==1
     assert any(t['name']=='studio_delegate' for t in cfg['tools'])

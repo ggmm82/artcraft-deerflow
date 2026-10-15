@@ -7,7 +7,7 @@ def main():
     contracts = [
         (['codex', '--version'], ['0.162.1']),
         (['codex', 'login', '--help'], ['--device-auth']),
-        (['codex', 'exec', '--help'], ['--model', '--output-last-message',
+        (['codex', 'exec', '--help'], ['--model', '--json', '--output-last-message',
              '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox']),
         (['gemini', '--version'], ['0.64.0']),
         (['gemini', '--help'], ['--prompt-interactive', '--prompt', '--approval-mode',

@@ -9,6 +9,7 @@ import urllib.error
 import urllib.request
 
 BASE_URL = 'https://api.deepseek.com'
+MAX_TURNS = 64
 
 try:
     from .handoff import validate_handoff
@@ -76,29 +77,33 @@ def run(model, prompt, output_dir, timeout):
     key = json.loads(Path('/credentials/api.json').read_text())['api_key']
     messages = [{'role': 'system', 'content': prompt}, {'role': 'user', 'content':
         'Esegui adesso l’incarico del coordinatore con run_command. '
-        'Scrivi realmente i file e handoff.json nella cartella assegnata dal sistema.'}]
+        'Scrivi realmente i file nella cartella assegnata dal sistema. '
+        'Usa submit_handoff quando la consegna minima è pronta, senza attendere il limite dei turni.'}]
     tools = [{'type': 'function', 'function': {'name': 'run_command',
         'description': 'Esegue un comando shell nella sandbox ArtCraft. Salva i risultati nella cartella assegnata.',
         'parameters': {'type': 'object', 'properties': {'command': {'type': 'string'}}, 'required': ['command']}}}]
     deadline = time.monotonic() + timeout
     usage = []
     finalization_notice = False
-    for turn in range(32):
+    for turn in range(MAX_TURNS):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError('Timeout dello specialista DeepSeek')
-        finalizing = turn >= 28 or remaining <= min(90, timeout / 5)
+        finalizing = turn >= MAX_TURNS - 4 or remaining <= min(90, timeout / 5)
+        force_handoff = turn == MAX_TURNS - 1 or remaining <= min(30, timeout / 10)
         if finalizing and not finalization_notice:
             finalization_notice = True
             messages.append({'role': 'user', 'content':
-                'La fase di produzione è conclusa: non avviare altre verifiche o modifiche. '
-                'Usa ora submit_handoff per consegnare i file esistenti nella cartella ' + str(output_dir) +
+                'Concludi ora la produzione: esegui subito i batch già preparati e gli export essenziali. '
+                'Non esplorare altri comandi e non avviare perfezionamenti. '
+                'Usa submit_handoff per consegnare i prodotti reali nella cartella ' + str(output_dir) +
                 '. Riporta i controlli già svolti con le loro evidenze; indica not_run per gli altri '
-                'e dichiara nei warnings eventuali requisiti incompleti. La consegna viene verificata dal runtime.'})
+                'e dichiara nei warnings eventuali requisiti incompleti. '
+                'I cataloghi, i batch e le prove sotto work/ non sostituiscono i prodotti richiesti.'})
         payload = {'model': model, 'messages': messages,
-                   'tools': [HANDOFF_TOOL] if finalizing else tools, 'max_tokens': 6000,
+                   'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL], 'max_tokens': 6000,
                    'thinking': {'type': 'disabled'}}
-        if finalizing:
+        if force_handoff:
             payload['tool_choice'] = {'type': 'function', 'function': {'name': 'submit_handoff'}}
         result = request(key, '/chat/completions', payload, timeout=min(remaining, 180))
         usage.append(result.get('usage', {}))
@@ -121,10 +126,10 @@ def run(model, prompt, output_dir, timeout):
             return message.get('content') or ''
         for call in calls:
             try:
-                if call['function']['name'] == 'submit_handoff' and finalizing:
+                if call['function']['name'] == 'submit_handoff':
                     handoff = submit_handoff(output_dir, json.loads(call['function']['arguments']))
                     return 'Consegna registrata e file verificati: ' + ', '.join(handoff['output_files'])
-                if finalizing:
+                if force_handoff:
                     raise ValueError('La produzione è conclusa: usa submit_handoff per i file già esistenti')
                 if call['function']['name'] != 'run_command':
                     raise ValueError('Tool sconosciuto')

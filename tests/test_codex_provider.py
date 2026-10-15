@@ -7,6 +7,23 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec('deerflow'), 'Requires pinned gateway dependencies')
 class CodexProviderTests(unittest.TestCase):
+    def test_transient_http_failure_reaches_native_bounded_retry(self):
+        import httpx
+        from langchain_core.messages import HumanMessage
+        from studio.codex_provider import StudioCodexChatModel
+        credential = SimpleNamespace(access_token='fixture-private-bearer', account_id='account')
+        request = httpx.Request('POST', 'https://chatgpt.com/backend-api/codex/responses')
+        response = httpx.Response(429, text='Rate limited fixture-private-bearer', request=request)
+        failure = httpx.HTTPStatusError('Rate limited', request=request, response=response)
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
+            model = StudioCodexChatModel(model='gpt-6.1-sol')
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential), \
+             patch('studio.codex_provider.request_codex', side_effect=[failure, {'output': []}]) as transport, \
+             patch('deerflow.models.openai_codex_provider.time.sleep') as backoff:
+            self.assertEqual(model._call_codex_api([HumanMessage('Prova')]), {'output': []})
+        self.assertEqual(transport.call_count, 2)
+        backoff.assert_called_once_with(2.0)
+
     def test_existing_model_uses_rotated_account_credentials_on_next_request(self):
         from studio.codex_provider import StudioCodexChatModel, CodexChatModel
         first = SimpleNamespace(access_token='fixture-old-bearer', account_id='old-account')
@@ -14,7 +31,7 @@ class CodexProviderTests(unittest.TestCase):
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=first):
             model = StudioCodexChatModel(model='gpt-5.4')
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=rotated), \
-             patch.object(CodexChatModel, '_stream_response', return_value={'ok': True}) as request:
+             patch('studio.codex_provider.request_codex', return_value={'ok': True}) as request:
             model._stream_response({'Authorization': 'Bearer fixture-old-bearer'}, {'tools': []})
         headers, payload = request.call_args.args
         self.assertEqual(headers['Authorization'], 'Bearer fixture-new-bearer')
@@ -31,7 +48,7 @@ class CodexProviderTests(unittest.TestCase):
         failure = httpx.HTTPStatusError('Unauthorized', request=response.request, response=response)
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
             model = StudioCodexChatModel(model='gpt-5.4')
-            with patch.object(CodexChatModel, '_stream_response', side_effect=failure), \
+            with patch('studio.codex_provider.request_codex', side_effect=failure), \
                  patch('studio.docker_runtime.refresh_codex_credentials'):
                 with self.assertRaisesRegex(RuntimeError, r'HTTP 401.*\[REDACTED\]') as caught:
                     model._stream_response({}, {})
@@ -47,7 +64,7 @@ class CodexProviderTests(unittest.TestCase):
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=first):
             model = StudioCodexChatModel(model='gpt-5.4')
         with patch.object(StudioCodexChatModel, '_load_codex_auth', side_effect=[first, renewed]), \
-             patch.object(CodexChatModel, '_stream_response', side_effect=[failure, {'ok': True}]) as api, \
+             patch('studio.codex_provider.request_codex', side_effect=[failure, {'ok': True}]) as api, \
              patch('studio.docker_runtime.refresh_codex_credentials') as refresh:
             self.assertEqual(model._stream_response({}, {}), {'ok': True})
         refresh.assert_called_once()

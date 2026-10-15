@@ -1,6 +1,6 @@
 # Verifica Codex, Gemini CLI, Hostinger e specializzazione
 
-Verifica del 15 ottobre 2026, sul ramo della PR #1. Le modifiche non sono ancora distribuite su Hostinger.
+Audit iniziale del 15 ottobre 2026 sul ramo della PR #1. Per i successivi deploy Hostinger e le generazioni reali Codex/DeepSeek vedere [il collaudo aggiornato](CORREZIONE-MODELLI-E-DELEGA.md); i limiti OAuth Gemini descritti qui restano validi.
 
 ## Codex e Gemini CLI
 

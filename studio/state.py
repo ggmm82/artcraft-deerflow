@@ -105,7 +105,7 @@ def team():
         profile = next(iter(content.get('models', [])), {})
         engine = {'studio.deepseek_provider:StudioDeepSeekChatModel': 'deepseek',
                   'studio.gemini_provider:StudioGeminiChatModel': 'gemini'}.get(profile.get('use'), 'codex')
-        return {'engine': engine, 'model': profile.get('model', 'gpt-5.4'),
+        return {'engine': engine, 'model': profile.get('model', 'gpt-6.1-sol'),
                 'ready': connection_status(engine)}
 
 

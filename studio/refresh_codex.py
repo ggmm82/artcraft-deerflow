@@ -3,9 +3,10 @@ import json
 import queue
 import subprocess
 import threading
+import sys
 
 
-def refresh():
+def refresh(action='refresh'):
     process = subprocess.Popen(['codex', 'app-server'], stdin=subprocess.PIPE,
         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
     incoming = queue.Queue()
@@ -31,6 +32,19 @@ def refresh():
             'clientInfo': {'name': 'artcraft-studio', 'version': '0.1.0'}}})
         result(1)
         send({'method': 'initialized'})
+        if action == 'models':
+            models, cursor, identifier = [], None, 2
+            while True:
+                send({'id': identifier, 'method': 'model/list', 'params': {'limit': 100, 'cursor': cursor}})
+                page = result(identifier)
+                models.extend({'id': item['model'], 'label': item['displayName'],
+                               'default': item.get('isDefault', False)} for item in page['data'] if not item.get('hidden'))
+                cursor = page.get('nextCursor')
+                if not cursor:
+                    return models
+                identifier += 1
+                if identifier > 20:
+                    raise RuntimeError('Catalogo Codex incompleto')
         send({'id': 2, 'method': 'account/read', 'params': {'refreshToken': True}})
         account = result(2).get('account')
         if not account or account.get('type') != 'chatgpt':
@@ -48,8 +62,8 @@ def refresh():
 
 if __name__ == '__main__':
     try:
-        refresh()
-        print('{"ok": true}')
+        models = refresh('models' if '--models' in sys.argv else 'refresh')
+        print(json.dumps({'ok': True, **({'models': models} if models is not None else {})}))
     except Exception:
         print('{"ok": false, "error": "Ricollega Codex in La tua squadra"}')
         raise SystemExit(1)

@@ -69,6 +69,9 @@ jobs:
       - name: Check official Gemini CLI core without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --entrypoint node --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/tests/gemini_bridge.mjs
+      - name: Check native Codex model IDs without generation
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --network=none --entrypoint python3 artcraft-deerflow-sandbox:0.1.0 -c 'import sys; sys.path.insert(0,"/opt/studio"); from refresh_codex import refresh; models=refresh("models"); assert models and all(m["id"] and m["label"] for m in models); print("Native Codex catalog OK")'
       - name: Run representative native file workflows for all specialists
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json

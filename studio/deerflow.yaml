@@ -3,7 +3,7 @@ models:
 - name: studio-codex
   display_name: Squadra ArtCraft
   use: studio.codex_provider:StudioCodexChatModel
-  model: gpt-5.4
+  model: gpt-6.1-sol
   supports_thinking: true
   supports_reasoning_effort: true
   request_timeout: 1800
