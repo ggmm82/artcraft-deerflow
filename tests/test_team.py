@@ -86,6 +86,21 @@ class TeamTests(unittest.TestCase):
             for s in self.client.get('/studio/api/catalog').json()['effective_agents'].values()))
         self.assertEqual(len(yaml.safe_load((self.state.STATE / 'config.yaml').read_text())['models']), 1)
 
+    def test_gemini_is_a_shared_coordinator_and_worker_provider_after_restart(self):
+        self.assertEqual(self.save(engine='gemini').status_code, 400)
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture": true}')
+        response = self.save(engine='gemini')
+        self.assertEqual(response.status_code, 200)
+        self.bootstrap.initialize()
+        catalog = self.client.get('/studio/api/catalog').json()
+        self.assertEqual(catalog['team'], {'engine': 'gemini', 'model': 'gemini-2.5-pro', 'ready': True})
+        for agent in catalog['effective_agents'].values():
+            self.assertEqual((agent['engine'], agent['model']), ('gemini', 'gemini-2.5-pro'))
+        self.assertEqual(yaml.safe_load((self.state.STATE / 'config.yaml').read_text())['models'][0]['use'],
+                         'studio.gemini_provider:StudioGeminiChatModel')
+        self.assertEqual(self.save(engine='gemini', model='gemini-custom').status_code, 200)
+        self.assertTrue(all(a['model']=='gemini-custom' for a in self.client.get('/studio/api/catalog').json()['effective_agents'].values()))
+
     def test_invalid_connection_or_model_never_partially_changes_team(self):
         before = (self.state.STATE / 'config.yaml').read_bytes()
         self.assertEqual(self.save(engine='codex').status_code, 400)

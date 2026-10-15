@@ -14,7 +14,7 @@ from .state import STATE, ROOT, catalog
 def configure_team(engine, model, api_key=None):
     """One public profile drives coordinator and every specialist/skill."""
     from .state import LOCK, atomic_json, credential_dir
-    if engine not in ('codex', 'deepseek'):
+    if engine not in ('codex', 'deepseek', 'gemini'):
         raise ValueError('Servizio non disponibile per il coordinamento')
     if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
         raise ValueError('Modello non valido')
@@ -22,8 +22,9 @@ def configure_team(engine, model, api_key=None):
         path = STATE / 'config.yaml'
         content = yaml.safe_load(path.read_text())
         entry = {'name': 'studio-codex', 'display_name': 'Squadra ArtCraft',
-                 'use': ('studio.deepseek_provider:StudioDeepSeekChatModel' if engine == 'deepseek'
-                         else 'studio.codex_provider:StudioCodexChatModel'),
+                 'use': {'deepseek': 'studio.deepseek_provider:StudioDeepSeekChatModel',
+                         'codex': 'studio.codex_provider:StudioCodexChatModel',
+                         'gemini': 'studio.gemini_provider:StudioGeminiChatModel'}[engine],
                  'model': model, 'supports_thinking': engine == 'codex',
                  'supports_reasoning_effort': engine == 'codex', 'request_timeout': 1800}
         # Keep old saved conversation identifiers working, with the same profile.

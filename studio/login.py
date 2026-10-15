@@ -18,8 +18,8 @@ ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
 
 def login_command(engine):
     if engine == 'gemini':
-        # --prompt is headless even on a PTY: Gemini refuses manual OAuth there.
-        return ['gemini', '--prompt-interactive', 'Rispondi solo OK.']
+        # Official CLI auth only: interactive OAuth, no paid generation or /quit.
+        return ['node', '/opt/studio/gemini_bridge.mjs', '--login']
     if engine == 'codex':
         return ['codex', 'login', '--device-auth']
     raise ValueError('Motore sconosciuto')

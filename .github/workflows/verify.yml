@@ -63,6 +63,12 @@ jobs:
       - name: Check Codex credentials rotation with the pinned DeerFlow provider
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_codex_provider.py -v
+      - name: Check Gemini coordinator and official CLI bridge
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_gemini_provider.py -v
+      - name: Check official Gemini CLI core without account credentials
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --entrypoint node --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/tests/gemini_bridge.mjs
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |

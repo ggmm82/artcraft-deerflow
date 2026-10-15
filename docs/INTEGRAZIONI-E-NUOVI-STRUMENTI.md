@@ -8,16 +8,16 @@ Le versioni fissate sono Codex **0.162.1** e Gemini CLI **0.64.0**. `scripts/che
 
 Correzioni effettuate:
 
-- **Gemini OAuth:** il vecchio login usava `--prompt`, che resta non interattivo anche dentro una PTY. La release 0.64.0 rifiuta lì l'autorizzazione manuale con `NO_BROWSER=true`. Ora il login usa `--prompt-interactive` dentro la PTY. Il codice ufficiale della release distingue esplicitamente queste modalità. La sessione API consente di inviare il codice richiesto e poi `/quit`.
+- **Gemini OAuth:** il vecchio login usava `--prompt`, che resta non interattivo anche dentro una PTY. La release 0.64.0 rifiuta lì l'autorizzazione manuale con `NO_BROWSER=true`. Ora il login usa `--prompt-interactive` dentro la PTY. Il codice ufficiale della release distingue esplicitamente queste modalità. Il login ora usa direttamente il modulo OAuth ufficiale di Gemini CLI in una PTY: termina dopo il collegamento, senza generare una risposta e senza richiedere `/quit`.
 - **Gemini file condivisi:** il worker parte nella propria cartella di output; ora `--include-directories /mnt/user-data` abilita anche gli input caricati e i risultati dei colleghi. Il mount rimane limitato alla conversazione corrente.
 - **Codex credenziali aggiornate:** il coordinatore rilegge bearer e account dal file OAuth prima di ogni richiesta, acquisendo il refresh fatto dai worker. Due prove con il vero provider DeerFlow verificano cambio delle credenziali senza ricreare il modello e oscuramento del bearer negli errori.
 - Restano attivi allowlist dei file di autenticazione, permessi privati, refresh serializzato e verifica degli output tramite `handoff.json`.
 
 La prova locale con il binario Gemini reale, HOME temporanea e PTY ha riprodotto il rifiuto con `--prompt`; con `--prompt-interactive` ha raggiunto l'URL OAuth e la richiesta del codice. Le sessioni sono state interrotte prima dell'autenticazione e le cartelle temporanee eliminate. Non è stato usato un account Google.
 
-**Ambito effettivo:** DeepSeek e Codex sono i provider della configurazione unica della squadra. Gemini è un motore CLI degli specialisti, accessibile alle integrazioni API precedenti; non compare come provider del coordinatore nel pannello. Non esiste ancora un coordinatore Gemini tramite abbonamento. Il salvataggio globale della squadra riporta anche le vecchie eccezioni Gemini al provider condiviso: è il comportamento richiesto per evitare configurazioni divergenti.
+**Configurazione unica:** DeepSeek, Codex e Gemini sono disponibili nello stesso pannello per coordinatore e specialisti. Gemini restituisce chiamate strutturate tramite il nucleo ufficiale CLI, senza eseguire strumenti propri nel coordinatore. Sono mantenuti identificatori delle chiamate, risultati e firme opache richieste dal modello. Il salvataggio della squadra riporta tutte le precedenti eccezioni al provider condiviso.
 
-Il controllo di flag e protocollo non equivale a un login OAuth completato. Non sono disponibili account Codex/Gemini forniti per questo collaudo: autenticazione completa, quote e generazione reale con questi account restano da verificare. Un token Codex scaduto che nessun worker riesce a rinnovare richiede un nuovo collegamento dal pannello; il Gateway non implementa autonomamente il refresh OAuth.
+Il controllo di flag e protocollo non equivale a un login OAuth completato. Non sono disponibili account Codex/Gemini forniti per questo collaudo: autenticazione completa, quote e generazione reale con questi account restano da verificare. Su HTTP 401 Codex richiede una volta il rinnovo tramite `app-server account/read` con `refreshToken: true`, senza generazione, e riprova con il file aggiornato. Se anche il rinnovo viene rifiutato viene richiesto di ricollegare l’account.
 
 ## Compose Hostinger e rilascio
 

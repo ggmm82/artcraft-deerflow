@@ -98,7 +98,7 @@ def cancel_login(identifier: str, request: Request):
 
 
 class TeamConfig(BaseModel):
-    engine: str = Field(pattern='^(codex|deepseek)$')
+    engine: str = Field(pattern='^(codex|deepseek|gemini)$')
     model: str = Field(default='', max_length=200)
     api_key: SecretStr | None = None
 
@@ -150,10 +150,10 @@ def save_team(value: TeamConfig, request: Request):
                     raise ValueError('Inserisci la chiave DeepSeek per attivare la squadra')
                 key = json.loads(path.read_text())['api_key']
             chosen, available = validated_deepseek(key, chosen)
-        elif not connection_status('codex'):
-            raise ValueError('Collega prima il tuo account Codex')
+        elif not connection_status(value.engine):
+            raise ValueError('Collega prima il tuo account ' + ('Gemini' if value.engine == 'gemini' else 'Codex'))
         else:
-            chosen = chosen or 'gpt-5.4'
+            chosen = chosen or ('gemini-2.5-pro' if value.engine == 'gemini' else 'gpt-5.4')
         configure_team(value.engine, chosen, key if value.engine == 'deepseek' else None)
     except ValueError as error:
         raise HTTPException(400, str(error)) from None

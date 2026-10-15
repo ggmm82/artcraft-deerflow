@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class IntegrationTests(unittest.TestCase):
     def test_gemini_manual_login_is_interactive_and_worker_can_read_shared_inputs(self):
         login = login_command('gemini')
-        self.assertIn('--prompt-interactive', login)
+        self.assertEqual(login, ['node', '/opt/studio/gemini_bridge.mjs', '--login'])
         self.assertNotIn('--prompt', login)
         self.assertNotIn('--output-format', login)
         args = command('gemini', 'chosen-model', 'Task', '/tmp/final')

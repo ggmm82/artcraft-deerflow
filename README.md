@@ -15,7 +15,7 @@ DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Gemini e DeepSeek API*
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
 - Il profilo iniziale esegue **un solo specialista alla volta**, per la VPS da 4 GB. Non sono previsti modelli locali.
 
-La configurazione condivisa supporta **DeepSeek API** e **account Codex**. Le API precedenti di configurazione e il motore Gemini CLI rimangono compatibili per le integrazioni esistenti; il pannello principale usa un unico profilo della squadra. Un coordinatore con abbonamento Gemini non è implementato.
+La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Gemini**. La stessa scelta vale per coordinatore e specialisti. Gemini usa il nucleo ufficiale di Gemini CLI per autenticazione e chiamate strutturate; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
 
 ## Stato della verifica
 
@@ -36,7 +36,7 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 3. Imposta `TRAEFIK_HOST` con il dominio base fornito da Hostinger, per esempio `srv0000000.hstgr.cloud`. Il progetto sarà disponibile su `https://<nome-progetto>.<TRAEFIK_HOST>`.
 4. Avvia il progetto. Hostinger scarica le quattro immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
 5. Apri il dominio e crea il primo account amministratore DeerFlow. La password `STUDIO_PASSWORD` protegge i segreti interni e non è la password dell'account DeerFlow.
-6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex e completa il collegamento ufficiale.
+6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex o Gemini e completa il collegamento ufficiale.
 7. Lascia **Automatico** oppure scegli un modello e premi **Salva e attiva la squadra**. La scelta vale per tutti gli specialisti e le loro skills. Anche **Impostazioni → Modelli** rimanda a questo pannello.
 8. Premi **Risolvi un problema**, carica eventuali file e descrivi cosa ti serve. La chat è già sul profilo **Squadra ArtCraft**: non occorre scegliere un altro coordinatore.
 

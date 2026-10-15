@@ -23,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--mcp', action='store_true')
+    parser.add_argument('--workspace-root', type=Path, default=Path('/mnt/user-data'))
     parser.add_argument('--output', type=Path, default=Path('/tmp/artcraft-checks.json'))
     args = parser.parse_args()
     root = Path(os.environ.get('ARTCRAFT_INSTALL_ROOT', '/opt/artcraft'))
@@ -45,7 +46,7 @@ def main():
         (reference / 'commands.txt').write_text(registry['stdout'], encoding='utf-8')
         checks.append(registry)
         if args.mcp:
-            Path('/mnt/user-data').mkdir(parents=True, exist_ok=True)
+            args.workspace_root.mkdir(parents=True, exist_ok=True)
             mcp = run(['craft', 'tools', app['id'], '--out', str(reference / 'mcp-tools.json')], timeout=210)
             mcp['ok'] = mcp['returncode'] == 0
             checks.append(mcp)

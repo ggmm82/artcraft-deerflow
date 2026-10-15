@@ -103,7 +103,8 @@ def team():
     with LOCK:
         content = yaml.safe_load(path.read_text()) if path.exists() else {}
         profile = next(iter(content.get('models', [])), {})
-        engine = 'deepseek' if profile.get('use') == 'studio.deepseek_provider:StudioDeepSeekChatModel' else 'codex'
+        engine = {'studio.deepseek_provider:StudioDeepSeekChatModel': 'deepseek',
+                  'studio.gemini_provider:StudioGeminiChatModel': 'gemini'}.get(profile.get('use'), 'codex')
         return {'engine': engine, 'model': profile.get('model', 'gpt-5.4'),
                 'ready': connection_status(engine)}
 

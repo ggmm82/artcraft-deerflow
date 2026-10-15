@@ -31,10 +31,27 @@ class CodexProviderTests(unittest.TestCase):
         failure = httpx.HTTPStatusError('Unauthorized', request=response.request, response=response)
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
             model = StudioCodexChatModel(model='gpt-5.4')
-            with patch.object(CodexChatModel, '_stream_response', side_effect=failure):
+            with patch.object(CodexChatModel, '_stream_response', side_effect=failure), \
+                 patch('studio.docker_runtime.refresh_codex_credentials'):
                 with self.assertRaisesRegex(RuntimeError, r'HTTP 401.*\[REDACTED\]') as caught:
                     model._stream_response({}, {})
         self.assertNotIn(credential.access_token, str(caught.exception))
+
+    def test_unauthorized_request_refreshes_cli_account_and_retries_once(self):
+        import httpx
+        from studio.codex_provider import StudioCodexChatModel, CodexChatModel
+        first = SimpleNamespace(access_token='fixture-expired', account_id='account')
+        renewed = SimpleNamespace(access_token='fixture-renewed', account_id='account')
+        response = httpx.Response(401, request=httpx.Request('POST', 'https://example.invalid'))
+        failure = httpx.HTTPStatusError('Expired', request=response.request, response=response)
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=first):
+            model = StudioCodexChatModel(model='gpt-5.4')
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', side_effect=[first, renewed]), \
+             patch.object(CodexChatModel, '_stream_response', side_effect=[failure, {'ok': True}]) as api, \
+             patch('studio.docker_runtime.refresh_codex_credentials') as refresh:
+            self.assertEqual(model._stream_response({}, {}), {'ok': True})
+        refresh.assert_called_once()
+        self.assertEqual(api.call_args_list[1].args[0]['Authorization'], 'Bearer fixture-renewed')
 
 
 if __name__ == '__main__':

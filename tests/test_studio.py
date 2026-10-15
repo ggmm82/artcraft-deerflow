@@ -95,6 +95,33 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(captured[-1][:3], ['docker', 'rm', '-f'])
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
+    def test_gemini_coordinator_has_no_workspace_and_cleans_up_before_delegation(self):
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        captured = []
+        def execute(args, **kwargs):
+            captured.append(args)
+            job = next((self.state.STATE / 'jobs').glob('*.json'))
+            self.assertEqual(json.loads(job.read_text())['model'], 'gemini-2.5-pro')
+            return type('Result', (), {'returncode': 0, 'stdout': '{"ok":true,"response":{"candidates":[]}}'})()
+        with patch.object(self.runtime, 'host_path', return_value='/host/private'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute), patch.object(self.runtime, 'remove'):
+            result = self.runtime.generate_gemini({'model': 'gemini-2.5-pro', 'contents': []})
+        self.assertEqual(result, {'candidates': []})
+        self.assertFalse(any('dst=/mnt/user-data' in arg or 'docker.sock' in arg for arg in captured[0]))
+        self.assertTrue(any('dst=/credentials' in arg for arg in captured[0]))
+        self.assertFalse(list((self.state.STATE / 'jobs').glob('*.json')))
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
+    def test_gemini_provider_errors_are_sanitized_and_release_admission(self):
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        result = type('Result', (), {'returncode': 1, 'stdout': '{"ok":false,"error":"fixture-private-token"}'})()
+        with patch.object(self.runtime, 'host_path', return_value='/host/private'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=result), patch.object(self.runtime, 'remove'):
+            with self.assertRaisesRegex(RuntimeError, 'Gemini non disponibile') as failure:
+                self.runtime.generate_gemini({'model': 'gemini-2.5-pro'})
+        self.assertNotIn('fixture-private-token', str(failure.exception))
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
     def test_worker_timeout_reclaims_container_and_releases_admission(self):
         import subprocess
         (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
