@@ -36,7 +36,7 @@ saved = json.loads(request('/studio/api/agents/gridcraft',
 assert saved['engine'] == 'gemini'
 catalog = json.loads(request('/studio/api/catalog'))
 assert catalog['agents']['gridcraft']['instructions'] == 'Preferisci euro'
-assert b'ArtCraft Studio' in request('/workspace/studio')
+assert b'La tua squadra' in request('/workspace/studio')
 request('/api/v1/auth/logout', {})
 request('/api/v1/auth/register', {'email': 'studio-ci-user@example.com',
                                  'password': 'CiOnly-Regular-User-P4ssword!78239'})
