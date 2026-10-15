@@ -9,9 +9,11 @@ def main():
         (['codex', 'login', '--help'], ['--device-auth']),
         (['codex', 'exec', '--help'], ['--model', '--json', '--output-last-message',
              '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox']),
-        (['gemini', '--version'], ['0.64.0']),
-        (['gemini', '--help'], ['--prompt-interactive', '--prompt', '--approval-mode',
-                               '--output-format', '--model', '--include-directories', '--skip-trust']),
+        (['agy', '--version'], ['1.3.5']),
+        (['agy', '--help'], ['--print', '--output-format', '--model', '--add-dir',
+                            '--json-schema', '--agent', '--disable-slash-commands',
+                            '--print-timeout', '--dangerously-skip-permissions']),
+        (['agy', 'models', '--help'], ['List available models']),
     ]
     for command, expected in contracts:
         result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=90)

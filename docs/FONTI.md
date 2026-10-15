@@ -1,3 +1,5 @@
+Fonti aggiornate Google: [Antigravity CLI](ANTIGRAVITY.md). I riferimenti Gemini qui sotto documentano la precedente integrazione.
+
 # Fonti e versioni
 
 Verifica: 14/10/2026. Le configurazioni sono state controllate sul codice, non eseguite in Docker in questo ambiente.

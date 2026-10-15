@@ -3,7 +3,7 @@
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
 [![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml)
 
-DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Gemini e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
+DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
 ## Come funziona
 
@@ -15,7 +15,7 @@ DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Gemini e DeepSeek API*
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
 - Il profilo iniziale esegue **un solo specialista alla volta**, per la VPS da 4 GB. Non sono previsti modelli locali.
 
-La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Gemini**. La stessa scelta vale per coordinatore e specialisti. Gemini usa il nucleo ufficiale di Gemini CLI per autenticazione e chiamate strutturate; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
+La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Google tramite Antigravity CLI**. La stessa scelta vale per coordinatore e specialisti. Per il nuovo collegamento Google vedi [Antigravity CLI in abbonamento](docs/ANTIGRAVITY.md). Antigravity usa il binario ufficiale `agy` per login Google e generazione in abbonamento; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
 
 ## Stato della verifica
 
@@ -42,7 +42,7 @@ https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hos
 3. Imposta `TRAEFIK_HOST` con il dominio base fornito da Hostinger, per esempio `srv0000000.hstgr.cloud`. Il progetto sarà disponibile su `https://<nome-progetto>.<TRAEFIK_HOST>`.
 4. Avvia il progetto. Hostinger scarica le immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
 5. Apri il dominio e crea il primo account amministratore DeerFlow. La password `STUDIO_PASSWORD` protegge i segreti interni e non è la password dell'account DeerFlow.
-6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex o Gemini e completa il collegamento ufficiale.
+6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex o Antigravity e completa il collegamento ufficiale.
 7. Lascia **Automatico** oppure scegli un modello e premi **Salva e attiva la squadra**. La scelta vale per tutti gli specialisti e le loro skills. Anche **Impostazioni → Modelli** rimanda a questo pannello.
 8. Premi **Risolvi un problema**, carica eventuali file e descrivi cosa ti serve. La chat è già sul profilo **Squadra ArtCraft**: non occorre scegliere un altro coordinatore.
 
@@ -54,7 +54,7 @@ Hostinger documenta Compose da URL e la gestione delle variabili nella [guida uf
 
 ## Uso con DeepSeek API
 
-Non serve collegare account Codex/Gemini per usare DeepSeek:
+Non serve collegare account Codex/Antigravity per usare DeepSeek:
 
 1. Apri **La tua squadra**, incolla la chiave DeepSeek e premi **Salva e attiva la squadra**. **Automatico** sceglie tra i modelli effettivamente disponibili nell’account; una chiave o un modello rifiutati non cambiano la configurazione.
 2. Premi **Risolvi un problema**, carica i file e descrivi il risultato. Il coordinatore e tutti i 13 specialisti usano già il modello condiviso.
@@ -117,7 +117,7 @@ Le credenziali restano nel volume privato `studio-state`; la storia delle CLI no
 
 ## Manutenzione e sviluppo
 
-La [verifica delle integrazioni e guida ai nuovi strumenti](docs/INTEGRAZIONI-E-NUOVI-STRUMENTI.md) descrive Codex/Gemini CLI, la copertura reale delle skills e la procedura automatizzata per aggiungere uno specialista senza un altro modello da configurare.
+La [verifica delle integrazioni e guida ai nuovi strumenti](docs/INTEGRAZIONI-E-NUOVI-STRUMENTI.md) descrive Codex/Antigravity CLI, la copertura reale delle skills e la procedura automatizzata per aggiungere uno specialista senza un altro modello da configurare.
 
 ```bash
 docker compose logs -f gateway
@@ -144,7 +144,7 @@ python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/S
 python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
 ```
 
-I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Questo banco di prova è distinto dal percorso DeepSeek integrato nel pannello e non sostituisce il collaudo utente né i login delle CLI. Ogni prova consuma la quota del provider.
+I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Antigravity; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Questo banco di prova è distinto dal percorso DeepSeek integrato nel pannello e non sostituisce il collaudo utente né i login delle CLI. Ogni prova consuma la quota del provider.
 
 Il workflow costruisce una volta i quattro runtime della PR, li verifica e pubblica un prerelease con `compose.hostinger.yaml` e `runtime-manifest.json`. Il test di avvio scarica e usa gli stessi digest, senza altre build. Il riepilogo **Compose pronto** contiene il collegamento diretto di prova.
 

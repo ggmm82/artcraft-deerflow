@@ -40,6 +40,12 @@ class TeamTests(unittest.TestCase):
     def save(self, **values):
         return self.client.put('/studio/api/team', json=values, headers={'origin': 'http://testserver'})
 
+    def connect_antigravity(self):
+        root = self.state.credential_dir('gemini')
+        (root / 'antigravity-cli').mkdir(exist_ok=True)
+        (root / 'antigravity-cli/antigravity-oauth-token').write_text('fixture-native-token')
+        (root / 'antigravity-account.json').write_text('{}')
+
     def test_codex_catalog_ids_and_labels_are_distinct_and_invalid_names_are_not_saved(self):
         (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
         entries = [{'id': 'gpt-6.1-sol', 'label': 'GPT-6.1-Sol', 'default': True}]
@@ -101,20 +107,37 @@ class TeamTests(unittest.TestCase):
             for s in self.client.get('/studio/api/catalog').json()['effective_agents'].values()))
         self.assertEqual(len(yaml.safe_load((self.state.STATE / 'config.yaml').read_text())['models']), 1)
 
-    def test_gemini_is_a_shared_coordinator_and_worker_provider_after_restart(self):
+    def test_antigravity_shared_model_migrates_old_google_login(self):
         self.assertEqual(self.save(engine='gemini').status_code, 400)
-        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture": true}')
-        response = self.save(engine='gemini')
-        self.assertEqual(response.status_code, 200)
-        self.bootstrap.initialize()
-        catalog = self.client.get('/studio/api/catalog').json()
-        self.assertEqual(catalog['team'], {'engine': 'gemini', 'model': 'gemini-2.5-pro', 'ready': True})
-        for agent in catalog['effective_agents'].values():
-            self.assertEqual((agent['engine'], agent['model']), ('gemini', 'gemini-2.5-pro'))
-        self.assertEqual(yaml.safe_load((self.state.STATE / 'config.yaml').read_text())['models'][0]['use'],
-                         'studio.gemini_provider:StudioGeminiChatModel')
-        self.assertEqual(self.save(engine='gemini', model='gemini-custom').status_code, 200)
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{}')
+        self.assertFalse(self.state.connection_status('gemini'))
+        self.connect_antigravity()
+        available=[{'id':'gemini-custom','label':'Fixture model','default':True}]
+        with patch('studio.docker_runtime.antigravity_models',return_value=available):
+            response=self.save(engine='gemini')
+            self.assertEqual(response.status_code,200)
+            self.bootstrap.initialize()
+            catalog=self.client.get('/studio/api/catalog').json()
+            self.assertEqual(catalog['team'],{'engine':'gemini','model':'auto','ready':True})
+            self.assertTrue(all(a['model']=='auto' for a in catalog['effective_agents'].values()))
+            self.assertEqual(self.save(engine='gemini',model='gemini-custom').status_code,200)
+            self.assertEqual(self.save(engine='gemini',model='unknown').status_code,400)
+            self.assertEqual(self.client.get('/studio/api/team/models?engine=gemini').json()['models'],['auto','gemini-custom'])
         self.assertTrue(all(a['model']=='gemini-custom' for a in self.client.get('/studio/api/catalog').json()['effective_agents'].values()))
+
+    def test_upgrade_resets_old_google_model_but_retains_other_provider_and_preferences(self):
+        self.bootstrap.configure_team('gemini', 'gemini-2.5-pro')
+        self.state.update_agent('cadcraft', {'engine': 'gemini', 'model': 'old-custom',
+            'instructions': 'Consegna DXF', 'enabled': True})
+        (self.state.STATE / 'google-provider-antigravity-v1').unlink()
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{}')
+        self.bootstrap.initialize()
+        self.assertEqual(self.state.team(), {'engine': 'gemini', 'model': 'auto', 'ready': False})
+        self.assertEqual(self.state.effective_agent('cadcraft')['model'], 'auto')
+        self.assertEqual(self.state.effective_agent('cadcraft')['instructions'], 'Consegna DXF')
+        self.bootstrap.configure_team('gemini', 'gemini-new-choice')
+        self.bootstrap.initialize()
+        self.assertEqual(self.state.team()['model'], 'gemini-new-choice')
 
     def test_invalid_connection_or_model_never_partially_changes_team(self):
         before = (self.state.STATE / 'config.yaml').read_bytes()

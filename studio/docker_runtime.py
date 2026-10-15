@@ -70,7 +70,7 @@ def cleanup_orphans():
 def generate_gemini(payload, timeout=1800):
     """No file tools or conversation volume in a coordinator generation container."""
     if not connection_status('gemini'):
-        raise ValueError('Collega Gemini nel pannello La tua squadra')
+        raise ValueError('Collega Antigravity nel pannello La tua squadra')
     if not EXECUTION_LOCK.acquire(timeout=120):
         raise RuntimeError('Squadra occupata; attendi il termine del lavoro attivo')
     name = 'artcraft-coordinator-' + uuid.uuid4().hex[:12]
@@ -84,23 +84,44 @@ def generate_gemini(payload, timeout=1800):
         args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(credential_dir('gemini'), '/credentials'),
             '--mount', mount(job, '/job.json', True),
-            IMAGE, 'node', '/opt/studio/gemini_bridge.mjs', '/job.json']
+            IMAGE, 'python3', '/opt/studio/antigravity_cli.py', '/job.json']
         try:
             completed = subprocess.run(['docker', *args], capture_output=True, text=True,
                                        timeout=timeout + 60)
         except subprocess.TimeoutExpired:
-            raise RuntimeError('Timeout Gemini: riprova dalla chat') from None
+            raise RuntimeError('Timeout Antigravity: riprova dalla chat') from None
         try:
             result = json.loads(completed.stdout)
         except (ValueError, TypeError):
-            raise RuntimeError('Risposta del coordinatore Gemini non valida') from None
+            raise RuntimeError('Risposta del coordinatore Antigravity non valida') from None
         if completed.returncode or result.get('ok') is not True:
-            raise RuntimeError('Gemini non disponibile: verifica account, quota e modello in La tua squadra')
+            raise RuntimeError('Antigravity non disponibile: verifica account, quota e modello in La tua squadra')
         return result['response']
     finally:
         remove(name)
         if 'job' in locals():
             job.unlink(missing_ok=True)
+        EXECUTION_LOCK.release()
+
+
+def antigravity_models():
+    if not connection_status('gemini'):
+        raise ValueError('Collega prima Antigravity con il tuo account Google')
+    if not EXECUTION_LOCK.acquire(timeout=120):
+        raise RuntimeError('Squadra occupata: riprova tra poco')
+    name = 'artcraft-models-' + uuid.uuid4().hex[:12]
+    try:
+        installation = (STATE / 'installation-id').read_text().strip()
+        args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
+            '--mount', mount(credential_dir('gemini'), '/credentials'),
+            IMAGE, 'python3', '/opt/studio/antigravity_cli.py', '--models']
+        result = subprocess.run(['docker', *args], capture_output=True, text=True, timeout=120)
+        value = json.loads(result.stdout)
+        if result.returncode or value.get('ok') is not True:
+            raise RuntimeError('Ricollega Antigravity o verifica la disponibilità del tuo account Google')
+        return value['models']
+    finally:
+        remove(name)
         EXECUTION_LOCK.release()
 
 

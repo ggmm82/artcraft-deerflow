@@ -1,6 +1,8 @@
 # Verifica Codex, Gemini CLI, Hostinger e specializzazione
 
-Audit iniziale del 15 ottobre 2026 sul ramo della PR #1. Per i successivi deploy Hostinger e le generazioni reali Codex/DeepSeek vedere [il collaudo aggiornato](CORREZIONE-MODELLI-E-DELEGA.md); i limiti OAuth Gemini descritti qui restano validi.
+**Aggiornamento Google:** la nuova integrazione usa [Antigravity CLI in abbonamento](ANTIGRAVITY.md). Le sezioni Gemini CLI seguenti descrivono l’integrazione precedente, rimossa dal runtime.
+
+Audit iniziale del 15 ottobre 2026 sul ramo della PR #1. Per i successivi deploy Hostinger e le generazioni reali Codex/DeepSeek vedere [il collaudo aggiornato](CORREZIONE-MODELLI-E-DELEGA.md); il login e i limiti di collaudo Google attuali sono descritti nella guida Antigravity.
 
 ## Codex e Gemini CLI
 

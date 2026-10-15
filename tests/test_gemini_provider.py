@@ -13,15 +13,12 @@ class GeminiProviderTests(unittest.TestCase):
         def generate(payload, **kwargs):
             calls.append(payload)
             if len(calls) == 1:
-                parts = [{'functionCall': {'name': 'studio_delegate', 'args': {'agent': 'gridcraft'}},
-                          'thoughtSignature': 'fixture-signature'}]
+                decision={'content':'','tool_calls':[{'name':'studio_delegate','args':{'agent':'gridcraft'}}]}
             else:
-                self.assertEqual(payload['contents'][-1]['parts'][0]['functionResponse']['response'],
-                                 {'result': {'output': 'verified.xlsx'}})
-                self.assertEqual(payload['contents'][-2]['parts'][0]['thoughtSignature'], 'fixture-signature')
-                parts = [{'text': 'Ecco il foglio verificato.'}]
-            return {'candidates': [{'finishReason': 'STOP', 'content': {'parts': parts}}],
-                    'usageMetadata': {'promptTokenCount': 10, 'candidatesTokenCount': 5, 'totalTokenCount': 15}}
+                self.assertIn('verified.xlsx',payload['prompt'])
+                self.assertIn('studio_delegate',payload['prompt'])
+                decision={'content':'Ecco il foglio verificato.','tool_calls':[]}
+            return {**decision,'usage':{'input_tokens':10,'output_tokens':5,'total_tokens':15}}
         tools = [{'type': 'function', 'function': {'name': 'studio_delegate',
                   'parameters': {'type': 'object', 'properties': {'agent': {'type': 'string'}}}}}]
         model = StudioGeminiChatModel(model='gemini-2.5-pro').bind_tools(tools)
