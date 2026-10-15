@@ -9,7 +9,6 @@ models:
   request_timeout: 1800
 tool_groups:
 - name: file:read
-- name: file:write
 - name: studio
 tools:
 - name: ls
@@ -24,12 +23,6 @@ tools:
 - name: grep
   group: file:read
   use: deerflow.sandbox.tools:grep_tool
-- name: write_file
-  group: file:write
-  use: deerflow.sandbox.tools:write_file_tool
-- name: str_replace
-  group: file:write
-  use: deerflow.sandbox.tools:str_replace_tool
 - name: studio_delegate
   group: studio
   use: studio.tools:studio_delegate
@@ -299,6 +292,11 @@ lead_prompt_overlay:
     sotto /mnt/user-data/outputs. Riesamina checks e warnings dei passaggi. Correggi requisiti falliti
     con una revisione mirata. Consegna tramite present_files i prodotti finali e i sorgenti modificabili
     dopo aver verificato che esistano, con una breve spiegazione e gli eventuali limiti.
+    Consegna direttamente i percorsi effettivi restituiti dagli specialisti, anche se sono in
+    sottocartelle: present_files li supporta. Non ricopiare o rinominare i prodotti nella radice
+    outputs, non creare segnaposto e non ricostruire file binari come testo. Il Gateway coordina
+    e legge: soltanto gli specialisti producono i file. Non consegnare handoff, log o file di lavoro
+    interni se l’utente non li ha richiesti.
 
 auth:
   local:

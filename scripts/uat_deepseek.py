@@ -27,18 +27,57 @@ PROMPT = ('Ho queste vendite e devo condividerle con un cliente. '
 
 
 
+def verify_team_ux(page, base_url, passed, snapshot):
+    """UI-only checks; the read failure is deliberate, then retried against the real API."""
+    page.goto(base_url + '/workspace/chats/new?settings=models', wait_until='domcontentloaded')
+    expect(page.get_by_role('heading', name='Un solo modello per la squadra')).to_be_visible(timeout=30000)
+    snapshot(page, '04-settings-one-place')
+    page.get_by_role('link', name='Configura la squadra →').click()
+    page.wait_for_url('**/workspace/studio', timeout=15000)
+    expect(page.get_by_role('dialog')).to_have_count(0)
+    frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
+    expect(frame.locator('#team-save')).to_be_enabled(timeout=15000)
+    expect(frame.locator('#team-summary')).to_contain_text('Squadra pronta')
+    passed('Impostazioni Modelli apre la configurazione unica e chiude la finestra')
+    assert frame.get_by_role('combobox').count() == 2
+    passed('Due soli menu visibili: servizio e modello della squadra')
+    page.set_viewport_size({'width': 390, 'height': 844})
+    assert frame.locator('html').evaluate('(e) => e.scrollWidth <= window.innerWidth')
+    assert page.locator('html').evaluate('(e) => e.scrollWidth <= window.innerWidth')
+    snapshot(page, '05-mobile-config')
+    passed('Configurazione a 390 pixel senza scorrimento orizzontale')
+    page.set_viewport_size({'width': 1440, 'height': 1100})
+    def fail(route):
+        route.abort('failed')
+    page.route('**/studio/api/catalog', fail)
+    try:
+        page.reload(wait_until='domcontentloaded')
+        frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
+        expect(frame.locator('#reload-config')).to_be_visible(timeout=15000)
+        expect(frame.locator('#team-save')).to_be_disabled()
+        expect(frame.locator('#status')).to_have_text('Connessione interrotta. Riprova tra poco.')
+    finally:
+        page.unroute('**/studio/api/catalog', fail)
+    frame.locator('#reload-config').click()
+    expect(frame.locator('#team-save')).to_be_enabled(timeout=15000)
+    expect(frame.locator('#team-summary')).to_contain_text('Squadra pronta')
+    snapshot(page, '06-config-retry')
+    passed('Errore di lettura simulato: modulo protetto e riprova con risposta reale')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base-url', default='http://127.0.0.1:2026')
     parser.add_argument('--output', type=Path, default=Path('reports/uat-browser'))
     parser.add_argument('--initialize-admin', action='store_true')
+    parser.add_argument('--settings-only', action='store_true', help='Verifica configurazione, navigazione, mobile e riprova senza chiamate LLM')
     parser.add_argument('--thread-url', help='Riapre una conversazione completata e prova i download senza nuove chiamate LLM')
     parser.add_argument('--timeout', type=int, default=1800)
     args = parser.parse_args()
     args.base_url = args.base_url.rstrip('/')
     if args.thread_url and urlsplit(args.thread_url).netloc != urlsplit(args.base_url).netloc:
         parser.error('--thread-url deve appartenere all’istanza di collaudo')
-    required = ['UAT_EMAIL', 'UAT_PASSWORD'] + ([] if args.thread_url else ['DEEPSEEK_API_KEY'])
+    required = ['UAT_EMAIL', 'UAT_PASSWORD'] + ([] if args.thread_url or args.settings_only else ['DEEPSEEK_API_KEY'])
     if any(not os.getenv(name) for name in required):
         parser.error('Impostare ' + ', '.join(required) + ' nell’ambiente')
     args.output.mkdir(parents=True, exist_ok=True)
@@ -87,10 +126,16 @@ def main():
             if created:
                 page.wait_for_url('**/workspace/studio', timeout=30000)
                 passed('Primo accesso guidato automaticamente alla configurazione della squadra')
+            if args.settings_only:
+                verify_team_ux(page, args.base_url, passed, snapshot)
+                report['passed'] = True
+                context.close()
+                return 0
             if not args.thread_url:
                 page.goto(args.base_url + '/workspace/studio', wait_until='domcontentloaded')
                 frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
                 expect(frame.locator('#team-engine')).to_have_value('deepseek', timeout=30000)
+                expect(frame.locator('#team-summary')).to_have_text(re.compile(r'^(Squadra pronta|Collega un servizio)'), timeout=30000)
                 before = frame.locator('#team-summary').inner_text()
                 frame.locator('#deepseek-key').fill('invalid-uat-key')
                 frame.locator('#team-save').click()
@@ -132,6 +177,8 @@ def main():
                         assert all(settings['model'] == model for settings in updated['effective_agents'].values())
                     passed('Cambio modello dal menu propagato ai 13 specialisti senza reinserire la chiave')
                 snapshot(page, '01-team-ready')
+                verify_team_ux(page, args.base_url, passed, snapshot)
+                frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
                 frame.locator('#start-work').click()
                 page.locator('textarea').wait_for(timeout=30000)
                 expect(page.get_by_role('button', name='Squadra ArtCraft', exact=True)).to_be_visible(timeout=15000)

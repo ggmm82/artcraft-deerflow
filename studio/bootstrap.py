@@ -83,10 +83,23 @@ def initialize():
             if item.get('name') == 'studio-codex' and item.get('use') == 'deerflow.models.openai_codex_provider:CodexChatModel':
                 item['use'] = 'studio.codex_provider:StudioCodexChatModel'
                 changed = True
+        template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
         overlay = content.get('lead_prompt_overlay', {})
-        if overlay.get('append', '').startswith('Per ogni lavoro ArtCraft usa studio_delegate'):
-            overlay['append'] = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())['lead_prompt_overlay']['append']
-            changed = True
+        if overlay.get('append', '').startswith(('Per ogni lavoro ArtCraft usa studio_delegate', 'Sei la Squadra ArtCraft.')):
+            if overlay['append'] != template['lead_prompt_overlay']['append']:
+                overlay['append'] = template['lead_prompt_overlay']['append']
+                changed = True
+        if any(t.get('name') == 'studio_delegate' for t in content.get('tools', [])):
+            # Coordinator writes could turn a binary export into a text placeholder.
+            # The specialists own product creation; retain custom unrelated tools.
+            previous = content['tools']
+            content['tools'] = [t for t in previous if not (
+                t.get('name') in ('write_file', 'str_replace')
+                and t.get('use', '').startswith('deerflow.sandbox.tools:'))]
+            if previous != content['tools']:
+                changed = True
+                if not any(t.get('group') == 'file:write' for t in content['tools']):
+                    content['tool_groups'] = [g for g in content.get('tool_groups', []) if g.get('name') != 'file:write']
         if changed:
             temporary = path.with_suffix('.yaml.tmp')
             temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))

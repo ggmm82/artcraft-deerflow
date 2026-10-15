@@ -100,6 +100,26 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         models.assert_not_called()
 
+    def test_upgrade_removes_placeholder_writers_and_preserves_active_provider(self):
+        with patch('studio.deepseek.models', return_value=['deepseek-flash']):
+            self.assertEqual(self.save(engine='deepseek', api_key='test-team-key').status_code, 200)
+        path = self.state.STATE / 'config.yaml'
+        content = yaml.safe_load(path.read_text())
+        content['lead_prompt_overlay']['append'] = 'Sei la Squadra ArtCraft. Old delivery instructions.'
+        content['tools'].extend([
+            {'name': 'write_file', 'group': 'file:write', 'use': 'deerflow.sandbox.tools:write_file_tool'},
+            {'name': 'str_replace', 'group': 'file:write', 'use': 'deerflow.sandbox.tools:str_replace_tool'},
+        ])
+        content['tool_groups'].append({'name': 'file:write'})
+        path.write_text(yaml.safe_dump(content))
+        self.bootstrap.initialize()
+        migrated = yaml.safe_load(path.read_text())
+        self.assertEqual(self.state.team()['engine'], 'deepseek')
+        self.assertFalse(any(t['name'] in ('write_file', 'str_replace') for t in migrated['tools']))
+        self.assertFalse(any(g['name'] == 'file:write' for g in migrated['tool_groups']))
+        self.assertIn('Non ricopiare', migrated['lead_prompt_overlay']['append'])
+        self.assertIn('sottocartelle', migrated['lead_prompt_overlay']['append'])
+
     def test_legacy_coordinator_and_provider_routes_apply_shared_profile(self):
         # A saved conversation using the old alias also follows the global choice.
         path = self.state.STATE / 'config.yaml'
