@@ -14,7 +14,7 @@ class CodexProviderTests(unittest.TestCase):
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=first):
             model = StudioCodexChatModel(model='gpt-5.4')
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=rotated), \
-             patch.object(CodexChatModel, '_stream_response', return_value={'ok': True}) as request:
+             patch('studio.codex_provider.request_codex', return_value={'ok': True}) as request:
             model._stream_response({'Authorization': 'Bearer fixture-old-bearer'}, {'tools': []})
         headers, payload = request.call_args.args
         self.assertEqual(headers['Authorization'], 'Bearer fixture-new-bearer')
@@ -31,7 +31,7 @@ class CodexProviderTests(unittest.TestCase):
         failure = httpx.HTTPStatusError('Unauthorized', request=response.request, response=response)
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
             model = StudioCodexChatModel(model='gpt-5.4')
-            with patch.object(CodexChatModel, '_stream_response', side_effect=failure), \
+            with patch('studio.codex_provider.request_codex', side_effect=failure), \
                  patch('studio.docker_runtime.refresh_codex_credentials'):
                 with self.assertRaisesRegex(RuntimeError, r'HTTP 401.*\[REDACTED\]') as caught:
                     model._stream_response({}, {})
@@ -47,7 +47,7 @@ class CodexProviderTests(unittest.TestCase):
         with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=first):
             model = StudioCodexChatModel(model='gpt-5.4')
         with patch.object(StudioCodexChatModel, '_load_codex_auth', side_effect=[first, renewed]), \
-             patch.object(CodexChatModel, '_stream_response', side_effect=[failure, {'ok': True}]) as api, \
+             patch('studio.codex_provider.request_codex', side_effect=[failure, {'ok': True}]) as api, \
              patch('studio.docker_runtime.refresh_codex_credentials') as refresh:
             self.assertEqual(model._stream_response({}, {}), {'ok': True})
         refresh.assert_called_once()

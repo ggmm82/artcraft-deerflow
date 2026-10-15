@@ -34,12 +34,12 @@ def copy_credentials(source, destination, engine):
 
 def command(engine, model, prompt, output):
     if engine == 'codex':
-        args = ['codex', 'exec', '--skip-git-repo-check',
+        args = ['codex', 'exec', '--json', '--skip-git-repo-check',
                 '--dangerously-bypass-approvals-and-sandbox',
                 '--output-last-message', str(output)]
         if model:
             args += ['--model', model]
-        return args + [prompt]
+        return args + ['-']
     if engine == 'gemini':
         args = ['gemini', '--approval-mode', 'yolo', '--output-format', 'json',
                 '--skip-trust', '--include-directories', '/mnt/user-data']
@@ -47,6 +47,26 @@ def command(engine, model, prompt, output):
             args += ['--model', model]
         return args + ['--prompt', prompt]
     raise ValueError('Motore non valido')
+
+
+def worker_error(engine, result):
+    """Prefer structured CLI failures; never return a quoted system prompt."""
+    if engine == 'codex':
+        errors = []
+        for line in result.stdout.splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if event.get('type') == 'turn.failed':
+                errors.append(str(event.get('error', {}).get('message', 'Turno Codex fallito')))
+            elif event.get('type') == 'error':
+                errors.append(str(event.get('message', 'Errore Codex')))
+        if errors:
+            return errors[-1][:1200]
+    lines = (result.stderr or '').splitlines()
+    important = [line for line in lines if any(word in line.lower() for word in ('error:', 'error ', 'failed', 'permission denied', 'unauthorized', 'unsupported'))]
+    return ('\n'.join(important[-4:]) or '\n'.join(lines[:4]) or 'Worker terminato senza dettagli diagnostici')[:1200]
 
 
 def main():
@@ -105,11 +125,12 @@ def main():
             message = run(job['model'], prompt, output_dir, job['timeout'])
         else:
             result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
+                                input=prompt if engine == 'codex' else None,
                                 env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
                                 capture_output=True, text=True, timeout=job['timeout'])
             if result.returncode:
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
-                              'error': (result.stderr or result.stdout)[-2500:]}))
+                              'error': worker_error(engine, result)}))
                 return result.returncode
             if engine == 'codex':
                 message = final.read_text() if final.exists() else result.stdout

@@ -105,7 +105,7 @@ class IntegrationTests(unittest.TestCase):
             with patch.object(state, 'applications', return_value=applications), patch.object(bootstrap, 'ROOT', template):
                 bootstrap.initialize()
                 new = state.effective_agent('newcraft')
-                self.assertEqual((new['engine'], new['model']), ('codex', 'gpt-5.4'))
+                self.assertEqual((new['engine'], new['model']), ('codex', 'gpt-6.1-sol'))
                 self.assertIn('artcraft-newcraft', new['skills'])
                 from studio.router import AgentConfig
                 values = AgentConfig(skills=state.available_skills()).model_dump()

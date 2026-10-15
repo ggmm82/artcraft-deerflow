@@ -103,7 +103,7 @@ def generate_gemini(payload, timeout=1800):
         EXECUTION_LOCK.release()
 
 
-def refresh_codex_credentials():
+def codex_account(models=False):
     if not EXECUTION_LOCK.acquire(timeout=120):
         raise RuntimeError('Squadra occupata: riprova tra poco')
     name = 'artcraft-refresh-' + uuid.uuid4().hex[:12]
@@ -111,13 +111,22 @@ def refresh_codex_credentials():
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(credential_dir('codex'), '/root/.codex'),
-            IMAGE, 'python3', '/opt/studio/refresh_codex.py']
+            IMAGE, 'python3', '/opt/studio/refresh_codex.py', *(['--models'] if models else [])]
         result = subprocess.run(['docker', *args], capture_output=True, text=True, timeout=90)
         if result.returncode or json.loads(result.stdout).get('ok') is not True:
             raise RuntimeError('Ricollega Codex in La tua squadra')
+        return json.loads(result.stdout)
     finally:
         remove(name)
         EXECUTION_LOCK.release()
+
+
+def refresh_codex_credentials():
+    codex_account()
+
+
+def codex_models():
+    return codex_account(models=True)['models']
 
 
 def delegate(agent_id, task, workspace):

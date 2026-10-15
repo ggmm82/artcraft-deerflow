@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import uuid
+import re
 from pathlib import Path
 
 import yaml
@@ -18,6 +19,8 @@ def configure_team(engine, model, api_key=None):
         raise ValueError('Servizio non disponibile per il coordinamento')
     if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
         raise ValueError('Modello non valido')
+    if not re.fullmatch(r'[a-z0-9][a-z0-9._:/-]*', model):
+        raise ValueError('Usa l’identificatore del modello dall’elenco, non il nome visualizzato')
     with LOCK:
         path = STATE / 'config.yaml'
         content = yaml.safe_load(path.read_text())

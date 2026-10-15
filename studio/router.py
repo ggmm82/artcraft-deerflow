@@ -119,6 +119,15 @@ def team_models(engine: str = 'deepseek'):
     import json
     from .state import credential_dir
     from .deepseek import models
+    if engine == 'codex':
+        if not connection_status('codex'):
+            raise HTTPException(400, 'Collega prima Codex')
+        from .docker_runtime import codex_models
+        try:
+            available = codex_models()
+        except (ValueError, RuntimeError) as error:
+            raise HTTPException(502, str(error)) from None
+        return {'models': [item['id'] for item in available], 'details': available}
     if engine != 'deepseek':
         raise HTTPException(400, 'Elenco automatico disponibile per DeepSeek')
     path = credential_dir('deepseek') / 'api.json'
@@ -153,7 +162,20 @@ def save_team(value: TeamConfig, request: Request):
         elif not connection_status(value.engine):
             raise ValueError('Collega prima il tuo account ' + ('Gemini' if value.engine == 'gemini' else 'Codex'))
         else:
-            chosen = chosen or ('gemini-2.5-pro' if value.engine == 'gemini' else 'gpt-5.4')
+            if value.engine == 'codex':
+                from .docker_runtime import codex_models
+                entries = codex_models()
+                # Labels are for humans; native API requests always use catalog IDs.
+                matches = [item['id'] for item in entries if item['label'] == chosen]
+                if chosen and len(matches) == 1:
+                    chosen = matches[0]
+                if not chosen:
+                    chosen = next((item['id'] for item in entries if item['default']), entries[0]['id'] if entries else '')
+                if chosen not in [item['id'] for item in entries]:
+                    raise ValueError('Scegli un modello dall’elenco del tuo account Codex')
+                available = [item['id'] for item in entries]
+            else:
+                chosen = chosen or 'gemini-2.5-pro'
         configure_team(value.engine, chosen, key if value.engine == 'deepseek' else None)
     except ValueError as error:
         raise HTTPException(400, str(error)) from None

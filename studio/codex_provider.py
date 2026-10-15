@@ -5,6 +5,7 @@ import httpx
 from deerflow.models.openai_codex_provider import CodexChatModel
 
 from .codex_compat import modernize_codex_payload
+from .codex_transport import request_codex
 
 
 class StudioCodexChatModel(CodexChatModel):
@@ -19,7 +20,7 @@ class StudioCodexChatModel(CodexChatModel):
             current_headers = {**headers, 'Authorization': f'Bearer {credential.access_token}',
                                'ChatGPT-Account-ID': credential.account_id}
             try:
-                return super()._stream_response(current_headers, modernize_codex_payload(payload))
+                return request_codex(current_headers, modernize_codex_payload(payload))
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code == 401 and attempt == 0:
                     refresh_codex_credentials()
