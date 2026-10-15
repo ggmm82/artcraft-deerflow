@@ -12,6 +12,10 @@ CLI: `designcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.js
 
 Usa DesignCraft per brochure, pubblicazioni multipagina e prestampa. Per testi strutturati DOCX usa WordCraft; per manipolare un PDF esistente usa PdfCraft.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
@@ -38,7 +42,7 @@ Usa DesignCraft per brochure, pubblicazioni multipagina e prestampa. Per testi s
 ## Controlli di accettazione
 
 - Renderizza tutte le pagine e controlla margini, allineamenti, numerazione e testo tagliato.
-- Esegui validate-pdf per il profilo PDF/X supportato e registra il risultato reale: un PDF apribile non dimostra conformità PDF/X.
+- Esegui il comando di registro `preflight.run` per i controlli editoriali. Per attestare PDF/X usa un validatore indipendente disponibile e registra il risultato; il profilo di export o un PDF apribile non dimostrano conformità.
 - Consegna sorgente, PDF e rapporto di prestampa con font, abbondanze, immagini e limiti colore.
 
 ## Sintassi di riferimento
@@ -50,7 +54,7 @@ Il `--help`, il registro e gli schemi della release installata restano la fonte 
 designcraft-cli commands
 designcraft-cli run --in input.designcraft --all-pages preview
 designcraft-cli run --in input.designcraft --export output.pdf
-designcraft-cli validate-pdf output.pdf
+designcraft-cli run --in input.designcraft --cmd 'preflight.run={}'
 ```
 
 ## Consegna

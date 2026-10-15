@@ -4,6 +4,7 @@ import ast
 import json
 from pathlib import Path
 import re
+import runpy
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,7 @@ def main():
     assert len(ids)==len(lock['applications']) and ids==set(cfg['subagents']['custom_agents'])
     expected_skills={'artcraft-'+identifier for identifier in ids}|{'artcraft-workspace','artcraft-studio'}
     assert {p.parent.name for p in (ROOT/'skills/custom').glob('*/SKILL.md')}==expected_skills
+    assert ids == set(runpy.run_path(str(ROOT/'scripts/acceptance.py'))['CASES'])
     assert (ROOT/'studio/deerflow.yaml').read_bytes()==(ROOT/'config/deerflow.yaml').read_bytes()
     assert (ROOT/'studio/versions.lock.json').read_bytes()==(ROOT/'versions.lock.json').read_bytes()
     for a in lock['applications']:
@@ -25,6 +27,7 @@ def main():
             assert asset['url'].startswith(a['repository']+'/releases/download/'+a['version']+'/')
         skill=ROOT/'skills/custom'/('artcraft-'+a['id'])/'SKILL.md'
         assert skill.is_file()
+        assert (skill.parent/'references/CLI-RECIPE.md').is_file()
         front=yaml.safe_load(skill.read_text().split('---',2)[1])
         assert front['name']==skill.parent.name and front['description']
     assert cfg['sandbox']['allow_host_bash'] is False

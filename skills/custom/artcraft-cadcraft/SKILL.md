@@ -12,6 +12,10 @@ CLI: `cadcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`
 
 Usa CADCraft per disegno tecnico, geometrie, layer, quote e DXF. Una rappresentazione grafica non sostituisce la verifica delle dimensioni.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.

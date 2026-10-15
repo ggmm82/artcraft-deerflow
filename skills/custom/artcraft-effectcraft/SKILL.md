@@ -12,6 +12,10 @@ CLI: `effectcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.js
 
 Usa EffectCraft per composizioni, motion graphics, keyframe ed effetti. Il montaggio finale di molte clip appartiene a FilmCraft.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
@@ -48,8 +52,8 @@ Il `--help`, il registro e gli schemi della release installata restano la fonte 
 
 ```bash
 effectcraft-cli commands
-effectcraft-cli info input.ecproj
-effectcraft-cli render --comp Main --out output.mp4 input.ecproj
+effectcraft-cli --project input.ecproj info
+effectcraft-cli --project input.ecproj render --comp Main --out output.mp4
 ```
 
 ## Consegna

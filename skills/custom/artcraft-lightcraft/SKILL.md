@@ -12,6 +12,10 @@ CLI: `lightcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.jso
 
 Usa LightCraft per sviluppo fotografico RAW, esposizione, colore e serie di foto. Per maschere e compositing con molti livelli usa PhotoCraft.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.

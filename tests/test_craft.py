@@ -38,6 +38,16 @@ for line in sys.stdin:
 
 
 class CraftTests(unittest.TestCase):
+    def test_mcp_text_json_ids_remain_typed_inside_a_stateful_batch(self):
+        results = [{'content': [{'type': 'text', 'text': '{"id": 42, "items": [1, 2]}'}]}]
+        value = craft.resolve_references({'parent': {'$result': '0.content.0.text.$json.id'},
+                                         'items': {'$result': '0.content.0.text.$json.items'}}, results)
+        self.assertEqual(value, {'parent': 42, 'items': [1, 2]})
+        with self.assertRaises(ValueError):
+            craft.resolve_references({'$result': '0.content.$json'}, results)
+        with self.assertRaises(ValueError):
+            craft.resolve_references({'$result': '0.content.0.text.$json'}, [{'content': [{'text': 'not JSON'}]}])
+
     def test_nested_references_keep_json_types(self):
         results = [{'structuredContent': {'items': [{'id': 7}]}}]
         self.assertEqual(craft.resolve_references({'ids': [{'$result': '0.structuredContent.items.0.id'}]}, results), {'ids': [7]})

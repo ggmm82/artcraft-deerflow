@@ -12,6 +12,10 @@ CLI: `gridcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json
 
 Usa GridCraft per dati, formule, tabelle, grafici e XLSX. Fornisci a DeckCraft dati verificati e definizioni delle metriche quando serve una presentazione.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.

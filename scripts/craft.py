@@ -97,7 +97,14 @@ def resolve_references(value, results):
             raise ValueError('Riferimento $result: indice precedente non valido')
         result = results[int(parts[0])]
         for part in parts[1:]:
-            if isinstance(result, list):
+            if part == '$json':
+                if not isinstance(result, str):
+                    raise ValueError('Riferimento $result: $json richiede testo JSON')
+                try:
+                    result = json.loads(result)
+                except ValueError:
+                    raise ValueError('Riferimento $result: testo JSON non valido') from None
+            elif isinstance(result, list):
                 if not part.isdecimal() or int(part) >= len(result):
                     raise ValueError('Riferimento $result: indice di lista non valido')
                 result = result[int(part)]

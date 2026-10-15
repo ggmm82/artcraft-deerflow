@@ -20,4 +20,4 @@ Il primo salvataggio della squadra sostituisce le vecchie scelte di motore/model
 
 La configurazione del profilo nel volume `studio-state` è la fonte del modello effettivo: le skills non contengono copie del modello o delle credenziali. La chiave viene custodita separatamente, non è restituita dal catalogo e il browser svuota il campo dopo il salvataggio. Non viene salvata in localStorage.
 
-Il profilo condiviso supporta DeepSeek API e Codex. Gemini CLI resta disponibile alle integrazioni precedenti; non viene offerto come coordinatore perché questa funzione non è implementata.
+Il profilo condiviso supporta DeepSeek API, Codex e Gemini. Il collegamento Gemini usa l’OAuth ufficiale della CLI e termina automaticamente, senza generazioni di prova. Coordinatore e specialisti ereditano lo stesso provider e modello, anche dopo il riavvio.

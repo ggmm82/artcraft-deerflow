@@ -1,7 +1,7 @@
 # ArtCraft Studio · DeerFlow
 
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
-[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinger.yaml)
+[![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml)
 
 DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Gemini e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
@@ -28,7 +28,7 @@ La suite locale verifica configurazione, API del pannello, isolamento dei percor
 URL diretto:
 
 ```text
-https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinger.yaml
+https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml
 ```
 
 1. In Hostinger apri VPS → Docker Manager → Compose → Compose from URL e inserisci l'URL.
@@ -39,6 +39,8 @@ https://raw.githubusercontent.com/ggmm82/artcraft-deerflow/main/compose.hostinge
 6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex o Gemini e completa il collegamento ufficiale.
 7. Lascia **Automatico** oppure scegli un modello e premi **Salva e attiva la squadra**. La scelta vale per tutti gli specialisti e le loro skills. Anche **Impostazioni → Modelli** rimanda a questo pannello.
 8. Premi **Risolvi un problema**, carica eventuali file e descrivi cosa ti serve. La chat è già sul profilo **Squadra ArtCraft**: non occorre scegliere un altro coordinatore.
+
+Il link usa il Compose dell’ultimo rilascio che ha completato la CI, con immagini fissate allo stesso commit. Il file nel repository conserva uno specifico rilascio per revisione e riproducibilità.
 
 Il Compose Hostinger pubblica Gateway e frontend tramite etichette lette dal Traefik in modalità host e non richiede una rete esterna né occupa direttamente porte della VPS. Il proxy Caddy rimane soltanto nel Compose locale di sviluppo.
 
@@ -119,6 +121,14 @@ python -m unittest discover -s tests -v
 python scripts/validate.py
 ```
 
+Per il collaudo deterministico dei 13 programmi, senza account e senza consumo API:
+
+```bash
+docker run --rm --network=none --memory=1536m artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py
+```
+
+Il collaudo crea sorgenti ed export reali, li riapre e verifica contenuti e misure. Le ricette verificate in `references/CLI-RECIPE.md` sono incluse automaticamente nel contesto degli specialisti, per tutti i provider.
+
 Per provare le skill con DeepSeek imposta `DEEPSEEK_API_KEY` nell'ambiente della shell (mai nel repository), poi:
 
 ```bash
@@ -132,7 +142,7 @@ I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene s
 
 Per verificare modifiche in produzione ricostruisci le immagini dal checkout oppure, dopo CI e pubblicazione, aggiorna i riferimenti `sha-…` del Compose Hostinger. I tag già fissati non ricevono le modifiche dei sorgenti automaticamente.
 
-Dopo un workflow completo verde su `main`, l'artefatto `hostinger-compose-<SHA>` contiene il Compose con tutte le immagini di quel commit. È generato solo dopo il collaudo di avvio; il file Hostinger attualmente versionato conserva le immagini precedenti finché non viene aggiornato esplicitamente. `scripts/prepare_hostinger.py` permette di preparare lo stesso file controllando prima che le immagini siano pubblicate.
+Dopo un workflow completo verde su `main` o un rilascio manuale, l’artefatto `hostinger-compose-<SHA>` e il rilascio GitHub contengono il Compose con tutte le immagini di quel commit. Il link stabile `releases/latest/download/compose.hostinger.yaml` si aggiorna solo dopo il collaudo di avvio. `scripts/prepare_hostinger.py` permette di preparare lo stesso file controllando prima che le immagini siano pubblicate.
 
 Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non usare `down -v` salvo richiesta esplicita di cancellazione. Per aggiornare, modifica insieme `versions.lock.json`, versioni CLI nei Dockerfile, commit DeerFlow nei Compose/workflow e collaudi. I dati non si aggiornano automaticamente a un nuovo schema.
 

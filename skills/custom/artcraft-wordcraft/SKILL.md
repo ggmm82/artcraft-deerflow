@@ -8,6 +8,8 @@ description: "Documenti strutturati, stili, tabelle, DOCX e PDF. Usa questa skil
 Specialista: `wordcraft` per `studio_delegate`; nome della skill: `artcraft-wordcraft`.
 CLI: `wordcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
 
+La [ricetta CLI collaudata](references/CLI-RECIPE.md) viene inclusa automaticamente nel contesto dello specialista, insieme al percorso rapido seguente.
+
 ## Quando usarla
 
 Usa WordCraft per relazioni, testi strutturati, tabelle e DOCX. Per impaginati editoriali con abbondanze usa DesignCraft.

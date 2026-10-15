@@ -12,6 +12,10 @@ CLI: `figcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`
 
 Usa FigCraft per layout UI, componenti e prototipi. Per illustrazioni e loghi usa VectorCraft; un prototipo non equivale a un sito funzionante.
 
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.

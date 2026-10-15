@@ -69,6 +69,9 @@ jobs:
       - name: Check official Gemini CLI core without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --entrypoint node --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/tests/gemini_bridge.mjs
+      - name: Run representative native file workflows for all specialists
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |
@@ -86,6 +89,8 @@ jobs:
   startup:
     needs: images
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -134,3 +139,15 @@ jobs:
         with:
           name: hostinger-compose-${{ github.sha }}
           path: reports/release/compose.hostinger.yaml
+      - name: Publish tested Compose for Hostinger URL deployment
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/release_notes.py --commit "$GITHUB_SHA" --output reports/release/notes.md
+          release_tag="studio-${GITHUB_SHA}"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" reports/release/compose.hostinger.yaml --clobber
+          else
+            gh release create "$release_tag" reports/release/compose.hostinger.yaml --target "$GITHUB_SHA" --title "ArtCraft Studio ${GITHUB_SHA:0:8}" --notes-file reports/release/notes.md --latest
+          fi

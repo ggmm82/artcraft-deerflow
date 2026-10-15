@@ -65,6 +65,9 @@ def main():
             raise ValueError('Nome skill non valido')
         source = Path('/mnt/skills/custom') / name
         selected.append((source / 'SKILL.md').read_text())
+        recipe = source / 'references/CLI-RECIPE.md'
+        if recipe.is_file():
+            selected.append(recipe.read_text())
         # Native skill discovery for either CLI, scoped to this disposable run.
         if engine != 'deepseek':
             skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'skills'
