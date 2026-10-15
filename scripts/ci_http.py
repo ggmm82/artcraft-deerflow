@@ -3,6 +3,7 @@ import http.cookiejar
 import json
 import os
 import urllib.request
+import urllib.error
 
 base = 'http://127.0.0.1:2026'
 passwords = urllib.request.HTTPPasswordMgrWithDefaultRealm()
@@ -36,4 +37,16 @@ assert saved['engine'] == 'gemini'
 catalog = json.loads(request('/studio/api/catalog'))
 assert catalog['agents']['gridcraft']['instructions'] == 'Preferisci euro'
 assert b'ArtCraft Studio' in request('/workspace/studio')
-print('OK: account DeerFlow, sessione, CSRF, pannello, configurazione specialisti e pagina integrata.')
+request('/api/v1/auth/logout', {})
+request('/api/v1/auth/register', {'email': 'studio-ci-user@example.com',
+                                 'password': 'CiOnly-Regular-User-P4ssword!78239'})
+for path, payload, method in [('/studio/api/catalog', None, 'GET'),
+                              ('/studio/api/login/gemini', {}, 'POST'),
+                              ('/studio/api/team', {'engine': 'gemini'}, 'PUT')]:
+    try:
+        request(path, payload, method)
+    except urllib.error.HTTPError as error:
+        assert error.code == 403, (path, error.code)
+    else:
+        raise AssertionError('Un utente ordinario ha accesso alla configurazione globale: ' + path)
+print('OK: account, sessione, CSRF, configurazione amministratore; accesso globale negato agli utenti ordinari.')
