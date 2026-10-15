@@ -1,8 +1,8 @@
-# Immagini pubblicate del commit: c91e8032d7eed716b4dd19c81526abe778f35158
+# Immagini pubblicate del commit: 345840fa88153500158c2bde8e6a5041ddb682fc
 name: artcraft-studio
 services:
   sandbox-image:
-    image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-c91e8032d7eed716b4dd19c81526abe778f35158
+    image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-345840fa88153500158c2bde8e6a5041ddb682fc
     command:
     - python3
     - -c
@@ -35,12 +35,12 @@ services:
   gateway:
     restart: unless-stopped
     init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-c91e8032d7eed716b4dd19c81526abe778f35158
+    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-345840fa88153500158c2bde8e6a5041ddb682fc
     mem_limit: 1024m
     stop_grace_period: 30s
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare una password di almeno 16 caratteri}
-      STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-c91e8032d7eed716b4dd19c81526abe778f35158
+      STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-345840fa88153500158c2bde8e6a5041ddb682fc
       DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
       AUTH_TRUSTED_PROXIES: ''
@@ -88,7 +88,7 @@ services:
   frontend:
     restart: unless-stopped
     init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-frontend:sha-c91e8032d7eed716b4dd19c81526abe778f35158
+    image: ghcr.io/ggmm82/artcraft-deerflow-frontend:sha-345840fa88153500158c2bde8e6a5041ddb682fc
     mem_limit: 512m
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}

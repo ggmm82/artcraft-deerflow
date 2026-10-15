@@ -17,3 +17,16 @@ La chiave DeepSeek già fornita per le prove è stata collegata nel pannello com
 Il collaudo illustrativo ha trovato anche un limite reale del worker DeepSeek: la produzione veniva congelata al turno 28, pur avendo tempo residuo e un batch di costruzione quasi pronto. La nuova soglia è 64 chiamate con avviso negli ultimi quattro turni; l’esecuzione dei batch preparati resta possibile fino alla chiamata finale riservata. `submit_handoff` è disponibile fin dall’inizio per chiudere appena il prodotto è pronto. I file interni sotto `work/` non possono sostituire gli output del brief. La skill VectorCraft specifica ora la via rapida SVG XML originale → import nativo → export SVG/PNG, evitando decine di operazioni MCP per costruire da zero un disegno semplice.
 
 Le nuove prove automatiche coprono anche l’esecuzione di una produzione preparata durante la riserva finale e il rifiuto dei cataloghi interni come prodotti. Il caso illustrativo fallito sul vecchio runtime rimane tale e non viene contato come riuscito.
+
+
+## Stato verificato del rilascio
+
+Runtime `345840fa88153500158c2bde8e6a5041ddb682fc`: tutti i sei job CI e avvio completo verdi, sia nella [PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727278651) sia nella [pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727399776). Il Compose nel repository usa questi runtime. Il download anonimo dell’[asset versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-345840fa88153500158c2bde8e6a5041ddb682fc/compose.hostinger.yaml) è stato confrontato con il file generato.
+
+Sono passati 62 test Python: 57 locali e cinque contratti provider nell’immagine Gateway effettiva, compreso il retry limitato dopo 429. Restano le verifiche native delle 13 app e il collaudo del protocollo Codex senza generazione nella CI.
+
+Sul VPS sono state prodotte e scaricate una DOCX e una PDF con testo/pagina verificati indipendentemente. Il percorso rapido illustrativo ha completato VectorCraft → PhotoCraft con SVG, sorgente VectorCraft, PNG trasparente e PSD a tre livelli. Il controllo visivo ha rilevato un’ombra duplicata nel primo export PhotoCraft: una terza delega ha nascosto quel livello e riesportato i file. Il PNG finale è stato visto, il PSD riaperto e la trasparenza verificata: la sagoma trasparente/opaca corrisponde al render vettoriale; l’antialiasing di bordo varia leggermente dopo il compositing. È un disegno stilizzato 512×512; il PSD separa soggetto e sfondo, non le singole parti del corpo.
+
+La configurazione live mantiene Codex con il corretto ID `gpt-6.1-sol`. DeepSeek è collegato nel pannello comune. Il profilo DeepSeek separato della chat è stato disattivato, conservando la configurazione persistente: il selettore mostra solo Squadra ArtCraft. Le conversazioni dell’utente non sono state modificate.
+
+Il coordinatore Codex risponde con l’ID corretto. La produzione del worker Codex resta da verificare **dopo l’installazione di questo rilascio**: il vecchio worker nascondeva la causa nel contesto troncato ed è stato osservato anche HTTP 429. Non viene dichiarata riuscita senza output finali. L’aggiornamento Docker sul VPS è eseguito dall’utente.
