@@ -29,7 +29,7 @@ Sul VPS sono state prodotte e scaricate una DOCX e una PDF con testo/pagina veri
 
 La configurazione live mantiene Codex con il corretto ID `gpt-6.1-sol`. DeepSeek è collegato nel pannello comune. Il profilo DeepSeek separato della chat è stato disattivato, conservando la configurazione persistente: il selettore mostra solo Squadra ArtCraft. Le conversazioni dell’utente non sono state modificate.
 
-Il coordinatore Codex risponde con l’ID corretto. La produzione del worker Codex resta da verificare **dopo l’installazione di questo rilascio**: il vecchio worker nascondeva la causa nel contesto troncato ed è stato osservato anche HTTP 429. Non viene dichiarata riuscita senza output finali. L’aggiornamento Docker sul VPS è eseguito dall’utente.
+Il coordinatore Codex risponde con l’ID corretto. Il collaudo del worker dopo l’installazione di questo rilascio ha identificato e isolato un ulteriore difetto nei percorsi CLI della skill WordCraft, corretto nell’aggiornamento descritto sotto. La successiva prova con istruzioni corrette ha prodotto file verificati. L’aggiornamento Docker sul VPS è eseguito dall’utente.
 
 
 ## Collaudo successivo al deploy: percorsi CLI WordCraft
@@ -38,4 +38,10 @@ Il nuovo endpoint del catalogo Codex risponde correttamente sul VPS. La prima de
 
 La skill ora usa i percorsi reali. Il prompt del worker e la procedura comune specificano `python3` e `/usr/local/bin` per tutti gli specialisti. La validazione del catalogo rifiuta il vecchio percorso nelle skill e nelle ricette. Quando un manifest non contiene output validi, il runtime continua a rifiutare la consegna, includendo specialista, cartella e cause dei controlli falliti anziché soltanto l'errore di schema. La diagnostica non segue manifest collegati fuori dalla cartella assegnata.
 
-La verifica della produzione Codex con i percorsi corretti è in corso; questo aggiornamento non viene contato come collaudo riuscito finché i documenti non sono scaricati e controllati.
+La prova successiva sul VPS con coordinatore e worker Codex `gpt-6.1-sol`, trasmettendo esplicitamente i percorsi corretti nella delega, ha prodotto DOCX (6.313 byte) e PDF (9.006 byte). Entrambi sono stati scaricati dal backend autenticato; lettura indipendente XML DOCX e pypdf conferma il solo testo `COLLAUDO ARTCRAFT OK`, PDF di una pagina. La chat nel browser mostra i due file e i link corretti; entrambi i pulsanti Download sono stati cliccati e i file confrontati byte per byte con quelli verificati. La delega è una sola, riuscita. Il pannello mantiene la squadra Codex. Non è stata eseguita ispezione visiva del documento.
+
+Questa prova dimostra la produzione reale del worker con la correzione esplicita; perché le richieste ordinarie la ricevano automaticamente occorre distribuire il nuovo runtime con le skill corrette. Non si dichiara ancora verificato su VPS quel successivo deploy.
+
+I test aggiornati sono 64: 59 locali e cinque contratti provider nell’immagine Gateway, tutti passati. Le nuove regressioni verificano la causa operativa nei manifest falliti e il rifiuto dei symlink esterni anche nella diagnostica.
+
+Rilascio della correzione skill: `9176304b6e74433109931b1c75721c1b663c3845`. Tutti i sei job della [CI di pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731051499) e della [CI PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731059284) sono verdi, incluso avvio completo. Il Compose nel repository fissa questo rilascio; il [Compose versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-9176304b6e74433109931b1c75721c1b663c3845/compose.hostinger.yaml) è stato scaricato anche anonimamente e confrontato byte per byte con l’asset di rilascio. La distribuzione di questo ultimo aggiornamento su Hostinger non è ancora stata eseguita.
