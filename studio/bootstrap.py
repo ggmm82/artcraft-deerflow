@@ -11,35 +11,48 @@ import yaml
 from .state import STATE, ROOT, catalog
 
 
-def configure_coordinator(model):
-    from .state import LOCK
+def configure_team(engine, model, api_key=None):
+    """One public profile drives coordinator and every specialist/skill."""
+    from .state import LOCK, atomic_json, credential_dir
+    if engine not in ('codex', 'deepseek'):
+        raise ValueError('Servizio non disponibile per il coordinamento')
+    if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
+        raise ValueError('Modello non valido')
     with LOCK:
         path = STATE / 'config.yaml'
         content = yaml.safe_load(path.read_text())
-        for item in content['models']:
-            if item['name'] == 'studio-codex':
-                item['model'] = model
+        entry = {'name': 'studio-codex', 'display_name': 'Squadra ArtCraft',
+                 'use': ('studio.deepseek_provider:StudioDeepSeekChatModel' if engine == 'deepseek'
+                         else 'studio.codex_provider:StudioCodexChatModel'),
+                 'model': model, 'supports_thinking': engine == 'codex',
+                 'supports_reasoning_effort': engine == 'codex', 'request_timeout': 1800}
+        # Keep old saved conversation identifiers working, with the same profile.
+        aliases = [{**entry, 'name': item['name']} for item in content.get('models', [])
+                   if item['name'] == 'studio-deepseek']
+        content['models'] = [entry, *aliases, *[m for m in content.get('models', [])
+                              if m['name'] not in ('studio-codex', 'studio-deepseek')]]
         temporary = path.with_suffix('.yaml.tmp')
-        temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
-        temporary.chmod(0o600)
-        temporary.replace(path)
+        try:
+            temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
+            temporary.chmod(0o600)
+            if api_key is not None:
+                atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
+            agents = catalog()
+            for settings in agents.values():
+                settings.update(engine='inherit', model='')
+            atomic_json(STATE / 'agents.json', agents)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def configure_coordinator(model):
+    from .state import team
+    configure_team(team()['engine'], model)
 
 
 def configure_deepseek(api_key, model):
-    """Validate at the router first; persist key separately from the public model."""
-    from .state import LOCK, atomic_json, credential_dir
-    with LOCK:
-        atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
-        path = STATE / 'config.yaml'
-        content = yaml.safe_load(path.read_text())
-        entry = {'name': 'studio-deepseek', 'display_name': 'Studio · DeepSeek',
-                 'use': 'studio.deepseek_provider:StudioDeepSeekChatModel',
-                 'model': model, 'supports_thinking': False, 'request_timeout': 1800}
-        content['models'] = [m for m in content['models'] if m['name'] != entry['name']] + [entry]
-        temporary = path.with_suffix('.yaml.tmp')
-        temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
-        temporary.chmod(0o600)
-        temporary.replace(path)
+    configure_team('deepseek', model, api_key)
 
 
 def initialize():
@@ -67,9 +80,13 @@ def initialize():
         content = yaml.safe_load(path.read_text())
         changed = False
         for item in content.get('models', []):
-            if item.get('name') == 'studio-codex' and item.get('use') != 'studio.codex_provider:StudioCodexChatModel':
+            if item.get('name') == 'studio-codex' and item.get('use') == 'deerflow.models.openai_codex_provider:CodexChatModel':
                 item['use'] = 'studio.codex_provider:StudioCodexChatModel'
                 changed = True
+        overlay = content.get('lead_prompt_overlay', {})
+        if overlay.get('append', '').startswith('Per ogni lavoro ArtCraft usa studio_delegate'):
+            overlay['append'] = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())['lead_prompt_overlay']['append']
+            changed = True
         if changed:
             temporary = path.with_suffix('.yaml.tmp')
             temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))

@@ -8,9 +8,11 @@ description: "Coordina tutti gli specialisti ArtCraft per creare immagini, grafi
 Leggi `artcraft-workspace`. Lavora in italiano e preserva i requisiti.
 Il catalogo di specialisti comprende: photocraft, vectorcraft, filmcraft, lightcraft, pdfcraft, effectcraft, designcraft, gridcraft, wordcraft, deckcraft, cadcraft, soundcraft, figcraft.
 
+L’utente descrive il problema, senza conoscere i nomi dei programmi. Scegli autonomamente i ruoli utili e comunica in italiano il risultato atteso. Usa ipotesi ragionevoli per dettagli non essenziali.
+
 1. Trasforma la richiesta in consegne verificabili. Non attivare tutti gli specialisti per un compito semplice.
 2. Ispeziona gli input e crea un piano con dipendenze, responsabile e cartella di output per attività.
-3. Usa `studio_delegate(agent, task)` con l'identificatore esatto dello specialista. Includi obiettivo, percorsi assoluti degli input, nomi/formati degli output, vincoli (unità, lingua, durata, dimensioni) e controlli di accettazione. Richiedi `handoff.json` nella cartella assegnata dal runtime. Il pannello Studio determina il motore: CLI Codex, CLI Gemini oppure DeepSeek API.
+3. Usa `studio_delegate(agent, task)` con l'identificatore esatto dello specialista. Includi obiettivo, percorsi assoluti degli input, nomi/formati degli output, vincoli (unità, lingua, durata, dimensioni) e controlli di accettazione. Richiedi `handoff.json` nella cartella assegnata dal runtime. Coordinatore e specialisti ereditano il modello dalla configurazione unica della squadra in Studio. Non chiedere all’utente di scegliere agenti, skills o modelli per ogni incarico.
 4. Delega un lavoro alla volta. Il profilo VPS da 4 GB serializza i container. Non assegnare lo stesso file in scrittura a più agenti.
 5. Trasmetti i risultati verificati agli specialisti successivi tramite percorsi sotto `/mnt/user-data`; leggi il loro `handoff.json`, incluso nella risposta della delega. Usa soltanto file esistenti e specifica unità, fonti e dipendenze del passaggio.
 6. Riesamina gli export, `checks` e `warnings`. `ok: true` significa esecuzione conclusa e file presenti; i controlli di qualità possono essere `failed` o `not_run`. Se fallisce un requisito, assegna una revisione mirata; se manca un controllo, esplicita il limite. Non inoltrare risultati falliti come dati verificati.

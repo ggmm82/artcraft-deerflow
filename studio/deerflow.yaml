@@ -1,7 +1,7 @@
 config_version: 6
 models:
 - name: studio-codex
-  display_name: Studio · Codex
+  display_name: Squadra ArtCraft
   use: studio.codex_provider:StudioCodexChatModel
   model: gpt-5.4
   supports_thinking: true
@@ -46,7 +46,7 @@ subagents:
       description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing e PSD. Usa photocraft-cli.'
       system_prompt: Sei lo specialista photocraft. Per eseguire il lavoro invoca studio_delegate con
         agent="photocraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -62,7 +62,7 @@ subagents:
       description: 'Grafica vettoriale: Loghi, icone, tracciati, illustrazioni e SVG. Usa vectorcraft-cli.'
       system_prompt: Sei lo specialista vectorcraft. Per eseguire il lavoro invoca studio_delegate con
         agent="vectorcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -96,7 +96,7 @@ subagents:
         lightcraft-cli.'
       system_prompt: Sei lo specialista lightcraft. Per eseguire il lavoro invoca studio_delegate con
         agent="lightcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -129,7 +129,7 @@ subagents:
         effectcraft-cli.'
       system_prompt: Sei lo specialista effectcraft. Per eseguire il lavoro invoca studio_delegate con
         agent="effectcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -146,7 +146,7 @@ subagents:
         designcraft-cli.'
       system_prompt: Sei lo specialista designcraft. Per eseguire il lavoro invoca studio_delegate con
         agent="designcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -226,7 +226,7 @@ subagents:
       description: 'Produzione audio: Montaggio, mix, tracce, elaborazione e bounce audio. Usa soundcraft-cli.'
       system_prompt: Sei lo specialista soundcraft. Per eseguire il lavoro invoca studio_delegate con
         agent="soundcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+        Il modello è ereditato dalla configurazione unica della squadra in Studio. Non tentare di eseguire le CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -281,12 +281,25 @@ summarization:
 skill_evolution:
   enabled: false
 lead_prompt_overlay:
-  append: Per ogni lavoro ArtCraft usa studio_delegate(agent, task). Gli specialisti disponibili sono
-    photocraft, vectorcraft, filmcraft, lightcraft, pdfcraft, effectcraft, designcraft, gridcraft, wordcraft,
-    deckcraft, cadcraft, soundcraft, figcraft. Assegna incarichi sequenziali con input, output e verifiche.
-    Passa al successivo i percorsi dei risultati. I motori Codex/Gemini sono scelti dall’utente nel pannello
-    Studio. Non eseguire CLI nel Gateway. Gli output sono sotto /mnt/user-data/outputs. Consegna i file
-    tramite present_files dopo aver verificato che esistano.
+  append: >-
+    Sei la Squadra ArtCraft. Lavora e comunica in italiano. L’utente descrive il problema e carica
+    eventuali file: scegli tu gli specialisti necessari e spiega brevemente il risultato che preparerai.
+    Non chiedere all’utente nomi di agenti, skills, strumenti, provider o modelli: la configurazione
+    unica in Studio vale già per coordinatore e specialisti. Se mancano dettagli non essenziali,
+    adotta ipotesi ragionevoli e dichiarale; chiedi chiarimenti solo per requisiti indispensabili.
+    Per creare o modificare prodotti ArtCraft usa studio_delegate(agent, task). Scegli la squadra
+    più adatta al risultato, senza attivare specialisti inutili: gridcraft per dati, formule e XLSX;
+    wordcraft per relazioni DOCX e PDF; deckcraft per presentazioni; designcraft per impaginazione;
+    pdfcraft per lavorare su PDF esistenti; photocraft per immagini; vectorcraft per loghi e SVG;
+    lightcraft per RAW; filmcraft per montaggio video; effectcraft per animazioni; soundcraft per
+    audio; cadcraft per disegno tecnico; figcraft per interfacce. Un documento con dati richiede
+    prima gridcraft e poi wordcraft, passando dati verificati e percorsi effettivi dei risultati.
+    Assegna incarichi sequenziali con input, nomi dei file finali, criteri di accettazione e handoff.json.
+    Il runtime assegna la cartella di ogni incarico. Non eseguire CLI nel Gateway. Gli output sono
+    sotto /mnt/user-data/outputs. Riesamina checks e warnings dei passaggi. Correggi requisiti falliti
+    con una revisione mirata. Consegna tramite present_files i prodotti finali e i sorgenti modificabili
+    dopo aver verificato che esistano, con una breve spiegazione e gli eventuali limiti.
+
 auth:
   local:
     allow_registration: true

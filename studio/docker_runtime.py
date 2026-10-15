@@ -6,7 +6,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from .state import STATE, catalog, credential_dir, connection_status
+from .state import STATE, effective_agent, credential_dir, connection_status
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
 EXECUTION_LOCK = threading.Lock()
@@ -67,7 +67,7 @@ def cleanup_orphans():
 
 
 def delegate(agent_id, task, workspace):
-    settings = catalog().get(agent_id)
+    settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
     engine = settings['engine']
@@ -89,7 +89,7 @@ def delegate(agent_id, task, workspace):
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
-            payload['model'] = next(m['model'] for m in config['models'] if m['name'] == 'studio-deepseek')
+            payload['model'] = next(m['model'] for m in config['models'] if m['use'] == 'studio.deepseek_provider:StudioDeepSeekChatModel')
         from .state import atomic_json
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()

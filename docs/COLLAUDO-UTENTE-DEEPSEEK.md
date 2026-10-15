@@ -1,5 +1,7 @@
 # Collaudo utente con DeepSeek
 
+> Report del percorso precedente con configurazione manuale. Il nuovo flusso della [configurazione unica](CONFIGURAZIONE-SQUADRA.md) è in collaudo.
+
 Esito finale: **superato** sul percorso `CSV → GridCraft → WordCraft → download XLSX/DOCX/PDF` da un browser Chromium reale con Playwright. Il modello del coordinatore e degli specialisti è `deepseek-flash`; le chiamate sono state autenticate con la chiave del proprietario, senza inserirla nel codice o nei report.
 
 ## Percorso verificato

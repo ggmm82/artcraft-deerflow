@@ -19,12 +19,12 @@ import zipfile
 from playwright.sync_api import expect, sync_playwright
 from pypdf import PdfReader
 
-PROMPT = ('Collaudo utente: usa studio_delegate con gridcraft per analizzare il CSV allegato '
-    'e produrre vendite.xlsx con importi numerici 10,20,30, formula di somma con totale 60 '
-    'e riepilogo.json verificato. Poi passa il riepilogo a wordcraft con studio_delegate '
-    'e crea relazione.docx e relazione.pdf in italiano con il totale 60. '
-    'Esegui gli incarichi in sequenza, richiedi handoff.json a entrambi e consegna i tre file '
-    'con present_files. Mantieni il lavoro essenziale, senza chiarimenti né perfezionamenti facoltativi.')
+PROMPT = ('Ho queste vendite e devo condividerle con un cliente. '
+    'Prepara un foglio Excel modificabile con gli importi numerici e la formula del totale, '
+    'poi una breve relazione in italiano sia Word sia PDF, con i risultati verificati. '
+    'Usa i nomi vendite.xlsx, relazione.docx e relazione.pdf. '
+    'Il lavoro deve essere essenziale e pronto da scaricare.')
+
 
 
 def main():
@@ -61,6 +61,7 @@ def main():
             page.on('response', lambda response: report['network'].append({
                 'path': urlsplit(response.url).path, 'status': response.status,
                 'method': response.request.method}) if '/api/' in response.url else None)
+            created = False
             page.goto(args.base_url + '/workspace/chats/new', wait_until='domcontentloaded')
             page.locator('input[type=email], textarea').first.wait_for(timeout=30000)
             if page.locator('input[type=email]').count():
@@ -69,44 +70,72 @@ def main():
                 if page.locator('#confirmPassword').count():
                     if not args.initialize_admin:
                         raise ValueError('Istanza non inizializzata: usare --initialize-admin solo sul proprio ambiente di prova')
+                    created = True
                     page.locator('#confirmPassword').fill(os.environ['UAT_PASSWORD'])
                     page.get_by_role('button', name='Create Admin Account', exact=True).click()
+                    page.wait_for_url('**/workspace**', timeout=30000)
+                    passed('Creazione del primo account amministratore')
+                    context.clear_cookies()
+                    page.goto(args.base_url + '/workspace/chats/new', wait_until='domcontentloaded')
+                    page.locator('input[type=email]').fill(os.environ['UAT_EMAIL'])
+                    page.locator('input[type=password]').first.fill(os.environ['UAT_PASSWORD'])
+                    page.get_by_role('button', name='Sign In', exact=True).click()
                 else:
                     page.get_by_role('button', name='Sign In', exact=True).click()
                 page.wait_for_url('**/workspace**', timeout=30000)
             passed('Accesso utente dal browser')
+            if created:
+                page.wait_for_url('**/workspace/studio', timeout=30000)
+                passed('Primo accesso guidato automaticamente alla configurazione della squadra')
             if not args.thread_url:
                 page.goto(args.base_url + '/workspace/studio', wait_until='domcontentloaded')
                 frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
-                expect(frame.locator('#deepseek-state')).to_have_text(re.compile(r'^(Chiave configurata|Da collegare)$'), timeout=30000)
-                before = frame.locator('#deepseek-state').inner_text(timeout=30000)
+                expect(frame.locator('#team-engine')).to_have_value('deepseek', timeout=30000)
+                before = frame.locator('#team-summary').inner_text()
                 frame.locator('#deepseek-key').fill('invalid-uat-key')
-                frame.locator('#deepseek-connect').click()
+                frame.locator('#team-save').click()
                 expect(frame.locator('#status')).to_have_text('Chiave DeepSeek rifiutata', timeout=40000)
-                expect(frame.locator('#deepseek-state')).to_have_text(before)
-                passed('Chiave errata rifiutata senza cambiare la connessione')
+                expect(frame.locator('#team-summary')).to_have_text(before)
+                passed('Chiave errata rifiutata senza cambiare la squadra')
                 frame.locator('#deepseek-key').fill(os.environ['DEEPSEEK_API_KEY'])
-                frame.locator('#deepseek-connect').click()
-                expect(frame.locator('#deepseek-state')).to_have_text('Chiave configurata', timeout=40000)
+                frame.locator('#team-save').click()
+                expect(frame.locator('#team-summary')).to_have_text(re.compile(r'^Squadra pronta'), timeout=40000)
                 expect(frame.locator('#deepseek-key')).to_have_value('')
-                passed('Chiave reale collegata e campo segreto svuotato')
-                for app in ['GridCraft', 'WordCraft']:
-                    card = frame.locator('section.box').filter(has=frame.get_by_role('heading', name=app, exact=True))
-                    card.get_by_role('combobox', name='Motore ' + app).select_option('deepseek')
-                    card.get_by_role('button', name='Salva', exact=True).click()
-                    expect(frame.locator('#status')).to_have_text(app + ': configurazione salvata')
+                passed('Un solo salvataggio collega la chiave e attiva la squadra')
+                catalog = context.request.get(args.base_url + '/studio/api/catalog').json()
+                report['team'] = catalog['team']
+                assert len(catalog['effective_agents']) == 13
+                for identifier, settings in catalog['effective_agents'].items():
+                    assert settings['engine'] == catalog['team']['engine'] == 'deepseek'
+                    assert settings['model'] == catalog['team']['model']
+                    assert 'artcraft-' + identifier in settings['skills']
+                    assert 'artcraft-workspace' in settings['skills']
+                assert os.environ['DEEPSEEK_API_KEY'] not in json.dumps(catalog)
+                passed('Tutti i 13 specialisti ereditano il modello, con le proprie skills')
                 page.reload(wait_until='domcontentloaded')
                 frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
-                for app in ['GridCraft', 'WordCraft']:
-                    expect(frame.get_by_role('combobox', name='Motore ' + app)).to_have_value('deepseek', timeout=15000)
-                passed('Scelta specialisti persistente dopo ricaricamento')
-                snapshot(page, '01-deepseek-connected')
-                page.get_by_role('link', name='New chat', exact=True).click()
+                expect(frame.locator('#team-summary')).to_have_text(re.compile(r'^Squadra pronta'), timeout=15000)
+                expect(frame.locator('#team-model')).to_have_value(catalog['team']['model'])
+                expect(frame.locator('#deepseek-key')).to_have_value('')
+                passed('Configurazione persistente e chiave non restituita al browser')
+                frame.locator('#refresh-models').click()
+                expect(frame.locator('#status')).to_have_text('Elenco aggiornato. Scegli il modello e salva la squadra.', timeout=40000)
+                options = frame.locator('#team-model option').evaluate_all('(items) => items.map(o => o.value).filter(Boolean)')
+                alternate = next((value for value in options if value != catalog['team']['model']), None)
+                if alternate:
+                    for model in (alternate, catalog['team']['model']):
+                        frame.locator('#team-model').select_option(model)
+                        frame.locator('#team-save').click()
+                        expect(frame.locator('#status')).to_have_text('Squadra pronta. Modello applicato al coordinatore e a tutti i 13 specialisti.', timeout=40000)
+                        updated = context.request.get(args.base_url + '/studio/api/catalog').json()
+                        assert updated['team']['model'] == model
+                        assert all(settings['model'] == model for settings in updated['effective_agents'].values())
+                    passed('Cambio modello dal menu propagato ai 13 specialisti senza reinserire la chiave')
+                snapshot(page, '01-team-ready')
+                frame.locator('#start-work').click()
                 page.locator('textarea').wait_for(timeout=30000)
-                if not page.get_by_role('button', name='Studio · DeepSeek', exact=True).count():
-                    page.get_by_role('button', name='Studio · Codex', exact=True).click()
-                    page.get_by_role('button', name='Studio · DeepSeek (studio-deepseek)', exact=True).click()
-                passed('Selezione del coordinatore DeepSeek')
+                expect(page.get_by_role('button', name='Squadra ArtCraft', exact=True)).to_be_visible(timeout=15000)
+                passed('Chat pronta con il modello della squadra, senza selezione manuale')
                 sample = args.output / 'vendite-collaudo.csv'
                 sample.write_text('Voce,Importo\nA,10\nB,20\nC,30\n')
                 page.locator('input[type=file]').first.set_input_files(str(sample.resolve()))

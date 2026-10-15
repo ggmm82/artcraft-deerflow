@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, SecretStr
 
 from . import login
-from .state import applications, catalog, update_agent, connection_status, available_skills
+from .state import applications, catalog, update_agent, connection_status, available_skills, team, effective_agent
 
 router = APIRouter(prefix='/studio', tags=['ArtCraft Studio'])
 
@@ -28,7 +28,7 @@ def page():
 
 @router.get('/api/catalog')
 def get_catalog():
-    return {'agents': catalog(), 'skills': available_skills(), 'applications': [
+    return {'team': team(), 'effective_agents': {a['id']: effective_agent(a['id']) for a in applications()}, 'agents': catalog(), 'skills': available_skills(), 'applications': [
         {k: a[k] for k in ('id', 'name', 'role', 'description', 'version')}
         for a in applications()], 'connections': {
             engine: {'credentials_present': connection_status(engine)}
@@ -36,7 +36,7 @@ def get_catalog():
 
 
 class AgentConfig(BaseModel):
-    engine: str = Field(pattern='^(codex|gemini|deepseek)$')
+    engine: str = Field(default='inherit', pattern='^(inherit|codex|gemini|deepseek)$')
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
     enabled: bool = True
@@ -97,18 +97,80 @@ def cancel_login(identifier: str, request: Request):
     return {'ok': True}
 
 
+class TeamConfig(BaseModel):
+    engine: str = Field(pattern='^(codex|deepseek)$')
+    model: str = Field(default='', max_length=200)
+    api_key: SecretStr | None = None
+
+
+def validated_deepseek(key, model):
+    from .deepseek import models
+    if not key or len(key) > 512 or any(ord(c) < 33 for c in key):
+        raise ValueError('Chiave DeepSeek non valida')
+    available = models(key)
+    chosen = model.strip() or next((m for m in ('deepseek-chat', 'deepseek-flash') if m in available), available[0] if available else '')
+    if not chosen or chosen not in available:
+        raise ValueError('Seleziona un modello DeepSeek disponibile')
+    return chosen, available
+
+
+@router.get('/api/team/models')
+def team_models(engine: str = 'deepseek'):
+    import json
+    from .state import credential_dir
+    from .deepseek import models
+    if engine != 'deepseek':
+        raise HTTPException(400, 'Elenco automatico disponibile per DeepSeek')
+    path = credential_dir('deepseek') / 'api.json'
+    if not path.is_file():
+        raise HTTPException(400, 'Collega prima DeepSeek')
+    try:
+        available = models(json.loads(path.read_text())['api_key'])
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from None
+    return {'models': available}
+
+
+@router.put('/api/team')
+def save_team(value: TeamConfig, request: Request):
+    same_origin(request)
+    import json
+    from .state import credential_dir
+    from .bootstrap import configure_team
+    try:
+        key = value.api_key.get_secret_value().strip() if value.api_key else None
+        available = []
+        chosen = value.model.strip()
+        if value.engine == 'deepseek':
+            if not key:
+                path = credential_dir('deepseek') / 'api.json'
+                if not path.is_file():
+                    raise ValueError('Inserisci la chiave DeepSeek per attivare la squadra')
+                key = json.loads(path.read_text())['api_key']
+            chosen, available = validated_deepseek(key, chosen)
+        elif not connection_status('codex'):
+            raise ValueError('Collega prima il tuo account Codex')
+        else:
+            chosen = chosen or 'gpt-5.4'
+        configure_team(value.engine, chosen, key if value.engine == 'deepseek' else None)
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    except RuntimeError as error:
+        raise HTTPException(502, str(error)) from None
+    return {'ok': True, 'team': team(), 'models': available}
+
+
 class CoordinatorConfig(BaseModel):
     model: str = Field(min_length=1, max_length=200)
 
 
-@router.put('/api/coordinator')
+@router.put('/api/coordinator', deprecated=True)
 def set_coordinator(value: CoordinatorConfig, request: Request):
-    same_origin(request)
-    if any(ord(c) < 32 for c in value.model):
-        raise HTTPException(400, 'Modello non valido')
-    from .bootstrap import configure_coordinator
-    configure_coordinator(value.model)
-    return {'ok': True, 'model': value.model}
+    # Compatibility endpoint: no independent coordinator setting remains.
+    result = save_team(TeamConfig(engine=team()['engine'], model=value.model), request)
+    return {**result, 'model': result['team']['model']}
 
 
 class DeepSeekConfig(BaseModel):
@@ -119,19 +181,5 @@ class DeepSeekConfig(BaseModel):
 @router.put('/api/providers/deepseek')
 def connect_deepseek(value: DeepSeekConfig, request: Request):
     same_origin(request)
-    from .deepseek import models
-    from .bootstrap import configure_deepseek
-    key = value.api_key.get_secret_value().strip()
-    if not key or len(key) > 512 or any(ord(c) < 33 for c in key):
-        raise HTTPException(400, 'Chiave DeepSeek non valida')
-    try:
-        available = models(key)
-        chosen = value.model.strip() or next((m for m in ('deepseek-chat', 'deepseek-flash') if m in available), available[0] if available else '')
-        if not chosen or chosen not in available:
-            raise ValueError('Seleziona un modello DeepSeek disponibile')
-        configure_deepseek(key, chosen)
-    except ValueError as error:
-        raise HTTPException(400, str(error)) from None
-    except RuntimeError as error:
-        raise HTTPException(502, str(error)) from None
-    return {'ok': True, 'model': chosen, 'models': available}
+    result = save_team(TeamConfig(engine='deepseek', model=value.model, api_key=value.api_key), request)
+    return {'ok': True, 'model': result['team']['model'], 'models': result['models']}
