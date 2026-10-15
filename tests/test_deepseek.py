@@ -86,6 +86,48 @@ class DeepSeekTests(unittest.TestCase):
             for m in request.call_args.args[2]['messages']))
         self.assertEqual(request.call_args.args[2]['messages'][-2]['role'], 'tool')
 
+    def test_reserved_final_turn_submits_existing_files_instead_of_failing(self):
+        from studio import deepseek
+        root = Path(self.temp.name)
+        output = root / 'output'
+        (output / 'work').mkdir(parents=True)
+        (output / 'report.txt').write_text('Verified content')
+        credentials = root / 'api.json'
+        credentials.write_text(json.dumps({'api_key': 'test-only-key'}))
+        manifest = {'task': 'Report', 'source_files': [], 'output_files': [str(output / 'report.txt')],
+                    'previews': [], 'checks': [{'name': 'Content', 'status': 'passed',
+                    'evidence': 'Read report.txt'}], 'warnings': []}
+        def path(value):
+            return credentials if value == '/credentials/api.json' else Path(value)
+        calls = []
+        def respond(key, route, payload, timeout):
+            calls.append(payload.copy())
+            if len(calls) <= 28:
+                tool = {'name': 'run_command', 'arguments': json.dumps({'command': 'true'})}
+            else:
+                self.assertEqual(payload['tools'], [deepseek.HANDOFF_TOOL])
+                self.assertEqual(payload['tool_choice']['function']['name'], 'submit_handoff')
+                tool = {'name': 'submit_handoff', 'arguments': json.dumps(manifest)}
+            return {'choices': [{'message': {'role': 'assistant', 'content': None,
+                'tool_calls': [{'id': str(len(calls)), 'type': 'function', 'function': tool}]}}]}
+        with patch.object(deepseek, 'Path', side_effect=path), patch.object(deepseek, 'request', side_effect=respond):
+            result = deepseek.run('deepseek-flash', 'Create report', output, 30)
+        self.assertIn('report.txt', result)
+        self.assertEqual(len(calls), 29)
+        self.assertEqual(json.loads((output / 'handoff.json').read_text()), manifest)
+        self.assertEqual((output / 'handoff.json').stat().st_mode & 0o777, 0o600)
+
+    def test_finalization_tool_rejects_missing_files_without_false_manifest(self):
+        from studio.deepseek import submit_handoff
+        output = Path(self.temp.name) / 'output'
+        output.mkdir()
+        with self.assertRaisesRegex(ValueError, 'mancante'):
+            submit_handoff(output, {'task': 'Report', 'source_files': [],
+                'output_files': [str(output / 'missing.pdf')], 'previews': [],
+                'checks': [{'name': 'Export', 'status': 'not_run', 'evidence': 'Not generated'}], 'warnings': []})
+        self.assertFalse((output / 'handoff.json').exists())
+        self.assertFalse(list(output.glob('.handoff-*')))
+
     def test_transport_does_not_reflect_provider_error_body(self):
         import io
         import urllib.error
