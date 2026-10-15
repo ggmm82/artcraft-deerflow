@@ -92,7 +92,10 @@ def credential_dir(engine):
 
 
 def connection_status(engine):
-    filename = {'codex': 'auth.json', 'gemini': 'oauth_creds.json', 'deepseek': 'api.json'}[engine]
+    if engine == 'gemini':
+        return all((credential_dir(engine) / name).is_file() for name in (
+            'antigravity-cli/antigravity-oauth-token', 'antigravity-account.json'))
+    filename = {'codex': 'auth.json', 'deepseek': 'api.json'}[engine]
     return (credential_dir(engine) / filename).is_file()
 
 

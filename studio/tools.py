@@ -8,7 +8,7 @@ from .docker_runtime import delegate
 
 @tool('studio_delegate', parse_docstring=True)
 def studio_delegate(agent: str, task: str, runtime: Runtime) -> str:
-    """Delegate an ArtCraft task to a configured Codex, Gemini or DeepSeek specialist in Docker.
+    """Delegate an ArtCraft task to a configured Codex, Antigravity or DeepSeek specialist in Docker.
 
     Use the exact specialist ID from the configured operational catalog in the
     lead instructions. Give input paths, required outputs and acceptance checks.

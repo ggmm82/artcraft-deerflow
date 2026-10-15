@@ -119,15 +119,15 @@ def team_models(engine: str = 'deepseek'):
     import json
     from .state import credential_dir
     from .deepseek import models
-    if engine == 'codex':
-        if not connection_status('codex'):
-            raise HTTPException(400, 'Collega prima Codex')
-        from .docker_runtime import codex_models
+    if engine in ('codex', 'gemini'):
+        if not connection_status(engine):
+            raise HTTPException(400, 'Collega prima ' + ('Antigravity' if engine == 'gemini' else 'Codex'))
+        from .docker_runtime import codex_models, antigravity_models
         try:
-            available = codex_models()
+            available = antigravity_models() if engine == 'gemini' else codex_models()
         except (ValueError, RuntimeError) as error:
             raise HTTPException(502, str(error)) from None
-        return {'models': [item['id'] for item in available], 'details': available}
+        return {'models': (['auto'] if engine == 'gemini' else []) + [item['id'] for item in available], 'details': ([{'id': 'auto', 'label': 'Automatico della CLI'}] if engine == 'gemini' else []) + available}
     if engine != 'deepseek':
         raise HTTPException(400, 'Elenco automatico disponibile per DeepSeek')
     path = credential_dir('deepseek') / 'api.json'
@@ -160,7 +160,7 @@ def save_team(value: TeamConfig, request: Request):
                 key = json.loads(path.read_text())['api_key']
             chosen, available = validated_deepseek(key, chosen)
         elif not connection_status(value.engine):
-            raise ValueError('Collega prima il tuo account ' + ('Gemini' if value.engine == 'gemini' else 'Codex'))
+            raise ValueError('Collega prima il tuo account ' + ('Antigravity' if value.engine == 'gemini' else 'Codex'))
         else:
             if value.engine == 'codex':
                 from .docker_runtime import codex_models
@@ -175,7 +175,12 @@ def save_team(value: TeamConfig, request: Request):
                     raise ValueError('Scegli un modello dall’elenco del tuo account Codex')
                 available = [item['id'] for item in entries]
             else:
-                chosen = chosen or 'gemini-2.5-pro'
+                from .docker_runtime import antigravity_models
+                entries = antigravity_models()
+                available = ['auto', *[item['id'] for item in entries]]
+                chosen = chosen or 'auto'
+                if chosen not in available:
+                    raise ValueError('Scegli un modello dall’elenco del tuo account Antigravity')
         configure_team(value.engine, chosen, key if value.engine == 'deepseek' else None)
     except ValueError as error:
         raise HTTPException(400, str(error)) from None

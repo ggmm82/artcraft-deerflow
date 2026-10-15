@@ -8,8 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 libegl1 libx11-6 libxcursor1 libxi6 libxrandr2 libxkbcommon0 \
     libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libdbus-1-3 git \
     && rm -rf /var/lib/apt/lists/*
-RUN npm install -g @openai/codex@0.162.1 @google/gemini-cli@0.64.0 @google/gemini-cli-core@0.64.0 \
-    && codex --version && gemini --version && npm cache clean --force
+ENV AGY_CLI_DISABLE_AUTO_UPDATE=true
+RUN npm install -g @openai/codex@0.162.1 \
+    && codex --version && npm cache clean --force
+COPY scripts/install_antigravity.py scripts/antigravity.lock.json /opt/artcraft/
+RUN python3 /opt/artcraft/install_antigravity.py "$TARGETARCH" && agy --version
 COPY versions.lock.json /opt/artcraft/versions.lock.json
 COPY scripts/install_artcraft.py scripts/craft.py scripts/smoke.py scripts/acceptance.py /opt/artcraft/
 COPY scripts/check_provider_clis.py /opt/artcraft/
@@ -21,7 +24,7 @@ RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \
     && python3 /opt/artcraft/smoke.py --output /opt/artcraft/build-checks.json
 COPY skills /mnt/skills
 COPY studio/run_agent.py studio/handoff.py studio/deepseek.py studio/refresh_codex.py /opt/studio/
-COPY studio/gemini_bridge.mjs /opt/studio/
+COPY studio/antigravity_cli.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
 WORKDIR /mnt/user-data
 CMD ["python3", "/opt/artcraft/smoke.py", "--mcp", "--output", "/tmp/smoke.json"]

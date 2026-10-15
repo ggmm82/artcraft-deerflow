@@ -21,14 +21,14 @@ ROOT = Path(__file__).resolve().parents[1]
 class IntegrationTests(unittest.TestCase):
     def test_gemini_manual_login_is_interactive_and_worker_can_read_shared_inputs(self):
         login = login_command('gemini')
-        self.assertEqual(login, ['node', '/opt/studio/gemini_bridge.mjs', '--login'])
+        self.assertEqual(login, ['python3', '/opt/studio/antigravity_cli.py', '--login'])
         self.assertNotIn('--prompt', login)
         self.assertNotIn('--output-format', login)
         args = command('gemini', 'chosen-model', 'Task', '/tmp/final')
-        self.assertEqual(args[args.index('--include-directories') + 1], '/mnt/user-data')
+        self.assertEqual(args[args.index('--add-dir') + 1], '/mnt/user-data')
         self.assertEqual(args[args.index('--model') + 1], 'chosen-model')
-        self.assertIn('--prompt', args)
-        self.assertIn('--skip-trust', args)
+        self.assertIn('--input-format', args)
+        self.assertEqual(args[0], 'agy')
         self.assertEqual(login_command('codex'), ['codex', 'login', '--device-auth'])
 
     def test_hostinger_release_checks_every_image_before_replacing_output(self):

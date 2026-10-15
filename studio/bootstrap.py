@@ -114,6 +114,27 @@ def initialize():
             temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
             temporary.chmod(0o600)
             temporary.replace(path)
+    migration = STATE / 'google-provider-antigravity-v1'
+    if not migration.exists():
+        # Old Gemini API model IDs do not identify Antigravity subscription models.
+        content = yaml.safe_load(path.read_text())
+        changed = False
+        for profile in content.get('models', []):
+            if profile.get('use') == 'studio.gemini_provider:StudioGeminiChatModel':
+                profile['model'] = 'auto'
+                changed = True
+        if changed:
+            temporary = path.with_suffix('.yaml.tmp')
+            temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
+            temporary.chmod(0o600)
+            temporary.replace(path)
+        agents = catalog()
+        for settings in agents.values():
+            if settings['engine'] == 'gemini':
+                settings.update(engine='inherit', model='')
+        from .state import atomic_json
+        atomic_json(STATE / 'agents.json', agents)
+        migration.write_text('Official agy account login required; legacy tokens retained but unused.\n')
     extension = STATE / 'extensions_config.json'
     if not extension.exists():
         extension.write_text((ROOT / 'extensions_config.json').read_text())

@@ -10,7 +10,7 @@ import time
 import uuid
 
 from .docker_runtime import IMAGE, EXECUTION_LOCK, base_arguments, mount, remove
-from .state import STATE, atomic_json, credential_dir
+from .state import STATE, credential_dir
 
 SESSIONS = {}
 ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
@@ -19,7 +19,7 @@ ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
 def login_command(engine):
     if engine == 'gemini':
         # Official CLI auth only: interactive OAuth, no paid generation or /quit.
-        return ['node', '/opt/studio/gemini_bridge.mjs', '--login']
+        return ['python3', '/opt/studio/antigravity_cli.py', '--login']
     if engine == 'codex':
         return ['codex', 'login', '--device-auth']
     raise ValueError('Motore sconosciuto')
@@ -48,10 +48,6 @@ class LoginSession:
         self._cancel = threading.Event()
         self.started = time.monotonic()
         credentials = credential_dir(engine)
-        if engine == 'gemini':
-            atomic_json(credentials / 'settings.json',
-                        {'security': {'auth': {'selectedType': 'oauth-personal'},
-                                      'folderTrust': {'enabled': False}}})
         cli = login_command(engine)
         master, slave = pty.openpty()
         self.fd = master
@@ -59,7 +55,7 @@ class LoginSession:
             installation = (STATE / 'installation-id').read_text().strip()
             args = base_arguments(self.name) + ['-it', '--label',
                     f'org.artcraft.studio.installation={installation}', '--mount',
-                    mount(credentials, '/root/' + ('.codex' if engine == 'codex' else '.gemini')),
+                    mount(credentials, '/root/.codex' if engine == 'codex' else '/credentials'),
                     IMAGE, *cli]
             self.process = subprocess.Popen(['docker', *args], stdin=slave, stdout=slave,
                                             stderr=slave, start_new_session=True)

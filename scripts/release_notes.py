@@ -15,8 +15,8 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(f'''ArtCraft Studio · runtime verificati del commit `{args.commit}`.
 
-- Configurazione unica Codex, Gemini e DeepSeek per coordinatore e specialisti.
-- Login Gemini con OAuth ufficiale, rinnovo Codex tramite app-server, credenziali private.
+- Configurazione unica Codex, Antigravity CLI e DeepSeek per coordinatore e specialisti.
+- Login Google tramite il binario ufficiale agy, rinnovo Codex tramite app-server, credenziali private.
 - Ricette operative e collaudi di file reali per tutti i 13 strumenti.
 - Immagini, schema DeerFlow, CLI/MCP e avvio autenticato verificati dalla CI.
 

@@ -1,0 +1,39 @@
+# Antigravity CLI con account Google
+
+La voce **Antigravity · abbonamento Google** in **La tua squadra** usa il binario ufficiale `agy` **1.3.5**, sia per il coordinatore sia per i 13 specialisti. Non occorre una chiave AI Studio. Le richieste usano l’account collegato e le quote che Google rende disponibili a quell’account; un abbonamento non garantisce accesso illimitato a ogni modello.
+
+## Collegamento dal browser
+
+1. Distribuisci il Compose di prova della PR in un progetto Hostinger separato, secondo [la guida di aggiornamento](AGGIORNAMENTO-HOSTINGER.md).
+2. Apri **La tua squadra**, scegli **Antigravity** e premi **Collega account Antigravity**.
+3. Il pannello apre il flusso remoto del vero `agy`: segui **Apri il login ufficiale**, completa l’accesso sul sito Google e incolla il codice restituito nel campo del pannello. Non inserire la password Google in ArtCraft.
+4. Il collegamento termina dopo che `agy models` ha confermato l’accesso al catalogo. Non viene eseguita una generazione di prova durante il login.
+5. Scegli **Automatico** oppure aggiorna l’elenco dei modelli del tuo account. **Salva e attiva la squadra** propaga la scelta al coordinatore e a tutti gli specialisti, senza configurazioni per singola skill.
+6. Prova una richiesta concreta, ad esempio: «Crea un robottino CAD modificabile, consegna il sorgente riaperto in CadCraft e un’anteprima; dichiara formati e limiti». Verifica anche i file scaricati, non soltanto il messaggio della chat.
+
+**Migrazione:** le precedenti credenziali consumer Gemini CLI non costituiscono un collegamento Antigravity. Occorre rifare il login. Restano conservate sul volume, ma non vengono usate. I vecchi identificatori di modello del profilo Google vengono inizialmente sostituiti da `auto`; il pannello permette poi di scegliere un identificatore realmente restituito da `agy models`. L’identificatore interno `gemini` e la classe `StudioGeminiChatModel` sono conservati per compatibilità con configurazioni e conversazioni salvate.
+
+## Esecuzione e isolamento
+
+- Installazione nativa Linux amd64/arm64 con URL di release e SHA-512 fissati in `scripts/antigravity.lock.json`. Non viene eseguito uno script remoto durante la build. Gli aggiornamenti automatici sono disabilitati per preservare la versione collaudata.
+- Login e rinnovo dei token sono gestiti esclusivamente da `agy`. Su Linux senza D-Bus, il binario usa il proprio archivio `~/.gemini/antigravity-cli/antigravity-oauth-token`. ArtCraft conserva soltanto i file di autenticazione ammessi sul volume privato, con permessi `0600`; cronologia, log, plugin e configurazione del worker non vengono copiati tra conversazioni.
+- `useG1Credits` è disabilitato: non si abilita automaticamente il consumo di crediti personali oltre la quota. Chiavi API e impostazioni esterne di provider non possono sostituire il login scelto nel pannello.
+- Coordinatore: processo CLI in container senza mount della conversazione o socket Docker, agente personalizzato senza strumenti e regole che negano comandi, file, rete degli strumenti e MCP. Il canale LLM della CLI rimane disponibile. `--json-schema` produce una decisione strutturata (`content`, `tool_calls`); DeerFlow esegue gli strumenti richiesti e restituisce i risultati nel turno successivo.
+- Specialista: CLI nel container temporaneo della conversazione, skill e ricetta effettive, accesso ai file condivisi tramite `--add-dir`. Le autorizzazioni automatiche si applicano nel worker isolato. Il controllo obbligatorio di `handoff.json`, sorgenti modificabili, riapertura e limiti resta attivo.
+- Il trasporto usa il protocollo documentato stdin/stdout `stream-json`, evitando limiti di lunghezza degli argomenti e prompt completi nell’elenco processi. Un risultato diverso da `SUCCESS` non diventa una consegna riuscita.
+
+## Copertura del collaudo
+
+Verificati localmente il binario autentico 1.3.5, i flag, il protocollo senza account e il raggiungimento del flusso OAuth Google remoto. I test automatici coprono scelta condivisa, migrazione, inoltro dei risultati degli strumenti, schema della delega, isolamento del coordinatore, copia selettiva dei token e rifiuto degli errori. Le risposte del modello nei test unitari sono fixture dichiarate.
+
+**Da completare con l’account del proprietario:** login Google concluso, catalogo effettivo e quota Pro/Ultra, generazione del coordinatore, delega e riapertura dei file prodotti sulla VPS. Non sono certificati da test senza account né simulati come riusciti. Il login richiede l’azione del proprietario nel browser ufficiale Google.
+
+## Fonti ufficiali
+
+- [Installazione e login remoto](https://antigravity.google/docs/cli/install/)
+- [Modalità headless, stream JSON, schema e catalogo modelli](https://antigravity.google/docs/cli/headless/)
+- [Agenti personalizzati e strumenti consentiti](https://antigravity.google/docs/subagents/)
+- [Skill e percorsi della CLI](https://antigravity.google/docs/skills/)
+- [Permessi della CLI](https://antigravity.google/docs/permissions/)
+- [Archivio credenziali e aggiornamenti](https://antigravity.google/docs/cli/troubleshooting/)
+- [Annuncio della transizione Gemini CLI](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)

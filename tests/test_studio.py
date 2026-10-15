@@ -22,6 +22,12 @@ class StudioTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def connect_antigravity(self):
+        root = self.state.credential_dir('gemini')
+        (root / 'antigravity-cli').mkdir(exist_ok=True)
+        (root / 'antigravity-cli/antigravity-oauth-token').write_text('fixture-native-token')
+        (root / 'antigravity-account.json').write_text('{}')
+
     def test_configurable_engines_persist_without_credentials(self):
         self.state.update_agent('gridcraft', {'engine': 'gemini', 'model': 'custom-model',
                                             'instructions': 'Usa euro', 'enabled': True,
@@ -96,7 +102,7 @@ class StudioTests(unittest.TestCase):
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
     def test_gemini_coordinator_has_no_workspace_and_cleans_up_before_delegation(self):
-        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        self.connect_antigravity()
         captured = []
         def execute(args, **kwargs):
             captured.append(args)
@@ -113,11 +119,11 @@ class StudioTests(unittest.TestCase):
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
     def test_gemini_provider_errors_are_sanitized_and_release_admission(self):
-        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        self.connect_antigravity()
         result = type('Result', (), {'returncode': 1, 'stdout': '{"ok":false,"error":"fixture-private-token"}'})()
         with patch.object(self.runtime, 'host_path', return_value='/host/private'), \
              patch.object(self.runtime.subprocess, 'run', return_value=result), patch.object(self.runtime, 'remove'):
-            with self.assertRaisesRegex(RuntimeError, 'Gemini non disponibile') as failure:
+            with self.assertRaisesRegex(RuntimeError, 'Antigravity non disponibile') as failure:
                 self.runtime.generate_gemini({'model': 'gemini-2.5-pro'})
         self.assertNotIn('fixture-private-token', str(failure.exception))
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
@@ -209,7 +215,7 @@ class StudioTests(unittest.TestCase):
 
     def test_login_setup_errors_release_admission(self):
         from studio import login
-        for failing_operation in ('credential_dir', 'atomic_json', 'pty.openpty'):
+        for failing_operation in ('credential_dir', 'pty.openpty'):
             with self.subTest(operation=failing_operation), \
                  patch('studio.login.' + failing_operation, side_effect=OSError('setup failed')):
                 with self.assertRaises(OSError):

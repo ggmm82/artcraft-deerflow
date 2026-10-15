@@ -1,4 +1,4 @@
-"""Gemini coordinator, using CLI OAuth and its official content generator in Docker."""
+"""Antigravity coordinator over the official CLI. Legacy class path preserves saved profiles."""
 from typing import Any
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -6,16 +6,16 @@ from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from . import gemini_protocol
+from . import antigravity_protocol
 
 
 class StudioGeminiChatModel(BaseChatModel):
-    model: str = 'gemini-2.5-pro'
+    model: str = 'auto'
     request_timeout: int = 1800
 
     @property
     def _llm_type(self):
-        return 'studio-gemini-cli'
+        return 'studio-antigravity-cli'
 
     @property
     def _identifying_params(self):
@@ -31,22 +31,18 @@ class StudioGeminiChatModel(BaseChatModel):
         for message in messages:
             value = {'type': message.type, 'content': message.content}
             if message.type == 'ai':
-                value.update(tool_calls=message.tool_calls,
-                             gemini_parts=message.additional_kwargs.get('gemini_parts'))
+                value.update(tool_calls=message.tool_calls)
             if message.type == 'tool':
                 value['tool_call_id'] = message.tool_call_id
             records.append(value)
         tools = kwargs.get('tools', [])
-        payload = gemini_protocol.request(records, self.model, tools, kwargs.get('tool_choice'))
-        if stop:
-            payload['config']['stopSequences'] = stop
+        payload = antigravity_protocol.request(records, self.model, tools, kwargs.get('tool_choice'))
         result = generate_gemini(payload, timeout=min(self.request_timeout, 1800))
-        parsed = gemini_protocol.response(result, tools)
-        usage = result.get('usageMetadata', {})
-        input_tokens = usage.get('promptTokenCount', 0)
-        output_tokens = usage.get('candidatesTokenCount', 0) + usage.get('thoughtsTokenCount', 0)
+        parsed = antigravity_protocol.response(result, tools)
+        usage = result.get('usage', {})
+        input_tokens = usage.get('input_tokens', 0)
+        output_tokens = usage.get('output_tokens', 0)
         message = AIMessage(content=parsed['content'], tool_calls=parsed['tool_calls'],
-            additional_kwargs={'gemini_parts': parsed['gemini_parts']},
             usage_metadata={'input_tokens': input_tokens, 'output_tokens': output_tokens,
-                            'total_tokens': max(usage.get('totalTokenCount', 0), input_tokens + output_tokens)})
+                            'total_tokens': max(usage.get('total_tokens', 0), input_tokens + output_tokens)})
         return ChatResult(generations=[ChatGeneration(message=message)])

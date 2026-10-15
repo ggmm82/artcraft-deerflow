@@ -94,12 +94,12 @@ jobs:
       - name: Check Codex credentials rotation with the pinned DeerFlow provider
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_codex_provider.py -v
-      - name: Check Gemini coordinator and official CLI bridge
+      - name: Check Antigravity coordinator contract
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_gemini_provider.py -v
-      - name: Check official Gemini CLI core without account credentials
+      - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
-        run: docker run --rm --entrypoint node --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/tests/gemini_bridge.mjs
+        run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py
       - name: Check native Codex model IDs without generation
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 artcraft-deerflow-sandbox:0.1.0 -c 'import sys; sys.path.insert(0,"/opt/studio"); from refresh_codex import refresh; models=refresh("models"); assert models and all(m["id"] and m["label"] for m in models); print("Native Codex catalog OK")'

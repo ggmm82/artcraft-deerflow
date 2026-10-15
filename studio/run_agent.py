@@ -13,12 +13,17 @@ except ImportError:  # Direct invocation inside the worker image.
 
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
-    'gemini': ('oauth_creds.json', 'google_accounts.json', 'settings.json'),
     'deepseek': ('api.json',),
 }
 
 
 def copy_credentials(source, destination, engine):
+    if engine == 'gemini':
+        try:
+            from .antigravity_cli import copy_auth
+        except ImportError:
+            from antigravity_cli import copy_auth
+        return copy_auth(source, destination)
     destination.mkdir(parents=True, exist_ok=True, mode=0o700)
     for filename in ALLOWED_AUTH[engine]:
         path = source / filename
@@ -41,11 +46,11 @@ def command(engine, model, prompt, output):
             args += ['--model', model]
         return args + ['-']
     if engine == 'gemini':
-        args = ['gemini', '--approval-mode', 'yolo', '--output-format', 'json',
-                '--skip-trust', '--include-directories', '/mnt/user-data']
-        if model:
+        args = ['agy', '--dangerously-skip-permissions', '--input-format', 'stream-json', '--output-format', 'stream-json',
+                '--add-dir', '/mnt/user-data', '--print-timeout', '25m']
+        if model and model != 'auto':
             args += ['--model', model]
-        return args + ['--prompt', prompt]
+        return args
     raise ValueError('Motore non valido')
 
 
@@ -93,6 +98,12 @@ def main():
     auth = Path('/root') / ('.' + engine)
     if engine != 'deepseek':
         copy_credentials(Path('/credentials'), auth, engine)
+    if engine == 'gemini':
+        try:
+            from .antigravity_cli import prepare_home, cli_env, result_envelope
+        except ImportError:
+            from antigravity_cli import prepare_home, cli_env, result_envelope
+        prepare_home()
     output_dir = Path('/mnt/user-data/outputs') / job['agent'] / job['run_id']
     output_dir.mkdir(parents=True)
     (output_dir / 'work').mkdir()
@@ -108,7 +119,7 @@ def main():
             selected.append(recipe.read_text())
         # Native skill discovery for either CLI, scoped to this disposable run.
         if engine != 'deepseek':
-            skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'skills'
+            skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'antigravity-cli/skills'
             target = skills_root / name
             shutil.copytree(source, target, dirs_exist_ok=True)
     # Only the selected specialist's instructions and common procedure enter context.
@@ -149,8 +160,8 @@ def main():
             message = run(job['model'], prompt, output_dir, job['timeout'])
         else:
             result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
-                                input=prompt if engine == 'codex' else None,
-                                env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
+                                input=(json.dumps({'event': 'user', 'message': {'content': prompt}}) + '\n') if engine == 'gemini' else prompt,
+                                env={**(cli_env() if engine == 'gemini' else os.environ), 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
                                 capture_output=True, text=True, timeout=job['timeout'])
             if result.returncode:
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
@@ -160,9 +171,9 @@ def main():
             if engine == 'codex':
                 message = final.read_text() if final.exists() else result.stdout
             else:
-                parsed = json.loads(result.stdout)
-                if parsed.get('error'):
-                    raise RuntimeError(str(parsed['error']))
+                parsed = result_envelope(result.stdout)
+                if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
+                    raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
                 message = parsed.get('response', '')
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
