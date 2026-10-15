@@ -130,6 +130,7 @@ def main():
                                 capture_output=True, text=True, timeout=job['timeout'])
             if result.returncode:
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
+                              'exit_code': result.returncode,
                               'error': worker_error(engine, result)}))
                 return result.returncode
             if engine == 'codex':

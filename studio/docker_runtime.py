@@ -46,7 +46,8 @@ def base_arguments(name):
             '--init', '--cap-drop=ALL', '--security-opt=no-new-privileges',
             '--pids-limit=256', '--memory=1536m', '--memory-swap=1536m',
             '--cpus=1.5', '--network=bridge', '--tmpfs', '/tmp:rw,size=256m',
-            '--env', 'NO_BROWSER=true', '--env', 'TZ=Europe/Rome']
+            '--env', 'NO_BROWSER=true', '--env', 'TZ=Europe/Rome',
+            '--env', 'TOKIO_WORKER_THREADS=2', '--env', 'RAYON_NUM_THREADS=2']
 
 
 def remove(name):
