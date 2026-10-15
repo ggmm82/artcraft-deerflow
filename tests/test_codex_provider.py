@@ -7,6 +7,22 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec('deerflow'), 'Requires pinned gateway dependencies')
 class CodexProviderTests(unittest.TestCase):
+    def test_transient_http_failure_reaches_native_bounded_retry(self):
+        import httpx
+        from langchain_core.messages import HumanMessage
+        from studio.codex_provider import StudioCodexChatModel
+        credential = SimpleNamespace(access_token='fixture-private-bearer', account_id='account')
+        request = httpx.Request('POST', 'https://chatgpt.com/backend-api/codex/responses')
+        response = httpx.Response(429, text='Rate limited fixture-private-bearer', request=request)
+        failure = httpx.HTTPStatusError('Rate limited', request=request, response=response)
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
+            model = StudioCodexChatModel(model='gpt-6.1-sol')
+        with patch('studio.codex_provider.request_codex', side_effect=[failure, {'output': []}]) as transport, \
+             patch('deerflow.models.openai_codex_provider.time.sleep') as backoff:
+            self.assertEqual(model._call_codex_api([HumanMessage('Prova')]), {'output': []})
+        self.assertEqual(transport.call_count, 2)
+        backoff.assert_called_once_with(2.0)
+
     def test_existing_model_uses_rotated_account_credentials_on_next_request(self):
         from studio.codex_provider import StudioCodexChatModel, CodexChatModel
         first = SimpleNamespace(access_token='fixture-old-bearer', account_id='old-account')

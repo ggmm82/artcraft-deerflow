@@ -31,4 +31,13 @@ class StudioCodexChatModel(CodexChatModel):
                     detail = ''
                 detail = detail.replace(credential.access_token, '[REDACTED]')
                 suffix = f": {detail[:2000]}" if detail else ''
+                if exc.response.status_code in (429, 500, 529):
+                    # Keep the pinned provider's bounded backoff/admission path.
+                    # A RuntimeError here used to bypass its HTTP retry logic.
+                    safe_request = httpx.Request('POST', str(exc.request.url))
+                    safe_response = httpx.Response(exc.response.status_code,
+                        content=detail, request=safe_request)
+                    raise httpx.HTTPStatusError(
+                        f'Codex API HTTP {exc.response.status_code}{suffix}',
+                        request=safe_request, response=safe_response) from None
                 raise RuntimeError(f"Codex API HTTP {exc.response.status_code}{suffix}") from None
