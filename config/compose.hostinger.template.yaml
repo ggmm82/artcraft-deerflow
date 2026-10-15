@@ -1,5 +1,6 @@
+# TEMPLATE INTERNO: per Hostinger usare il Compose allegato alla PR o al rilascio, non questo file.
 # Immagini pubblicate del commit: 9176304b6e74433109931b1c75721c1b663c3845
-name: artcraft-studio
+name: ${ARTCRAFT_PROJECT_NAME:-artcraft-studio}
 services:
   sandbox-image:
     image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-9176304b6e74433109931b1c75721c1b663c3845

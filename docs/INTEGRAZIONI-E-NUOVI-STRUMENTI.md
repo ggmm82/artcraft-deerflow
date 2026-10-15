@@ -23,25 +23,18 @@ Il controllo di flag e protocollo non equivale a un login OAuth completato. Non 
 
 Sono verificati interpolazione Compose, persistenza dei volumi, limiti di memoria, dipendenze/healthcheck, corrispondenza dell'immagine worker, routing Traefik e riscrittura `/api/langgraph/` → `/api/`. Solo il Gateway riceve il socket Docker. Non sono richieste porte host o reti esterne. Questo verifica la configurazione, non il Traefik o il consumo RAM dell'istanza Hostinger reale.
 
-Il workflow pubblica le immagini e, soltanto dopo il collaudo di avvio, produce l’artefatto **`hostinger-compose-<SHA>`** e un rilascio GitHub con il Compose. Gateway, frontend e sandbox appartengono allo stesso commit verificato.
+Il flusso corrente è documentato in [AGGIORNAMENTO-HOSTINGER.md](AGGIORNAMENTO-HOSTINGER.md): una build della PR, prove sugli stessi digest pubblicati, Compose di prova prima del merge e promozione al rilascio stabile quando il contenuto Git del merge è identico a quello provato.
 
-Il collegamento stabile per “Compose from URL” è:
+Il riepilogo **Compose pronto** del controllo `release` contiene il file installabile della PR. Dopo il merge il collegamento stabile rimane:
 
 ```text
 https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml
 ```
 
-Il link segue l’ultimo rilascio completato, senza chiedere all’utente di coordinare i tag di tre immagini. Il Compose nel repository fissa invece uno specifico rilascio, utile per revisione e riproducibilità. Nessuna di queste operazioni esegue automaticamente il deploy sul VPS.
-Per prepararlo manualmente dopo una CI completamente superata:
+`config/compose.hostinger.template.yaml` è il template interno, non il file da installare. L’artefatto `verified-runtime` e il prerelease contengono `compose.hostinger.yaml` e `runtime-manifest.json`, con digest, provenienza e checksum. `scripts/prepare_hostinger.py --manifest runtime-manifest.json --output compose.hostinger.yaml` ricrea il file verificando prima l’esistenza dei digest pubblicati; la modalità `--commit` resta disponibile per i vecchi tag SHA.
 
-```bash
-python scripts/prepare_hostinger.py --commit <SHA_COMPLETO_CON_CI_VERDE> --output reports/release/compose.hostinger.yaml
-STUDIO_PASSWORD=<PASSWORD_LOCALE> TRAEFIK_HOST=<DOMINIO_HOSTINGER> docker compose -f reports/release/compose.hostinger.yaml config --quiet
-```
+Il workflow verifica la riuscita della CI di origine, lo stesso repository/workflow/PR e l’identità del contenuto Git. Un cambiamento del contenuto richiede nuove prove; le PR da fork non ricevono privilegi di pubblicazione. Il rilascio non aggiorna da solo un progetto Hostinger già attivo.
 
-Lo script controlla prima su GHCR l'esistenza di tutte e tre le immagini e non modifica l'output se una manca. Non consulta autonomamente lo stato CI: questa verifica è obbligatoria per chi lo esegue manualmente. Il workflow invece genera l'artefatto solo dopo i controlli e l'avvio riusciti. Nessuna credenziale viene inserita nel Compose generato.
-
-Caricare il Compose dell'artefatto nel progetto Hostinger esistente, conservando **lo stesso nome di progetto**, le variabili e i volumi. Per “Compose from URL” usare il collegamento stabile del rilascio indicato sopra. Non usare `down -v`. Prima dell'aggiornamento fare backup di `studio-state` e `deerflow-data` a servizi fermi. Dopo l'aggiornamento controllare login, modello condiviso, upload, delega e download sul dominio reale. Questo audit non ha eseguito un deploy sul VPS.
 
 ## Quanto sono specializzati gli specialisti
 

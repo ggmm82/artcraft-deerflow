@@ -13,7 +13,7 @@ def main():
     lock=json.loads((ROOT/'versions.lock.json').read_text())
     cfg=yaml.safe_load((ROOT/'config/deerflow.yaml').read_text())
     local=yaml.safe_load((ROOT/'docker-compose.yaml').read_text())
-    remote=yaml.safe_load((ROOT/'compose.hostinger.yaml').read_text())
+    remote=yaml.safe_load((ROOT/'config/compose.hostinger.template.yaml').read_text())
     ids={a['id'] for a in lock['applications']}
     assert len(ids)==len(lock['applications']) and ids==set(cfg['subagents']['custom_agents'])
     expected_skills={'artcraft-'+identifier for identifier in ids}|{'artcraft-workspace','artcraft-studio'}
