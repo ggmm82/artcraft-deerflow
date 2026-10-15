@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accesso CLI/MCP locale alle 13 applicazioni nella sandbox DeerFlow."""
+"""Accesso CLI/MCP locale alle applicazioni del catalogo nella sandbox DeerFlow."""
 import argparse
 import json
 import os

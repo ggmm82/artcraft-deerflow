@@ -151,14 +151,14 @@ def main():
                 passed('Un solo salvataggio collega la chiave e attiva la squadra')
                 catalog = context.request.get(args.base_url + '/studio/api/catalog').json()
                 report['team'] = catalog['team']
-                assert len(catalog['effective_agents']) == 13
+                assert set(catalog['effective_agents']) == {app['id'] for app in catalog['applications']}
                 for identifier, settings in catalog['effective_agents'].items():
                     assert settings['engine'] == catalog['team']['engine'] == 'deepseek'
                     assert settings['model'] == catalog['team']['model']
                     assert 'artcraft-' + identifier in settings['skills']
                     assert 'artcraft-workspace' in settings['skills']
                 assert os.environ['DEEPSEEK_API_KEY'] not in json.dumps(catalog)
-                passed('Tutti i 13 specialisti ereditano il modello, con le proprie skills')
+                passed('Tutti gli specialisti ereditano il modello, con le proprie skills')
                 page.reload(wait_until='domcontentloaded')
                 frame = page.frame_locator('iframe[title="ArtCraft Studio"]')
                 expect(frame.locator('#team-summary')).to_have_text(re.compile(r'^Squadra pronta'), timeout=15000)
@@ -173,11 +173,11 @@ def main():
                     for model in (alternate, catalog['team']['model']):
                         frame.locator('#team-model').select_option(model)
                         frame.locator('#team-save').click()
-                        expect(frame.locator('#status')).to_have_text('Squadra pronta. Modello applicato al coordinatore e a tutti i 13 specialisti.', timeout=40000)
+                        expect(frame.locator('#status')).to_have_text('Squadra pronta. Modello applicato al coordinatore e a tutti gli specialisti.', timeout=40000)
                         updated = context.request.get(args.base_url + '/studio/api/catalog').json()
                         assert updated['team']['model'] == model
                         assert all(settings['model'] == model for settings in updated['effective_agents'].values())
-                    passed('Cambio modello dal menu propagato ai 13 specialisti senza reinserire la chiave')
+                    passed('Cambio modello dal menu propagato agli specialisti senza reinserire la chiave')
                 snapshot(page, '01-team-ready')
                 verify_team_ux(page, args.base_url, passed, snapshot)
                 frame = page.frame_locator('iframe[title="ArtCraft Studio"]')

@@ -42,7 +42,7 @@ def command(engine, model, prompt, output):
         return args + [prompt]
     if engine == 'gemini':
         args = ['gemini', '--approval-mode', 'yolo', '--output-format', 'json',
-                '--include-directories', '/mnt/user-data']
+                '--skip-trust', '--include-directories', '/mnt/user-data']
         if model:
             args += ['--model', model]
         return args + ['--prompt', prompt]

@@ -28,7 +28,7 @@ request('/api/v1/auth/initialize', {'email': 'studio-ci@example.com',
 assert any(cookie.name == 'access_token' for cookie in cookies)
 assert b'ArtCraft Studio' in request('/studio/')
 catalog = json.loads(request('/studio/api/catalog'))
-assert len(catalog['agents']) == 13
+assert set(catalog['agents']) == {app['id'] for app in catalog['applications']}
 saved = json.loads(request('/studio/api/agents/gridcraft',
                           {'engine': 'gemini', 'model': '', 'instructions': 'Preferisci euro',
                            'enabled': True}, method='PUT'))

@@ -28,6 +28,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(args[args.index('--include-directories') + 1], '/mnt/user-data')
         self.assertEqual(args[args.index('--model') + 1], 'chosen-model')
         self.assertIn('--prompt', args)
+        self.assertIn('--skip-trust', args)
         self.assertEqual(login_command('codex'), ['codex', 'login', '--device-auth'])
 
     def test_hostinger_release_checks_every_image_before_replacing_output(self):

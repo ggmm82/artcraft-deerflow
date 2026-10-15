@@ -11,7 +11,7 @@ def main():
              '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox']),
         (['gemini', '--version'], ['0.64.0']),
         (['gemini', '--help'], ['--prompt-interactive', '--prompt', '--approval-mode',
-                               '--output-format', '--model', '--include-directories']),
+                               '--output-format', '--model', '--include-directories', '--skip-trust']),
     ]
     for command, expected in contracts:
         result = subprocess.run(command, check=True, capture_output=True, text=True, timeout=90)

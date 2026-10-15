@@ -3,6 +3,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 
 import yaml
 
@@ -15,6 +16,8 @@ def sync(root=ROOT):
     lock = json.loads(lock_path.read_text())
     apps = lock['applications']
     ids = [app['id'] for app in apps]
+    if not all(re.fullmatch(r'[a-z][a-z0-9-]*', identifier) for identifier in ids):
+        raise ValueError('Identificatore applicazione non valido')
     if len(set(ids)) != len(ids):
         raise ValueError('Identificatori duplicati')
     for identifier in ids:
