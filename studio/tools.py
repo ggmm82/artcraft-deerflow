@@ -10,9 +10,8 @@ from .docker_runtime import delegate
 def studio_delegate(agent: str, task: str, runtime: Runtime) -> str:
     """Delegate an ArtCraft task to a configured Codex, Gemini or DeepSeek specialist in Docker.
 
-    Use the exact specialist ID: photocraft, vectorcraft, filmcraft, lightcraft,
-    pdfcraft, effectcraft, designcraft, gridcraft, wordcraft, deckcraft, cadcraft,
-    soundcraft, figcraft. Give input paths, required outputs and acceptance checks.
+    Use the exact specialist ID from the configured operational catalog in the
+    lead instructions. Give input paths, required outputs and acceptance checks.
     Specialists share files in this conversation; pass result paths to the next one.
     The runtime assigns a separate output directory per task: request filenames,
     not fixed absolute output locations. Use the paths returned by the specialist.

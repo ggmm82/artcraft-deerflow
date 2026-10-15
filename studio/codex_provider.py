@@ -11,6 +11,13 @@ class StudioCodexChatModel(CodexChatModel):
     """Keep DeerFlow's provider while matching current Codex request fields."""
 
     def _stream_response(self, headers: dict, payload: dict) -> dict:
+        # A specialist can refresh the shared OAuth file after this model instance
+        # was constructed. Never keep using its cached bearer/account headers.
+        credential = self._load_codex_auth()
+        if not credential:
+            raise RuntimeError('Ricollega Codex nel pannello La tua squadra')
+        headers = {**headers, 'Authorization': f'Bearer {credential.access_token}',
+                   'ChatGPT-Account-ID': credential.account_id}
         try:
             return super()._stream_response(headers, modernize_codex_payload(payload))
         except httpx.HTTPStatusError as exc:
@@ -20,5 +27,6 @@ class StudioCodexChatModel(CodexChatModel):
                 detail = exc.response.text.strip()
             except (httpx.ResponseNotRead, httpx.StreamClosed):
                 detail = ""
+            detail = detail.replace(credential.access_token, '[REDACTED]')
             suffix = f": {detail[:2000]}" if detail else ""
             raise RuntimeError(f"Codex API HTTP {exc.response.status_code}{suffix}") from exc

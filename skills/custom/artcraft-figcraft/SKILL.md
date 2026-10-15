@@ -29,6 +29,12 @@ Usa FigCraft per layout UI, componenti e prototipi. Per illustrazioni e loghi us
 2. Crea griglia, spaziature e token coerenti; usa componenti riutilizzabili e vincoli/auto layout supportati. Prevedi stati default, hover/focus, errore, vuoto e caricamento quando pertinenti.
 3. Verifica testi lunghi, adattamento ai viewport e contrasto; collega i passaggi del prototipo richiesti. Non attestare conformità di accessibilità senza controlli specifici.
 
+## Diagnosi e recupero CLI
+
+- Se il layout non si adatta, verifica i vincoli e l’auto layout realmente disponibili nello schema. Una seconda immagine ridimensionata non dimostra un’interfaccia responsive.
+- Se un prototipo non naviga, verifica ID di frame destinazione e collegamenti dopo la riapertura del sorgente; immagini e SVG non conservano necessariamente le interazioni.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri il sorgente e verifica struttura di frame/componenti, variabili e collegamenti del prototipo.

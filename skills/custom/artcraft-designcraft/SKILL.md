@@ -29,6 +29,12 @@ Usa DesignCraft per brochure, pubblicazioni multipagina e prestampa. Per testi s
 2. Imposta pagine mastro e stili coerenti; collega immagini e testi verificati. Controlla font disponibili, risoluzione effettiva delle immagini e flusso del testo prima dell’export.
 3. Risolvi overflow, righe isolate e immagini mancanti. Esporta separatamente PDF per schermo e stampa se richiesti, mantenendo il sorgente e le dipendenze.
 
+## Diagnosi e recupero CLI
+
+- Se un export taglia il testo, controlla overflow, font sostituiti, cornici e concatenamento delle pagine; ridurre tutto il corpo non è una correzione automatica accettabile.
+- Se validate-pdf rifiuta il documento, conserva il rapporto e correggi il requisito specifico. Non cambiare il nome del file o la sola estensione per dichiarare PDF/X.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Renderizza tutte le pagine e controlla margini, allineamenti, numerazione e testo tagliato.

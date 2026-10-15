@@ -29,6 +29,12 @@ Usa PdfCraft per ispezione, estrazione, unione, pagine e moduli PDF. Per riscriv
 2. Esegui modifiche su una copia; mantieni una mappa delle pagine prima/dopo. Per moduli distingui valori compilati e campi interattivi; avvisa se una modifica invalida firme o appiattisce campi.
 3. Per oscuramenti permanenti controlla che il contenuto sia rimosso da testo e oggetti: un rettangolo nero non basta. Non attestare redazione sicura se la release o i controlli non lo consentono.
 
+## Diagnosi e recupero CLI
+
+- Se il testo estratto è vuoto, verifica la presenza di pagine raster prima di dichiarare il PDF privo di contenuto. Distingui estrazione e OCR.
+- Per un oscuramento ricontrolla il testo estratto e gli oggetti anche dopo aver riaperto il file finale; se il dato è recuperabile, il controllo è fallito anche con anteprima nera.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri il PDF, verifica conteggio/ordine pagine e valori dei campi; estrai il testo per confrontare i contenuti attesi.

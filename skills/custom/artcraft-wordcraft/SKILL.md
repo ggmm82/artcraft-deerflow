@@ -50,6 +50,12 @@ Usa questa sezione solo quando il percorso rapido non basta. Per una nuova relaz
 2. Usa stili semantici di titolo e corpo, elenchi e numerazione coerenti. Definisci lingua, formato pagina e margini; evita spazi ripetuti come strumento di allineamento.
 3. Controlla interruzioni di pagina/sezione, intestazioni ripetute delle tabelle e didascalie. Aggiorna campi e sommario se supportati; dichiara quelli non ricalcolati.
 
+## Diagnosi e recupero CLI
+
+- Se il testo esiste ma l’impaginazione cambia, controlla stili, sostituzioni dei font, larghezza delle tabelle e interruzioni, distinguendo struttura DOCX e resa PDF.
+- Se una conversione perde un requisito avanzato, conserva il risultato valido e passa ai tool pertinenti del registro. Non ricostruire un documento breve già valido con un client MCP improvvisato.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri DOCX, confronta testo e struttura con i requisiti; verifica numerazione e presenza di tutte le tabelle.

@@ -29,6 +29,12 @@ Usa SoundCraft per montaggio audio, mix, tracce e bounce. Il sincronismo finale 
 2. Organizza tracce e tagli non distruttivi, applica dissolvenze e conserva margine di livello. Evita clipping, conversioni ripetute e normalizzazione che alteri il rapporto tra tracce senza motivo.
 3. Conserva progetto multitraccia e asset mantenendo i percorsi relativi: se sposti il progetto nella cartella finale, copia anche la cartella dei media collegati (per esempio `Audio Files/`). Riapri il progetto dalla posizione di consegna e risolvi ogni avviso `missing media`. Esegui un bounce breve di prova; esporta WAV master e formati compressi richiesti con parametri espliciti.
 
+## Diagnosi e recupero CLI
+
+- Se la riapertura segnala missing media, verifica i percorsi dalla cartella di consegna e copia le dipendenze conservandone la struttura; il bounce non sostituisce il progetto modificabile.
+- Se il master clippa o supera il target, misura il file finale e correggi livelli/processamento nella sessione. Ricalcola loudness e true peak dopo ogni nuova esportazione, senza riusare le misure di un altro file.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Con ffprobe verifica durata, sample rate, canali e codec. Controlla `ffmpeg -filters` e usa `ebur128=peak=true`, se presente, per loudness integrata e true peak sul file finale effettivo. Non equiparare picco campione e true peak e non trasferire le misure del bounce intero a un estratto. Non dichiarare assente un misuratore senza averne verificato la disponibilità.

@@ -29,6 +29,12 @@ Usa PhotoCraft per ritocco raster, livelli, maschere e compositing. Per lo svilu
 2. Duplica il documento e mantieni livelli nominati, maschere modificabili e originale intatto. Applica correzioni su un campione prima di operazioni estese; evita ricampionamenti ripetuti.
 3. Esporta una copia nel profilo richiesto. Per JPEG scegli uno sfondo esplicito; per PNG controlla trasparenza e bordi. Non promettere funzioni PSD che la release non conserva.
 
+## Diagnosi e recupero CLI
+
+- Se un filtro non produce l’effetto atteso, verifica livello attivo, selezione, maschera e visibilità prima di ripeterlo. Non applicare lo stesso filtro due volte alla cieca.
+- Se l’export perde alpha o livelli, confronta capacità del formato e modalità di esportazione nel registro. Conserva il progetto e dichiara l’eventuale appiattimento.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri sorgente ed export e confronta dimensioni, livelli e alpha attesi.

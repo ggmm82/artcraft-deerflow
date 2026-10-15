@@ -29,6 +29,12 @@ Usa DeckCraft per presentazioni e PPTX. Analisi numerica e riconciliazione dei d
 2. Imposta griglia, gerarchia tipografica e palette coerenti. Crea grafici editabili quando supportati; registra fonte, unità, periodo e denominatore. Non trasformare tutte le slide in immagini se serve PPTX modificabile.
 3. Mantieni testi brevi e leggibili, allineamenti e margini regolari. Usa note per dettagli e fonti; controlla font disponibili e contrasto. Non alterare numeri per adattarli alla narrazione.
 
+## Diagnosi e recupero CLI
+
+- Se un grafico non è modificabile, verifica il tipo di oggetto e i dati incorporati nel file finale; una bitmap con etichette non soddisfa il requisito di grafico editabile.
+- Se l’export differisce dal render sorgente, controlla font e capacità PPTX della release. Verifica tutte le slide dopo la conversione e registra gli elementi rasterizzati.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri PPTX, controlla numero e ordine slide e confronta tutti i numeri con i dati di origine.

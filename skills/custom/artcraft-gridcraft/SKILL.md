@@ -29,6 +29,12 @@ Usa GridCraft per dati, formule, tabelle, grafici e XLSX. Fornisci a DeckCraft d
 2. Mantieni importi e percentuali come numeri, date come date e unità nelle intestazioni. Usa la sintassi canonica delle funzioni/API; applica separatori italiani soltanto alla presentazione. Non convertire tutte le celle in testo.
 3. Conserva dati originali in una copia o foglio dedicato. Inserisci formule con riferimenti corretti, ricalcola, controlla errori e riconcilia i totali con un calcolo indipendente. Non mascherare divisioni per zero senza spiegazione.
 
+## Diagnosi e recupero CLI
+
+- Se una formula restituisce un errore, verifica tipi delle celle, sintassi canonica, intervallo e ricalcolo. Non sostituire la formula con il risultato costante per far passare il controllo.
+- Se un ID di documento o foglio diventa sconosciuto tra chiamate MCP, ricrea apertura, modifica e salvataggio in un unico craft batch; usa $result sul campo effettivo restituito e riapri poi il file salvato.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri XLSX e verifica fogli, tipi, formule e valori ricalcolati; esegui check e controlla celle con errori.

@@ -45,6 +45,12 @@ def catalog():
                         'instructions': '', 'enabled': True, 'skills': default_skills(app['id'])} for app in applications()})
         agents = json.loads(path.read_text())
         changed = False
+        for app in applications():
+            identifier = app['id']
+            if identifier not in agents:
+                agents[identifier] = {'engine': 'inherit', 'model': '', 'instructions': '',
+                                     'enabled': True, 'skills': default_skills(identifier)}
+                changed = True
         for identifier, config in agents.items():
             if 'skills' not in config:
                 config['skills'] = default_skills(identifier)

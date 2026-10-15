@@ -29,6 +29,12 @@ Usa VectorCraft per loghi, icone, illustrazioni e tracciati scalabili. Il ritocc
 2. Organizza gruppi e livelli con nomi; mantieni tracciati e testo modificabili. Usa geometrie coerenti, allineamenti e spessori controllati; evita immagini raster incorporate quando il requisito è vettoriale.
 3. Conserva una copia con testo editabile prima di convertire caratteri in tracciati. Verifica font e licenze degli asset forniti; non sostituire silenziosamente il marchio.
 
+## Diagnosi e recupero CLI
+
+- Se un elemento scompare, controlla viewBox, trasformazioni dei gruppi, clipping e ordine degli oggetti prima di ricrearlo.
+- Se il testo cambia dimensione o posizione, verifica il font installato e le metriche prima di convertirlo in tracciati. Mantieni anche una copia con testo modificabile.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri SVG/PDF e controlla viewBox, clipping, proporzioni e presenza di bitmap inattese.

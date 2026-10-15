@@ -109,6 +109,8 @@ Le credenziali restano nel volume privato `studio-state`; la storia delle CLI no
 
 ## Manutenzione e sviluppo
 
+La [verifica delle integrazioni e guida ai nuovi strumenti](docs/INTEGRAZIONI-E-NUOVI-STRUMENTI.md) descrive Codex/Gemini CLI, la copertura reale delle skills e la procedura automatizzata per aggiungere uno specialista senza un altro modello da configurare.
+
 ```bash
 docker compose logs -f gateway
 docker compose down                 # conserva i volumi
@@ -129,6 +131,8 @@ python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/
 I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Questo banco di prova è distinto dal percorso DeepSeek integrato nel pannello e non sostituisce il collaudo utente né i login delle CLI. Ogni prova consuma la quota del provider.
 
 Per verificare modifiche in produzione ricostruisci le immagini dal checkout oppure, dopo CI e pubblicazione, aggiorna i riferimenti `sha-…` del Compose Hostinger. I tag già fissati non ricevono le modifiche dei sorgenti automaticamente.
+
+Dopo un workflow completo verde su `main`, l'artefatto `hostinger-compose-<SHA>` contiene il Compose con tutte le immagini di quel commit. È generato solo dopo il collaudo di avvio; il file Hostinger attualmente versionato conserva le immagini precedenti finché non viene aggiornato esplicitamente. `scripts/prepare_hostinger.py` permette di preparare lo stesso file controllando prima che le immagini siano pubblicate.
 
 Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non usare `down -v` salvo richiesta esplicita di cancellazione. Per aggiornare, modifica insieme `versions.lock.json`, versioni CLI nei Dockerfile, commit DeerFlow nei Compose/workflow e collaudi. I dati non si aggiornano automaticamente a un nuovo schema.
 

@@ -29,6 +29,12 @@ Usa CADCraft per disegno tecnico, geometrie, layer, quote e DXF. Una rappresenta
 2. Organizza layer e geometrie; verifica chiusura dei contorni, intersezioni, duplicati e coerenza delle quote. Distingui unità del modello e scala di stampa.
 3. Misura entità e ingombri numericamente prima dell’export. Conserva geometria editabile e controlla le entità supportate dal formato di scambio.
 
+## Diagnosi e recupero CLI
+
+- Se le dimensioni differiscono, controlla unità del disegno, fattore di conversione e scala di stampa separatamente. Misura numericamente il DXF riaperto, senza inferire distanze dai pixel.
+- Se un contorno non è chiuso, individua vertici estremi, tolleranze e duplicati; non unire automaticamente geometrie che cambiano misure o vincoli del brief.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Riapri DXF e confronta unità, bounding box, conteggio entità e distanze campione con i requisiti e le tolleranze.

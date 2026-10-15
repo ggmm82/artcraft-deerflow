@@ -84,6 +84,11 @@ def initialize():
                 item['use'] = 'studio.codex_provider:StudioCodexChatModel'
                 changed = True
         template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
+        definitions = content.setdefault('subagents', {}).setdefault('custom_agents', {})
+        for identifier, definition in template['subagents']['custom_agents'].items():
+            if identifier not in definitions:
+                definitions[identifier] = definition
+                changed = True
         overlay = content.get('lead_prompt_overlay', {})
         if overlay.get('append', '').startswith(('Per ogni lavoro ArtCraft usa studio_delegate', 'Sei la Squadra ArtCraft.')):
             if overlay['append'] != template['lead_prompt_overlay']['append']:

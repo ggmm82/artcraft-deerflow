@@ -29,6 +29,12 @@ Usa LightCraft per sviluppo fotografico RAW, esposizione, colore e serie di foto
 2. Sviluppa un’immagine rappresentativa: bilanciamento del bianco, esposizione, recupero luci, ombre e contrasto. Controlla istogramma e clipping prima di sincronizzare le impostazioni.
 3. Dividi la serie per condizioni di luce quando necessario. Verifica campioni scuri e chiari; non applicare automaticamente la stessa esposizione a tutta la raccolta. Conserva ricetta/sidecar modificabili se supportati.
 
+## Diagnosi e recupero CLI
+
+- Se una serie produce risultati diversi, raggruppa gli input per profilo, orientamento e luce e verifica una ricetta per gruppo; non correggere sovrascrivendo RAW o sidecar originali.
+- Se un RAW non è supportato, registra il formato e l’errore; non spacciare un JPEG incorporato per sviluppo del RAW. Verifica la reale capacità della release prima del lavoro in serie.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Confronta conteggio input/output e segnala gli scarti; riapri gli export e controlla risoluzione, orientamento e profilo colore.

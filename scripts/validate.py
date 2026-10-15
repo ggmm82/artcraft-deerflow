@@ -14,8 +14,9 @@ def main():
     local=yaml.safe_load((ROOT/'docker-compose.yaml').read_text())
     remote=yaml.safe_load((ROOT/'compose.hostinger.yaml').read_text())
     ids={a['id'] for a in lock['applications']}
-    assert len(ids)==13 and ids==set(cfg['subagents']['custom_agents'])
-    assert len(list((ROOT/'skills/custom').glob('*/SKILL.md')))==15
+    assert len(ids)==len(lock['applications']) and ids==set(cfg['subagents']['custom_agents'])
+    expected_skills={'artcraft-'+identifier for identifier in ids}|{'artcraft-workspace','artcraft-studio'}
+    assert {p.parent.name for p in (ROOT/'skills/custom').glob('*/SKILL.md')}==expected_skills
     assert (ROOT/'studio/deerflow.yaml').read_bytes()==(ROOT/'config/deerflow.yaml').read_bytes()
     assert (ROOT/'studio/versions.lock.json').read_bytes()==(ROOT/'versions.lock.json').read_bytes()
     for a in lock['applications']:
@@ -53,6 +54,6 @@ def main():
     assert 'handle /api/langgraph/*' in caddy and 'uri replace /api/langgraph /api' in caddy
     for folder in ['scripts','studio','tests']:
         for path in (ROOT/folder).glob('*.py'):ast.parse(path.read_text(),str(path))
-    print('OK: 13 specialisti, 15 skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')
+    print(f'OK: {len(ids)} specialisti, {len(expected_skills)} skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')
 
 if __name__=='__main__':main()

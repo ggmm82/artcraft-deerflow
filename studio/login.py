@@ -16,6 +16,15 @@ SESSIONS = {}
 ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
 
 
+def login_command(engine):
+    if engine == 'gemini':
+        # --prompt is headless even on a PTY: Gemini refuses manual OAuth there.
+        return ['gemini', '--prompt-interactive', 'Rispondi solo OK.']
+    if engine == 'codex':
+        return ['codex', 'login', '--device-auth']
+    raise ValueError('Motore sconosciuto')
+
+
 class LoginSession:
     def __init__(self, engine):
         if engine not in ('codex', 'gemini'):
@@ -43,9 +52,7 @@ class LoginSession:
             atomic_json(credentials / 'settings.json',
                         {'security': {'auth': {'selectedType': 'oauth-personal'},
                                       'folderTrust': {'enabled': False}}})
-            cli = ['gemini', '--prompt', 'Rispondi solo OK', '--output-format', 'json']
-        elif engine == 'codex':
-            cli = ['codex', 'login', '--device-auth']
+        cli = login_command(engine)
         master, slave = pty.openpty()
         self.fd = master
         try:

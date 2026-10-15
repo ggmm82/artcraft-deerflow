@@ -29,6 +29,12 @@ Usa FilmCraft per montaggio, timeline e integrazione audio/video. Usa EffectCraf
 2. Crea una timeline con tagli e sincronizzazione espliciti; conserva i media collegati. Esegui una breve esportazione di prova con rendering CPU prima di render lunghi sulla VPS.
 3. Verifica inizio, transizioni, sincronizzazione labiale, titoli e finale. Esporta il progetto modificabile e un file con codec/container concordati; non presumere che l’estensione determini il codec.
 
+## Diagnosi e recupero CLI
+
+- Se l’export è vuoto o troncato, verifica media risolti, intervallo della timeline e unità temporali richieste dallo schema: frame e secondi non sono intercambiabili.
+- Se il rendering fallisce sulla VPS, prova prima un segmento breve in CPU con la stessa risoluzione e codec. Non ripetere l’intera esportazione prima di aver letto stderr e verificato spazio e dipendenze.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Con ffprobe confronta durata, fps, risoluzione e stream audio con il brief; controlla media mancanti e decodifica del file.

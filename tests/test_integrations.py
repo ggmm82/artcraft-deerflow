@@ -1,0 +1,116 @@
+"""Regression checks for CLI authentication, release wiring and tool onboarding."""
+import importlib
+import json
+import os
+from pathlib import Path
+import shutil
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import yaml
+
+from scripts.prepare_hostinger import prepare
+from scripts.sync_catalog import sync
+from studio.login import login_command
+from studio.run_agent import command
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class IntegrationTests(unittest.TestCase):
+    def test_gemini_manual_login_is_interactive_and_worker_can_read_shared_inputs(self):
+        login = login_command('gemini')
+        self.assertIn('--prompt-interactive', login)
+        self.assertNotIn('--prompt', login)
+        self.assertNotIn('--output-format', login)
+        args = command('gemini', 'chosen-model', 'Task', '/tmp/final')
+        self.assertEqual(args[args.index('--include-directories') + 1], '/mnt/user-data')
+        self.assertEqual(args[args.index('--model') + 1], 'chosen-model')
+        self.assertIn('--prompt', args)
+        self.assertEqual(login_command('codex'), ['codex', 'login', '--device-auth'])
+
+    def test_hostinger_release_checks_every_image_before_replacing_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / 'compose.yaml'
+            target.write_text('previous working release')
+            commit = 'a' * 40
+            def unavailable(image):
+                if '-frontend:' in image:
+                    raise RuntimeError('Image not published')
+            with self.assertRaises(RuntimeError):
+                prepare(commit, target, inspect=unavailable)
+            self.assertEqual(target.read_text(), 'previous working release')
+            verified = []
+            prepare(commit, target, inspect=verified.append)
+            result = yaml.safe_load(target.read_text())
+            self.assertEqual(len(verified), 3)
+            for service in ('gateway', 'frontend', 'sandbox-image'):
+                self.assertTrue(result['services'][service]['image'].endswith(':sha-' + commit))
+            self.assertEqual(result['services']['gateway']['environment']['STUDIO_SANDBOX_IMAGE'],
+                             result['services']['sandbox-image']['image'])
+            self.assertNotIn('ports', result['services']['gateway'])
+            self.assertIn('${TRAEFIK_HOST', result['services']['frontend']['environment']['BETTER_AUTH_URL'])
+            with self.assertRaises(ValueError):
+                prepare('latest', target, inspect=verified.append)
+
+    def test_new_tool_propagates_without_another_model_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for folder in ('config', 'studio', 'skills/custom'):
+                (root / folder).mkdir(parents=True, exist_ok=True)
+            content = yaml.safe_load((ROOT / 'config/deerflow.yaml').read_text())
+            profiles = content['models']
+            (root / 'config/deerflow.yaml').write_text(yaml.safe_dump(content))
+            lock = json.loads((ROOT / 'versions.lock.json').read_text())
+            new_tool = {**lock['applications'][0], 'id': 'newcraft', 'role': 'Nuovo strumento'}
+            lock['applications'].append(new_tool)
+            (root / 'versions.lock.json').write_text(json.dumps(lock))
+            for app in lock['applications'][:-1]:
+                skill = root / 'skills/custom' / ('artcraft-' + app['id'])
+                skill.mkdir()
+                (skill / 'SKILL.md').write_text('Existing skill')
+            with self.assertRaisesRegex(ValueError, 'newcraft'):
+                sync(root)
+            skill = root / 'skills/custom/artcraft-newcraft'
+            skill.mkdir()
+            (skill / 'SKILL.md').write_text('New tool procedure')
+            sync(root)
+            changed = yaml.safe_load((root / 'config/deerflow.yaml').read_text())
+            self.assertEqual(changed['models'], profiles)
+            self.assertEqual(changed['subagents']['custom_agents']['newcraft']['model'], 'inherit')
+            self.assertIn('newcraft per Nuovo strumento', changed['lead_prompt_overlay']['append'])
+            self.assertEqual((root / 'studio/deerflow.yaml').read_bytes(), (root / 'config/deerflow.yaml').read_bytes())
+            self.assertEqual((root / 'studio/versions.lock.json').read_bytes(), (root / 'versions.lock.json').read_bytes())
+            once = (root / 'config/deerflow.yaml').read_bytes()
+            sync(root)
+            self.assertEqual(once, (root / 'config/deerflow.yaml').read_bytes())
+
+    def test_existing_installation_adds_new_specialist_preserving_preferences(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
+            'STUDIO_STATE': directory, 'STUDIO_PASSWORD': 'test-install-password-long-enough'}):
+            from studio import state, bootstrap
+            importlib.reload(state)
+            importlib.reload(bootstrap)
+            bootstrap.initialize()
+            state.update_agent('wordcraft', {'engine': 'inherit', 'instructions': 'Stile sobrio', 'enabled': False})
+            template = Path(directory) / 'new-template'
+            shutil.copytree(ROOT / 'studio', template, ignore=shutil.ignore_patterns('__pycache__'))
+            config = yaml.safe_load((template / 'deerflow.yaml').read_text())
+            config['subagents']['custom_agents']['newcraft'] = {
+                **config['subagents']['custom_agents']['wordcraft'], 'skills': ['artcraft-workspace', 'artcraft-newcraft']}
+            (template / 'deerflow.yaml').write_text(yaml.safe_dump(config))
+            applications = state.applications() + [{'id': 'newcraft'}]
+            with patch.object(state, 'applications', return_value=applications), patch.object(bootstrap, 'ROOT', template):
+                bootstrap.initialize()
+                new = state.effective_agent('newcraft')
+                self.assertEqual((new['engine'], new['model']), ('codex', 'gpt-5.4'))
+                self.assertIn('artcraft-newcraft', new['skills'])
+            old = state.catalog()['wordcraft']
+            self.assertFalse(old['enabled'])
+            self.assertEqual(old['instructions'], 'Stile sobrio')
+            self.assertIn('newcraft', yaml.safe_load((Path(directory) / 'config.yaml').read_text())['subagents']['custom_agents'])
+
+
+if __name__ == '__main__':
+    unittest.main()

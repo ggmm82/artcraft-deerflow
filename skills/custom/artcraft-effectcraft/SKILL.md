@@ -29,6 +29,12 @@ Usa EffectCraft per composizioni, motion graphics, keyframe ed effetti. Il monta
 2. Organizza livelli e precomposizioni; imposta valori iniziali/finali, keyframe e interpolazione in unità temporali esplicite. Controlla punti di ancoraggio e trasformazioni.
 3. Renderizza frame iniziale, centrale e finale e i punti di cambio prima della sequenza completa. Per loop verifica continuità; per alpha scegli un formato che lo conservi.
 
+## Diagnosi e recupero CLI
+
+- Se un’animazione è statica, verifica composizione esportata, livello, proprietà animata, intervallo temporale e interpolazione nello schema reale, prima di aggiungere altri keyframe.
+- Se manca la trasparenza, controlla canale alpha e formato/codec effettivo; non dedurla dall’estensione. Per un loop confronta anche il raccordo tra ultimo e primo frame.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
 ## Controlli di accettazione
 
 - Confronta durata e numero frame attesi con l’export; verifica fps, risoluzione e alpha tramite metadati e riapertura.
