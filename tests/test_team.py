@@ -44,7 +44,7 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = self.client.get('/studio/api/catalog').json()
         self.assertEqual(data['team'], {'engine': 'deepseek', 'model': 'deepseek-flash', 'ready': True})
-        self.assertEqual(len(data['effective_agents']), 13)
+        self.assertEqual(set(data['effective_agents']), {app['id'] for app in self.state.applications()})
         for identifier, settings in data['effective_agents'].items():
             self.assertEqual((settings['engine'], settings['model']), ('deepseek', 'deepseek-flash'))
             self.assertIn('artcraft-' + identifier, settings['skills'])

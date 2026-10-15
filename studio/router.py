@@ -40,7 +40,7 @@ class AgentConfig(BaseModel):
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
     enabled: bool = True
-    skills: list[str] = Field(default_factory=list, max_length=14)
+    skills: list[str] = Field(default_factory=list)
 
 
 @router.put('/api/agents/{identifier}')

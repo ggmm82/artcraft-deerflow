@@ -30,7 +30,7 @@ class StudioTests(unittest.TestCase):
         self.assertIn('artcraft-vectorcraft', self.state.catalog()['gridcraft']['skills'])
         self.assertIn('artcraft-gridcraft', self.state.catalog()['gridcraft']['skills'])
         self.assertFalse(self.state.connection_status('gemini'))
-        self.assertEqual(len(self.state.catalog()), 13)
+        self.assertEqual(set(self.state.catalog()), {app['id'] for app in self.state.applications()})
 
     def test_codex_payload_matches_current_cli_contract(self):
         from studio.codex_compat import modernize_codex_payload

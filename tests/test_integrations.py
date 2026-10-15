@@ -107,6 +107,10 @@ class IntegrationTests(unittest.TestCase):
                 new = state.effective_agent('newcraft')
                 self.assertEqual((new['engine'], new['model']), ('codex', 'gpt-5.4'))
                 self.assertIn('artcraft-newcraft', new['skills'])
+                from studio.router import AgentConfig
+                values = AgentConfig(skills=state.available_skills()).model_dump()
+                updated = state.update_agent('newcraft', values)
+                self.assertEqual(set(updated['skills']), set(state.available_skills()))
             old = state.catalog()['wordcraft']
             self.assertFalse(old['enabled'])
             self.assertEqual(old['instructions'], 'Stile sobrio')
