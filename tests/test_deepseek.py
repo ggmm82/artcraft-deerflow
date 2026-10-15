@@ -8,6 +8,13 @@ import unittest
 from unittest.mock import patch
 
 
+def report_delivery(path):
+    return {'source_status': 'not_applicable', 'source_note': 'Analysis report only', 'files': [{
+        'path': str(path), 'role': 'report', 'format': 'TXT', 'open_with': 'Text editor',
+        'editability': 'Report text', 'reopen': {'status': 'passed', 'evidence': 'Read report.txt'},
+        'limitations': []}]}
+
+
 class DeepSeekTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -69,6 +76,7 @@ class DeepSeekTests(unittest.TestCase):
         import shlex
         manifest = {'task': 'Report', 'source_files': [], 'output_files': [str(output / 'report.txt')],
                     'checks': [{'name': 'Content', 'status': 'passed', 'evidence': 'Read report.txt'}], 'warnings': []}
+        manifest['delivery'] = report_delivery(output / 'report.txt')
         command = 'echo verified > report.txt; printf %s ' + shlex.quote(json.dumps(manifest)) + ' > handoff.json'
         responses = [
             {'choices': [{'message': {'role': 'assistant', 'content': 'Premature completion'}}]},
@@ -98,6 +106,7 @@ class DeepSeekTests(unittest.TestCase):
                     'evidence': 'Read report.txt'}], 'warnings': []}
         def path(value):
             return credentials if value == '/credentials/api.json' else Path(value)
+        manifest['delivery'] = report_delivery(output / 'report.txt')
         calls = []
         def respond(key, route, payload, timeout):
             calls.append(payload.copy())

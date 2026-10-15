@@ -16,3 +16,9 @@ vectorcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/logo.vectorcraft" "$ARTCRAFT_OUTPU
 Prova eseguita: SVG 160×90 con rettangolo e testo → sorgente VectorCraft → SVG/PNG. Il test indipendente legge XML, verifica `viewBox` e testo SVG editabile e decodifica il PNG. Non usare `--outline-text` quando il testo deve restare modificabile.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `vectorcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.vectorcraft` insieme a SVG/PDF/PNG richiesti. Riapri il progetto e verifica oggetti, gruppi, tracciati e testo; per SVG controlla che il testo da modificare non sia stato convertito in contorni e che non sia una sola bitmap incorporata. Distingui sorgente nativo e formato di scambio; segnala font, immagini collegate e caratteristiche non conservate.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

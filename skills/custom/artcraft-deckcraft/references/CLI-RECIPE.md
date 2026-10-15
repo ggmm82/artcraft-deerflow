@@ -20,3 +20,9 @@ deckcraft-cli render "$ARTCRAFT_OUTPUT_DIR/slide.pptx" --slide 0 "$ARTCRAFT_OUTP
 Prova eseguita: prima slide creata da zero, salvata in sorgente e PPTX, riaperta e renderizzata. Il controllo indipendente legge `ppt/slides/slide1.xml` e trova il testo come testo editabile, non bitmap. Gli indici `--slide` e MCP sono **zero-based**: la prima slide è 0. Per grafici e animazioni serve un controllo specifico ulteriore.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `deckcraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.deckcraft` e il PPTX richiesto, oltre a PDF o anteprime se utili. Riapri il sorgente con DeckCraft e verifica slide, testi, forme e immagini modificabili; verifica separatamente il PPTX se consegnato, senza dedurne la compatibilità dal sorgente. Non presentare slide rasterizzate come testo/grafici modificabili. Includi media collegati necessari e dichiara font, animazioni o elementi persi in export.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

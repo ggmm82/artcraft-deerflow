@@ -57,10 +57,13 @@ pdfcraft-cli combine input.pdf appendix.pdf --out output.pdf
 pdfcraft-cli text output.pdf
 ```
 
-## Consegna
+## Consegna: sorgenti modificabili e compatibilità
 
-Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
-Non presentare una semplice anteprima come documento modificabile.
+Consegna il PDF risultante, riaperto con PdfCraft, precisando quali operazioni restano possibili (pagine, annotazioni, moduli o testo secondo la release e il file). Se il lavoro parte da un documento Word, slide o impaginato creato dalla squadra, includi anche quel sorgente tramite lo specialista che lo ha prodotto. Un PDF è modificabile nei limiti di PdfCraft ma non equivale al progetto editoriale originale: non promettere stili Word, formule, livelli o font che non sono stati conservati. Per PDF scansionati o appiattiti dichiara espressamente i limiti.
+
+Per ogni file consegnato compila `delivery.files` in `handoff.json` secondo `artcraft-workspace`: ruolo (sorgente/export/pacchetto), formato reale, `open_with` (app e modalità di apertura), `editability` (cosa resta modificabile), prova di riapertura e limiti. I sorgenti e gli archivi necessari devono comparire in `output_files`, fuori da `work/`, così il coordinatore può renderli scaricabili; `source_files` da solo non basta. Distingui originali in input dai nuovi sorgenti del risultato.
+
+Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e verifica la struttura modificabile, non solo estensione, header o viewer. Registra il comando/tool reale e il risultato; se la verifica manca usa `not_run`, se fallisce usa `failed`. Non dichiarare compatibilità con altre app per analogia. Se non è possibile fornire il sorgente equivalente, imposta `delivery.source_status: "unavailable"`, spiega il motivo in `source_note` e `warnings` e indica ciò che manca: la consegna è parziale, non un prodotto pienamente modificabile. Non inventare file nativi, non cambiare semplicemente l’estensione e non consegnare log/cataloghi come sorgenti.
 
 ## Fonti
 

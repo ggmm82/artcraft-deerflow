@@ -36,8 +36,8 @@ CASES = {
 }
 EXECUTION_CASES = {
     'gridcraft': 'Crea dati di prova con tre importi numerici 10, 20, 30. Produci un XLSX con formula di somma, riaprilo e verifica totale 60 con un controllo indipendente. Consegna XLSX e rapporto dei controlli.',
-    'wordcraft': 'Crea una relazione breve in italiano con titolo e due paragrafi. Produci DOCX e PDF, riaprili e verifica testo e pagine. Puoi creare un TXT di input nella cartella assegnata. Dichiara la visione come non eseguita.',
-    'soundcraft': 'Crea un breve audio dimostrativo usando la CLI installata e consegna WAV e rapporto. Verifica con ffprobe durata, codec, canali e sample rate; misura picchi se disponibile. Dichiara l’ascolto come non eseguito.',
+    'wordcraft': 'Crea una relazione breve in italiano con titolo e due paragrafi. Produci DOCX modificabile e PDF, riaprili e verifica testo e pagine. Puoi creare un TXT di input nella cartella assegnata. Dichiara la visione come non eseguita.',
+    'soundcraft': 'Crea un breve audio dimostrativo usando la CLI installata e consegna sessione modificabile con dipendenze, WAV e rapporto. Verifica con ffprobe durata, codec, canali e sample rate; misura picchi se disponibile. Dichiara l’ascolto come non eseguito.',
 }
 
 
@@ -156,9 +156,12 @@ def evaluate(key, model, agent, args, report_dir):
                 messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': content})
         if args.execute:
             code = ('import sys,json;sys.path.insert(0,"/review");from handoff import validate_handoff;'
-                    f'print(json.dumps(validate_handoff({output_dir!r},"/mnt/user-data")))')
+                    f'print(json.dumps(validate_handoff({output_dir!r},"/mnt/user-data",require_delivery=True)))')
             handoff = json.loads(docker('exec', container, 'python3', '-c', code))
-            passed = not any(c['status'] == 'failed' for c in handoff['checks'])
+            passed = (not any(c['status'] == 'failed' for c in handoff['checks'])
+                      and handoff['delivery']['source_status'] != 'unavailable'
+                      and all(f['reopen']['status'] == 'passed' for f in handoff['delivery']['files']
+                              if f['role'] in ('editable_source', 'source_archive')))
             details = {'handoff': handoff, 'quality_claims': 'Model-reported checks; file existence and paths verified by runtime.'}
         else:
             plan = json.loads(message['content'])

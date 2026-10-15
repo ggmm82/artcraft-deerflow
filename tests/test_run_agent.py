@@ -34,6 +34,9 @@ assert pathlib.Path.cwd() == out
 (out / 'report.txt').write_text('verified')
 (out / 'handoff.json').write_text(json.dumps({
     'task': 'Analysis', 'source_files': [], 'output_files': [str(out / 'report.txt')],
+    'delivery': {'source_status': 'not_applicable', 'source_note': 'Analysis report only', 'files': [{
+        'path': str(out / 'report.txt'), 'role': 'report', 'format': 'TXT', 'open_with': 'Text editor',
+        'editability': 'Report text', 'reopen': {'status': 'passed', 'evidence': 'Read report.txt'}, 'limitations': []}]},
     'checks': [{'name': 'Content', 'status': 'passed', 'evidence': 'Read report.txt'}], 'warnings': []}))
 pathlib.Path(sys.argv[1]).write_text('Completed')
 '''

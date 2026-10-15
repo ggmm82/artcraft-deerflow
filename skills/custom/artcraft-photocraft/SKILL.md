@@ -56,10 +56,13 @@ photocraft-cli commands --filter blur
 photocraft-cli convert input.psd output.png
 ```
 
-## Consegna
+## Consegna: sorgenti modificabili e compatibilità
 
-Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
-Non presentare una semplice anteprima come documento modificabile.
+Consegna il progetto `.pcraft` e gli export richiesti (per esempio PNG/JPEG); PSD è una consegna distinta da verificare se richiesta. Riapri il progetto con PhotoCraft e controlla livelli, maschere, visibilità, dimensioni e risorse. Dichiara quali elementi sono separatamente modificabili: un’immagine appiattita inserita in un progetto o in PSD non recupera livelli, parti del soggetto o effetti procedurali. Non presentare il PNG come sorgente a livelli.
+
+Per ogni file consegnato compila `delivery.files` in `handoff.json` secondo `artcraft-workspace`: ruolo (sorgente/export/pacchetto), formato reale, `open_with` (app e modalità di apertura), `editability` (cosa resta modificabile), prova di riapertura e limiti. I sorgenti e gli archivi necessari devono comparire in `output_files`, fuori da `work/`, così il coordinatore può renderli scaricabili; `source_files` da solo non basta. Distingui originali in input dai nuovi sorgenti del risultato.
+
+Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e verifica la struttura modificabile, non solo estensione, header o viewer. Registra il comando/tool reale e il risultato; se la verifica manca usa `not_run`, se fallisce usa `failed`. Non dichiarare compatibilità con altre app per analogia. Se non è possibile fornire il sorgente equivalente, imposta `delivery.source_status: "unavailable"`, spiega il motivo in `source_note` e `warnings` e indica ciò che manca: la consegna è parziale, non un prodotto pienamente modificabile. Non inventare file nativi, non cambiare semplicemente l’estensione e non consegnare log/cataloghi come sorgenti.
 
 ## Fonti
 

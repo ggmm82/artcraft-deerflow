@@ -11,3 +11,9 @@ photocraft-cli convert "$ARTCRAFT_OUTPUT_DIR/progetto.pcraft" "$ARTCRAFT_OUTPUT_
 Prova eseguita: PNG RGBA 64×48 → PCraft → PNG. Dopo riapertura, dimensioni e alpha risultano conservati; il checksum dell’originale resta uguale. Per il lavoro reale confronta anche livelli, modalità e dimensioni con il brief: questa ricetta non prova ogni filtro o tutte le funzioni PSD.
 
 La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `photocraft`. È un banco di collaudo con fixture, non una scorciatoia per produrre la consegna dell’utente. Non dichiarare visione o ascolto sulla base dei soli controlli tecnici.
+
+
+## Consegna della lavorazione
+
+Consegna il progetto `.pcraft` e gli export richiesti (per esempio PNG/JPEG); PSD è una consegna distinta da verificare se richiesta. Riapri il progetto con PhotoCraft e controlla livelli, maschere, visibilità, dimensioni e risorse. Dichiara quali elementi sono separatamente modificabili: un’immagine appiattita inserita in un progetto o in PSD non recupera livelli, parti del soggetto o effetti procedurali. Non presentare il PNG come sorgente a livelli.
+Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.

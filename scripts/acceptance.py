@@ -187,6 +187,12 @@ def cadcraft(c):
             len(xs) == len(ys) == 4 and max(xs) - min(xs) == 40 and max(ys) - min(ys) == 20
             and any(k == 70 and int(v) & 1 for k, v in entity) and int(pairs[unit + 1][1]) == 4, info)
     c.check('SVG valido', ET.parse(preview).getroot().tag.endswith('svg'), str(preview))
+    edited = c.root / 'rettangolo-modificato.dxf'
+    c.run('cadcraft-cli', 'run', output, '--cmd',
+          'pline {"vertices":[[50,0],[60,0],[60,10]],"closed":true}', '--save', edited)
+    reopened = c.run('cadcraft-cli', 'info', edited)
+    c.check('Sorgente riaperto e modificabile in una nuova sessione CADCraft',
+            edited.read_text().count('LWPOLYLINE') == 2, reopened)
 
 
 def deckcraft(c):
