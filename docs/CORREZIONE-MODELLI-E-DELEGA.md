@@ -19,9 +19,9 @@ Il collaudo illustrativo ha trovato anche un limite reale del worker DeepSeek: l
 Le nuove prove automatiche coprono anche l’esecuzione di una produzione preparata durante la riserva finale e il rifiuto dei cataloghi interni come prodotti. Il caso illustrativo fallito sul vecchio runtime rimane tale e non viene contato come riuscito.
 
 
-## Stato verificato del rilascio
+## Primo rilascio verificato
 
-Runtime `345840fa88153500158c2bde8e6a5041ddb682fc`: tutti i sei job CI e avvio completo verdi, sia nella [PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727278651) sia nella [pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727399776). Il Compose nel repository usa questi runtime. Il download anonimo dell’[asset versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-345840fa88153500158c2bde8e6a5041ddb682fc/compose.hostinger.yaml) è stato confrontato con il file generato.
+Runtime `345840fa88153500158c2bde8e6a5041ddb682fc`: tutti i sei job CI e avvio completo verdi, sia nella [PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727278651) sia nella [pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727399776). Il primo Compose pubblicato usava questi runtime. Il download anonimo dell’[asset versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-345840fa88153500158c2bde8e6a5041ddb682fc/compose.hostinger.yaml) è stato confrontato con il file generato.
 
 Sono passati 62 test Python: 57 locali e cinque contratti provider nell’immagine Gateway effettiva, compreso il retry limitato dopo 429. La CI comprende inoltre le verifiche native delle 13 app e il collaudo del protocollo Codex senza generazione.
 
@@ -40,8 +40,24 @@ La skill ora usa i percorsi reali. Il prompt del worker e la procedura comune sp
 
 La prova successiva sul VPS con coordinatore e worker Codex `gpt-6.1-sol`, trasmettendo esplicitamente i percorsi corretti nella delega, ha prodotto DOCX (6.313 byte) e PDF (9.006 byte). Entrambi sono stati scaricati dal backend autenticato; lettura indipendente XML DOCX e pypdf conferma il solo testo `COLLAUDO ARTCRAFT OK`, PDF di una pagina. La chat nel browser mostra i due file e i link corretti; entrambi i pulsanti Download sono stati cliccati e i file confrontati byte per byte con quelli verificati. La delega è una sola, riuscita. Il pannello mantiene la squadra Codex. Non è stata eseguita ispezione visiva del documento.
 
-Questa prova dimostra la produzione reale del worker con la correzione esplicita; perché le richieste ordinarie la ricevano automaticamente occorre distribuire il nuovo runtime con le skill corrette. Non si dichiara ancora verificato su VPS quel successivo deploy.
+Questa prova dimostra la produzione reale del worker con la correzione esplicita; perché le richieste ordinarie la ricevano automaticamente occorre distribuire il nuovo runtime con le skill corrette. Al momento di quella prova il successivo deploy non era ancora verificato; il collaudo conclusivo è riportato sotto.
 
 I test aggiornati sono 64: 59 locali e cinque contratti provider nell’immagine Gateway, tutti passati. Le nuove regressioni verificano la causa operativa nei manifest falliti e il rifiuto dei symlink esterni anche nella diagnostica.
 
-Rilascio della correzione skill: `9176304b6e74433109931b1c75721c1b663c3845`. Tutti i sei job della [CI di pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731051499) e della [CI PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731059284) sono verdi, incluso avvio completo. Il Compose nel repository fissa questo rilascio; il [Compose versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-9176304b6e74433109931b1c75721c1b663c3845/compose.hostinger.yaml) è stato scaricato anche anonimamente e confrontato byte per byte con l’asset di rilascio. La distribuzione di questo ultimo aggiornamento su Hostinger non è ancora stata eseguita.
+Rilascio della correzione skill: `9176304b6e74433109931b1c75721c1b663c3845`. Tutti i sei job della [CI di pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731051499) e della [CI PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38731059284) sono verdi, incluso avvio completo. Il Compose nel repository fissa questo rilascio; il [Compose versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-9176304b6e74433109931b1c75721c1b663c3845/compose.hostinger.yaml) è stato scaricato anche anonimamente e confrontato byte per byte con l’asset di rilascio. Alla pubblicazione del rilascio la distribuzione su Hostinger non era ancora stata eseguita; ora è collaudata come riportato sotto.
+
+
+## Collaudo conclusivo del deploy con richieste normali
+
+Dopo il deploy comunicato dall’utente, il VPS risponde `ready` e il coordinatore legge la skill WordCraft con `/usr/local/bin`, senza il vecchio percorso. È stata inviata una richiesta ordinaria: una relazione italiana di una pagina «Laboratorio creativo ArtCraft», con obiettivo, tre attività concrete, risultati attesi e dicitura `COLLAUDO ARTCRAFT OK`, da consegnare in Word e PDF. Nessun percorso CLI, Python, istruzione di diagnosi o correzione tecnica è stato inserito nella richiesta.
+
+| Squadra condivisa | Esito della richiesta | File scaricati | Verifiche indipendenti |
+| --- | --- | --- | --- |
+| Codex `gpt-6.1-sol` | Una delega WordCraft riuscita | DOCX 7.935 byte, PDF 27.966 byte | XML DOCX e testo PDF completi, PDF una pagina A4, render PDF visionato, entrambi i download browser identici ai file verificati |
+| DeepSeek `deepseek-flash` | Una delega WordCraft riuscita | DOCX 7.971 byte, PDF 27.671 byte | XML DOCX e testo PDF completi, PDF una pagina Letter, render PDF visionato, entrambi i download browser identici ai file verificati |
+
+Il formato A4 non era richiesto nel brief. Il manifest DeepSeek descrive erroneamente come A4/A4-like una pagina 612×792 pt, che è Letter: la verifica indipendente registra la misura reale, senza convalidare quell’etichetta. Entrambi i documenti soddisfano la richiesta utente di una pagina con le sezioni richieste. Il controllo visivo indipendente non ha rilevato troncamenti.
+
+Conversazioni dedicate: Codex `5590327d-b10a-4f1a-a2b8-940b675050a5`, DeepSeek `d8620724-23b6-45cd-b7b8-152690217466`. I file sono scaricabili dalle rispettive chat. Il provider DeepSeek è stato selezionato temporaneamente dal pannello comune; al termine la squadra è stata ripristinata su Codex `gpt-6.1-sol`, pronta. Le conversazioni precedenti dell’utente non sono state modificate.
+
+Questo conclude il collaudo del difetto di delega e dei percorsi CLI su richieste ordinarie dopo il deploy. Restano i limiti di copertura già dichiarati: le 13 lavorazioni native CI sono rappresentative; Gemini non ha un collaudo di generazione con account Google reale. Questa verifica aggiorna la documentazione e le evidenze, senza richiedere un ulteriore runtime.
