@@ -225,6 +225,9 @@ def main():
                     matches = [name for name in bundle.namelist() if name.endswith(suffix)]
                     if len(matches) != 1:
                         raise ValueError('Archivio senza un unico file ' + suffix)
+                    expected = {'.xlsx': 'vendite.xlsx', '.docx': 'relazione.docx', '.pdf': 'relazione.pdf'}[suffix]
+                    if Path(matches[0]).name != expected:
+                        raise ValueError('Nome del prodotto diverso da quello richiesto: ' + Path(matches[0]).name)
                     content = bundle.read(matches[0])
                     extracted[suffix] = args.output / Path(matches[0]).name
                     extracted[suffix].write_bytes(content)

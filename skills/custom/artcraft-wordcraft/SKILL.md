@@ -12,6 +12,25 @@ CLI: `wordcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json
 
 Usa WordCraft per relazioni, testi strutturati, tabelle e DOCX. Per impaginati editoriali con abbondanze usa DesignCraft.
 
+## Percorso rapido verificato: relazioni brevi DOCX e PDF
+
+Per creare da zero una relazione breve con titoli, paragrafi, elenchi e tabelle, usa **prima questo percorso**, senza esplorare tutti i comandi o ricostruire il documento con decine di operazioni MCP.
+La conversione Markdown → DOCX della release 0.7.0 conserva titoli semantici e tabelle (`Heading1`, `TableGrid`), verificati con `inspect`.
+
+1. Scrivi il contenuto completo in UTF-8 in `$ARTCRAFT_OUTPUT_DIR/work/relazione.md`. Usa titoli `#` e tabelle Markdown con riga separatrice. Mantieni dati e totale verificati, senza calcolarli di nuovo o inventare dettagli.
+2. Converti con le CLI native già installate. I percorsi completi funzionano anche quando una shell di login reimposta PATH:
+
+```bash
+/opt/artcraft/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/work/relazione.md" "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
+/opt/artcraft/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/relazione.docx" "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+/opt/artcraft/bin/wordcraft-cli inspect "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
+/opt/artcraft/bin/pdfcraft-cli info "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+/opt/artcraft/bin/pdfcraft-cli text "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+```
+
+3. Verifica titolo, tabella, numeri e totale nell'ispezione e nel testo del PDF. Registra subito la consegna dei due file con i nomi finali; non perfezionare opzionalmente tutti gli stili prima di consegnare.
+4. Usa il percorso di modifica sotto solo per documenti esistenti, modelli da preservare o funzionalità che Markdown non rappresenta. Non implementare client MCP manuali: per il lavoro con stato usa `craft batch`, che imposta già le radici autorizzate e gestisce la sessione.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
