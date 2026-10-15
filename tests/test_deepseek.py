@@ -91,7 +91,6 @@ class DeepSeekTests(unittest.TestCase):
         root = Path(self.temp.name)
         output = root / 'output'
         (output / 'work').mkdir(parents=True)
-        (output / 'report.txt').write_text('Verified content')
         credentials = root / 'api.json'
         credentials.write_text(json.dumps({'api_key': 'test-only-key'}))
         manifest = {'task': 'Report', 'source_files': [], 'output_files': [str(output / 'report.txt')],
@@ -102,8 +101,12 @@ class DeepSeekTests(unittest.TestCase):
         calls = []
         def respond(key, route, payload, timeout):
             calls.append(payload.copy())
-            if len(calls) <= 28:
-                tool = {'name': 'run_command', 'arguments': json.dumps({'command': 'true'})}
+            if len(calls) < deepseek.MAX_TURNS:
+                command = 'echo Verified > report.txt' if len(calls) == deepseek.MAX_TURNS - 2 else 'true'
+                if len(calls) == deepseek.MAX_TURNS - 2:
+                    self.assertNotIn('tool_choice', payload)
+                    self.assertEqual(payload['tools'][0]['function']['name'], 'run_command')
+                tool = {'name': 'run_command', 'arguments': json.dumps({'command': command})}
             else:
                 self.assertEqual(payload['tools'], [deepseek.HANDOFF_TOOL])
                 self.assertEqual(payload['tool_choice']['function']['name'], 'submit_handoff')
@@ -113,7 +116,7 @@ class DeepSeekTests(unittest.TestCase):
         with patch.object(deepseek, 'Path', side_effect=path), patch.object(deepseek, 'request', side_effect=respond):
             result = deepseek.run('deepseek-flash', 'Create report', output, 30)
         self.assertIn('report.txt', result)
-        self.assertEqual(len(calls), 29)
+        self.assertEqual(len(calls), deepseek.MAX_TURNS)
         self.assertEqual(json.loads((output / 'handoff.json').read_text()), manifest)
         self.assertEqual((output / 'handoff.json').stat().st_mode & 0o777, 0o600)
 
@@ -127,6 +130,18 @@ class DeepSeekTests(unittest.TestCase):
                 'checks': [{'name': 'Export', 'status': 'not_run', 'evidence': 'Not generated'}], 'warnings': []})
         self.assertFalse((output / 'handoff.json').exists())
         self.assertFalse(list(output.glob('.handoff-*')))
+
+    def test_internal_catalog_cannot_be_reported_as_a_product(self):
+        from studio.deepseek import submit_handoff
+        output = Path(self.temp.name) / 'output'
+        (output / 'work').mkdir(parents=True)
+        catalog = output / 'work/catalog.json'
+        catalog.write_text('{"tools": []}')
+        with self.assertRaisesRegex(ValueError, 'file tecnici'):
+            submit_handoff(output, {'task': 'Create robot', 'source_files': [],
+                'output_files': [str(catalog)], 'previews': [],
+                'checks': [{'name': 'Product', 'status': 'not_run', 'evidence': 'Only discovery completed'}], 'warnings': []})
+        self.assertFalse((output / 'handoff.json').exists())
 
     def test_transport_does_not_reflect_provider_error_body(self):
         import io

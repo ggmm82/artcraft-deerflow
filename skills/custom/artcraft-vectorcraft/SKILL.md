@@ -16,6 +16,10 @@ Usa VectorCraft per loghi, icone, illustrazioni e tracciati scalabili. Il ritocc
 
 Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
 
+## Creazione da zero: percorso rapido
+
+Per illustrazioni nuove composte da forme, tracciati, gruppi e gradienti puoi scrivere un SVG XML originale con Python o heredoc come input. Non è un export binario fittizio: importalo subito con `vectorcraft-cli convert` nel sorgente `.vectorcraft`, poi usa la CLI per SVG finale e PNG. Evita di tradurre ogni singola forma in decine di chiamate MCP quando non devi modificare un documento preesistente. La ricetta contiene il flusso verificato. Realizza prima il soggetto completo, poi le verifiche; non fermarti a un rettangolo di prova.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
