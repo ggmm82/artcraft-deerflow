@@ -23,11 +23,11 @@ La conversione Markdown → DOCX della release 0.7.0 conserva titoli semantici e
 2. Converti con le CLI native già installate. I percorsi completi funzionano anche quando una shell di login reimposta PATH:
 
 ```bash
-/opt/artcraft/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/work/relazione.md" "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
-/opt/artcraft/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/relazione.docx" "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
-/opt/artcraft/bin/wordcraft-cli inspect "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
-/opt/artcraft/bin/pdfcraft-cli info "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
-/opt/artcraft/bin/pdfcraft-cli text "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+/usr/local/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/work/relazione.md" "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
+/usr/local/bin/wordcraft-cli convert "$ARTCRAFT_OUTPUT_DIR/relazione.docx" "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+/usr/local/bin/wordcraft-cli inspect "$ARTCRAFT_OUTPUT_DIR/relazione.docx"
+/usr/local/bin/pdfcraft-cli info "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
+/usr/local/bin/pdfcraft-cli text "$ARTCRAFT_OUTPUT_DIR/relazione.pdf"
 ```
 
 3. Verifica titolo, tabella, numeri e totale nell'ispezione e nel testo del PDF. Registra subito la consegna dei due file con i nomi finali; non perfezionare opzionalmente tutti gli stili prima di consegnare.

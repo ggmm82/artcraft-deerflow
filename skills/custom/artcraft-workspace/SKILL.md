@@ -7,6 +7,7 @@ description: "Regole comuni per usare le CLI ArtCraft nella sandbox e scambiare 
 
 Il runtime applica il modello della squadra configurato una sola volta in Studio. Le skills definiscono competenze e verifiche, non credenziali o modelli: non richiedere configurazioni aggiuntive all’utente per eseguire l’incarico.
 
+- Python è disponibile come `/usr/bin/python3`, non come `python`. Le CLI native e `craft` sono in `/usr/local/bin`: verifica con `command -v NOME` e usa questi percorsi assoluti se la shell reimposta PATH. `/opt/artcraft/bin` non esiste; i binari originali sono sotto `/opt/artcraft/apps`.
 - Tutti i file di lavoro devono stare sotto `/mnt/user-data`. I file temporanei fuori da questo percorso possono scomparire alla chiusura della sandbox.
 - Il runtime assegna `/mnt/user-data/outputs/<specialista>/<run_id>` e la espone come `ARTCRAFT_OUTPUT_DIR`. Usa le sottocartelle `work/` e `previews/` già create qui; anche file di scoperta e batch devono essere distinti per incarico.
 - I file caricati dall'utente sono input: non sovrascriverli. Produci nuovi sorgenti modificabili ed export.

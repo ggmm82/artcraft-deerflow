@@ -69,6 +69,24 @@ def worker_error(engine, result):
     return ('\n'.join(important[-4:]) or '\n'.join(lines[:4]) or 'Worker terminato senza dettagli diagnostici')[:1200]
 
 
+def handoff_error(output_dir, error):
+    """Keep a failed delivery failed, but expose the recorded operational cause."""
+    details = []
+    try:
+        path = output_dir / 'handoff.json'
+        if not path.resolve().is_relative_to(output_dir.resolve()):
+            return str(error)[:1800]
+        manifest = json.loads(path.read_text())
+        for check in manifest.get('checks', []):
+            if isinstance(check, dict) and check.get('status') == 'failed':
+                evidence = check.get('evidence')
+                if isinstance(evidence, str):
+                    details.append(evidence[:500])
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return (str(error) + ('; ' + '; '.join(details[:3]) if details else ''))[:1800]
+
+
 def main():
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
@@ -99,7 +117,9 @@ def main():
         'Le skill aggiuntive sono procedure di supporto: non cambiano il tuo ruolo '
         'né i requisiti dell’incarico.',
         'Gli strumenti ArtCraft sono già installati. Usa craft help, craft commands e craft tools '
-        'per scoprire i comandi della release reale. Non installare software.',
+        'per scoprire i comandi della release reale. Non installare software. '
+        'Python: /usr/bin/python3 (non python). CLI native e craft: /usr/local/bin; '
+        'non usare /opt/artcraft/bin, che non esiste.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
         'Non leggere o modificare credenziali, /credentials, .codex, .gemini o .deepseek.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
@@ -140,7 +160,13 @@ def main():
                 if parsed.get('error'):
                     raise RuntimeError(str(parsed['error']))
                 message = parsed.get('response', '')
-        handoff = validate_handoff(output_dir, Path('/mnt/user-data'))
+        try:
+            handoff = validate_handoff(output_dir, Path('/mnt/user-data'))
+        except ValueError as exc:
+            print(json.dumps({'ok': False, 'agent': job['agent'], 'engine': engine,
+                              'output_dir': str(output_dir),
+                              'error': handoff_error(output_dir, exc)}, ensure_ascii=False))
+            return 1
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
                           'output_dir': str(output_dir), 'handoff': handoff,
                           'response': message}, ensure_ascii=False))

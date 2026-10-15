@@ -23,10 +23,19 @@ Le nuove prove automatiche coprono anche l’esecuzione di una produzione prepar
 
 Runtime `345840fa88153500158c2bde8e6a5041ddb682fc`: tutti i sei job CI e avvio completo verdi, sia nella [PR](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727278651) sia nella [pubblicazione](https://github.com/ggmm82/artcraft-deerflow/actions/runs/38727399776). Il Compose nel repository usa questi runtime. Il download anonimo dell’[asset versionato](https://github.com/ggmm82/artcraft-deerflow/releases/download/studio-345840fa88153500158c2bde8e6a5041ddb682fc/compose.hostinger.yaml) è stato confrontato con il file generato.
 
-Sono passati 62 test Python: 57 locali e cinque contratti provider nell’immagine Gateway effettiva, compreso il retry limitato dopo 429. Restano le verifiche native delle 13 app e il collaudo del protocollo Codex senza generazione nella CI.
+Sono passati 62 test Python: 57 locali e cinque contratti provider nell’immagine Gateway effettiva, compreso il retry limitato dopo 429. La CI comprende inoltre le verifiche native delle 13 app e il collaudo del protocollo Codex senza generazione.
 
 Sul VPS sono state prodotte e scaricate una DOCX e una PDF con testo/pagina verificati indipendentemente. Il percorso rapido illustrativo ha completato VectorCraft → PhotoCraft con SVG, sorgente VectorCraft, PNG trasparente e PSD a tre livelli. Il controllo visivo ha rilevato un’ombra duplicata nel primo export PhotoCraft: una terza delega ha nascosto quel livello e riesportato i file. Il PNG finale è stato visto, il PSD riaperto e la trasparenza verificata: la sagoma trasparente/opaca corrisponde al render vettoriale; l’antialiasing di bordo varia leggermente dopo il compositing. È un disegno stilizzato 512×512; il PSD separa soggetto e sfondo, non le singole parti del corpo.
 
 La configurazione live mantiene Codex con il corretto ID `gpt-6.1-sol`. DeepSeek è collegato nel pannello comune. Il profilo DeepSeek separato della chat è stato disattivato, conservando la configurazione persistente: il selettore mostra solo Squadra ArtCraft. Le conversazioni dell’utente non sono state modificate.
 
 Il coordinatore Codex risponde con l’ID corretto. La produzione del worker Codex resta da verificare **dopo l’installazione di questo rilascio**: il vecchio worker nascondeva la causa nel contesto troncato ed è stato osservato anche HTTP 429. Non viene dichiarata riuscita senza output finali. L’aggiornamento Docker sul VPS è eseguito dall’utente.
+
+
+## Collaudo successivo al deploy: percorsi CLI WordCraft
+
+Il nuovo endpoint del catalogo Codex risponde correttamente sul VPS. La prima delega Codex ha superato l'avvio del modello, ma non ha prodotto documenti: il manifest registra `python: command not found` e `/opt/artcraft/bin/wordcraft-cli: No such file or directory`. La skill WordCraft indicava erroneamente quella cartella; l'installer reale crea i link in `/usr/local/bin` e il runtime installa `python3`.
+
+La skill ora usa i percorsi reali. Il prompt del worker e la procedura comune specificano `python3` e `/usr/local/bin` per tutti gli specialisti. La validazione del catalogo rifiuta il vecchio percorso nelle skill e nelle ricette. Quando un manifest non contiene output validi, il runtime continua a rifiutare la consegna, includendo specialista, cartella e cause dei controlli falliti anziché soltanto l'errore di schema. La diagnostica non segue manifest collegati fuori dalla cartella assegnata.
+
+La verifica della produzione Codex con i percorsi corretti è in corso; questo aggiornamento non viene contato come collaudo riuscito finché i documenti non sono scaricati e controllati.
