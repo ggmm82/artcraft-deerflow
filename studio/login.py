@@ -1,7 +1,7 @@
 """CLI-owned browser authentication, displayed through a bounded pseudo-terminal."""
 import os
+import json
 import pty
-import re
 import select
 import signal
 import subprocess
@@ -11,9 +11,9 @@ import uuid
 
 from .docker_runtime import IMAGE, EXECUTION_LOCK, base_arguments, mount, remove
 from .state import STATE, credential_dir
+from .terminal_text import TerminalText, authorization_url
 
 SESSIONS = {}
-ANSI = re.compile(r'\x1b\][^\x07]*\x07|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
 
 
 def login_command(engine):
@@ -42,6 +42,8 @@ class LoginSession:
         self.engine = engine
         self.name = 'artcraft-login-' + self.id[:12]
         self.text = ''
+        self._terminal = TerminalText()
+        self.input_sent = False
         self.returncode = None
         self.closed = False
         self._lock = threading.Lock()
@@ -68,8 +70,8 @@ class LoginSession:
 
     def _read(self):
         try:
-            while self.process.poll() is None:
-                if self._cancel.is_set() or time.monotonic() - self.started > 600:
+            while True:
+                if self.process.poll() is None and (self._cancel.is_set() or time.monotonic() - self.started > 600):
                     self._terminate()
                     break
                 ready, _, _ = select.select([self.fd], [], [], 0.3)
@@ -81,7 +83,9 @@ class LoginSession:
                     if not chunk:
                         break
                     with self._lock:
-                        self.text = (self.text + ANSI.sub('', chunk.decode('utf-8', 'replace')))[-64000:]
+                        self.text = (self.text + self._terminal.feed(chunk))[-64000:]
+                elif self.process.poll() is not None:
+                    break
             self.returncode = self.process.wait(timeout=10)
         finally:
             if self.process.poll() is None:
@@ -98,21 +102,41 @@ class LoginSession:
 
     def public(self):
         with self._lock:
+            error = None
+            for line in reversed(self.text.splitlines()):
+                try:
+                    value = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(value, dict) and value.get('ok') is False:
+                    error = value.get('error')
+                    break
             return {'id': self.id, 'engine': self.engine, 'text': self.text,
+                    'authorization_url': authorization_url(self.text, self.engine),
+                    'input_sent': self.input_sent, 'error': error,
                     'finished': self.closed, 'returncode': self.returncode}
 
     def write(self, text):
         if self.closed or self.process.poll() is not None:
             raise ValueError('Sessione terminata')
+        if self.input_sent:
+            raise ValueError('Codice già inviato: attendi l’esito della verifica')
         if len(text) > 4096 or '\x00' in text:
             raise ValueError('Input non valido')
-        os.write(self.fd, (text.strip() + '\n').encode())
+        text = text.strip()
+        if not text:
+            raise ValueError('Incolla il codice restituito da Google')
+        os.write(self.fd, (text + '\n').encode())
+        self.input_sent = True
 
     def cancel(self):
         self._cancel.set()
 
 
 def start(engine):
+    for session in SESSIONS.values():
+        if not session.closed and session.engine == engine:
+            return session.public()
     # Finished terminal transcripts are short-lived and never persisted to logs.
     for identifier, session in list(SESSIONS.items()):
         if session.closed and time.monotonic() - session.started > 600:

@@ -7,6 +7,11 @@ import shutil
 import subprocess
 import sys
 
+try:
+    from .terminal_text import TerminalText
+except ImportError:
+    from terminal_text import TerminalText
+
 TOKEN = 'antigravity-cli/antigravity-oauth-token'
 AUTH_FILES = (TOKEN, 'antigravity-cli/auth.json')
 ANSI = re.compile(r'\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[>=]')
@@ -42,8 +47,8 @@ def prepare_home(coordinator=False):
             'command', 'unsandboxed', 'read_file', 'write_file', 'read_url', 'execute_url', 'mcp')]}
         agent = root / 'config/agents/artcraft-coordinator.md'
         agent.parent.mkdir(parents=True, exist_ok=True)
-        agent.write_text('---\nname: artcraft-coordinator\ndescription: ArtCraft coordinator without local tools\ntools: []\nmainAgent: true\nsubagent: false\n---\n'
-                         'Return the requested structured decision. Do not use local tools. '
+        agent.write_text('---\nname: artcraft-coordinator\ndescription: ArtCraft coordinator without local tools\ntools: [finish]\nmainAgent: true\nsubagent: false\n---\n'
+                         'Use the native finish tool to submit the requested structured decision. Do not use operational tools. '
                          'Only request tools offered in the supplied conversation; ArtCraft executes them.\n')
     settings.write_text(json.dumps(value))
     settings.chmod(0o600)
@@ -57,7 +62,7 @@ def models():
         raise RuntimeError('Antigravity: completa il login Google o verifica la disponibilità dell’account')
     entries = []
     for line in ANSI.sub('', result.stdout).splitlines():
-        match = re.fullmatch(r'\s*([a-z0-9][a-z0-9._:/-]+)\s{2,}(.+?)\s*', line)
+        match = re.fullmatch(r'\s*([a-z0-9][a-z0-9._:/-]+)\s+(.+?)\s*', line)
         if match:
             entries.append({'id': match[1], 'label': match[2], 'default': False})
     if not entries:
@@ -76,7 +81,9 @@ def result_envelope(output):
 def generate(payload):
     prepare_home(coordinator=True)
     schema = payload['schema']
-    schema_file = Path('/tmp/artcraft-decision-schema.json')
+    working = Path('/tmp/artcraft-coordinator')
+    working.mkdir(exist_ok=True, mode=0o700)
+    schema_file = working / 'decision-schema.json'
     schema_file.write_text(json.dumps(schema))
     # Stdin avoids argv limits and keeps full conversation/prompt out of process listings.
     args = ['agy', '--input-format', 'stream-json', '--output-format', 'stream-json', '--disable-slash-commands',
@@ -85,7 +92,7 @@ def generate(payload):
     if payload['model'] != 'auto':
         args += ['--model', payload['model']]
     result = subprocess.run(args, input=json.dumps({'event': 'user', 'message': {'content': payload['prompt']}}) + '\n', env=cli_env(),
-                            capture_output=True, text=True, timeout=1530)
+                            capture_output=True, text=True, timeout=1530, cwd=working)
     try:
         envelope = result_envelope(result.stdout)
     except ValueError:
@@ -117,6 +124,7 @@ def login():
     os.close(slave)
     started = time.monotonic()
     selected, buffer, token_seen = False, '', None
+    terminal = TerminalText()
     try:
         while child.poll() is None and time.monotonic() - started < 570:
             ready, _, _ = select.select([master, sys.stdin], [], [], .2)
@@ -125,10 +133,13 @@ def login():
                     data = os.read(master, 16384)
                 except OSError:
                     break
-                text = ANSI.sub('', data.decode('utf-8', 'replace'))
+                text = terminal.feed(data)
                 buffer = (buffer + text)[-64000:]
                 # Emit only CLI login text; never print cached credentials.
                 print(text, end='', flush=True)
+                if any(message in buffer.lower() for message in (
+                        'got an error:', 'token exchange failed:', 'invalid_grant')):
+                    raise RuntimeError('Codice Google non valido o scaduto. Avvia un nuovo accesso e usa soltanto il suo codice.')
                 if not selected and 'Select login method:' in buffer:
                     os.write(master, b'\r')  # Official default: Google OAuth.
                     selected = True
@@ -150,10 +161,15 @@ def login():
             os.killpg(child.pid, signal.SIGKILL)
             child.wait()
         os.close(master)
-    available = models()  # Official authenticated catalog, no generation.
     if not (root / TOKEN).is_file():
-        raise RuntimeError('Credenziali Antigravity non salvate dalla CLI')
+        raise RuntimeError('Accesso Google non completato. Avvia un nuovo accesso dal pannello.')
+    # Keep a successful OAuth exchange even when catalog verification fails.
+    Path('/credentials/antigravity-account.json').unlink(missing_ok=True)
     copy_auth(root, '/credentials')
+    try:
+        available = models()  # Official authenticated catalog, no generation.
+    except RuntimeError as error:
+        raise RuntimeError('Accesso Google ricevuto, ma verifica modelli fallita. ' + str(error)) from None
     marker = Path('/credentials/antigravity-account.json')
     marker.write_text(json.dumps({'models': available, 'verified_by': 'agy models'}))
     marker.chmod(0o600)
@@ -178,7 +194,8 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
-        # Native stderr/logs and credentials must never leak through HTTP errors.
-        print(json.dumps({'ok': False, 'error': 'Antigravity: verifica login Google, modello e quota'}))
+    except Exception as error:
+        # Only our fixed diagnostic messages may cross the login boundary.
+        message = str(error) if isinstance(error, RuntimeError) else 'Antigravity: verifica login Google, modello e quota'
+        print(json.dumps({'ok': False, 'error': message}))
         sys.exit(1)

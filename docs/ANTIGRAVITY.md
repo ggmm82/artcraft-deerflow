@@ -6,7 +6,7 @@ La voce **Antigravity · abbonamento Google** in **La tua squadra** usa il binar
 
 1. Distribuisci il Compose di prova della PR in un progetto Hostinger separato, secondo [la guida di aggiornamento](AGGIORNAMENTO-HOSTINGER.md).
 2. Apri **La tua squadra**, scegli **Antigravity** e premi **Collega account Antigravity**.
-3. Il pannello apre il flusso remoto del vero `agy`: segui **Apri il login ufficiale**, completa l’accesso sul sito Google e incolla il codice restituito nel campo del pannello. Non inserire la password Google in ArtCraft.
+3. Il pannello apre il flusso remoto del vero `agy`: segui **Apri il login ufficiale** (oppure **Copia link**), completa l’accesso sul sito Google e incolla il codice restituito nel campo del pannello. Non inserire la password Google in ArtCraft.
 4. Il collegamento termina dopo che `agy models` ha confermato l’accesso al catalogo. Non viene eseguita una generazione di prova durante il login.
 5. Scegli **Automatico** oppure aggiorna l’elenco dei modelli del tuo account. **Salva e attiva la squadra** propaga la scelta al coordinatore e a tutti gli specialisti, senza configurazioni per singola skill.
 6. Prova una richiesta concreta, ad esempio: «Crea un robottino CAD modificabile, consegna il sorgente riaperto in CadCraft e un’anteprima; dichiara formati e limiti». Verifica anche i file scaricati, non soltanto il messaggio della chat.
@@ -18,15 +18,15 @@ La voce **Antigravity · abbonamento Google** in **La tua squadra** usa il binar
 - Installazione nativa Linux amd64/arm64 con URL di release e SHA-512 fissati in `scripts/antigravity.lock.json`. Non viene eseguito uno script remoto durante la build. Gli aggiornamenti automatici sono disabilitati per preservare la versione collaudata.
 - Login e rinnovo dei token sono gestiti esclusivamente da `agy`. Su Linux senza D-Bus, il binario usa il proprio archivio `~/.gemini/antigravity-cli/antigravity-oauth-token`. ArtCraft conserva soltanto i file di autenticazione ammessi sul volume privato, con permessi `0600`; cronologia, log, plugin e configurazione del worker non vengono copiati tra conversazioni.
 - `useG1Credits` è disabilitato: non si abilita automaticamente il consumo di crediti personali oltre la quota. Chiavi API e impostazioni esterne di provider non possono sostituire il login scelto nel pannello.
-- Coordinatore: processo CLI in container senza mount della conversazione o socket Docker, agente personalizzato senza strumenti e regole che negano comandi, file, rete degli strumenti e MCP. Il canale LLM della CLI rimane disponibile. `--json-schema` produce una decisione strutturata (`content`, `tool_calls`); DeerFlow esegue gli strumenti richiesti e restituisce i risultati nel turno successivo.
+- Coordinatore: processo CLI in container senza mount della conversazione o socket Docker, agente personalizzato con il solo `finish` per consegnare la decisione e regole che negano comandi, file, rete degli strumenti e MCP. Il canale LLM della CLI rimane disponibile. `--json-schema` produce una decisione strutturata (`content`, `tool_calls`); DeerFlow esegue gli strumenti richiesti e restituisce i risultati nel turno successivo.
 - Specialista: CLI nel container temporaneo della conversazione, skill e ricetta effettive, accesso ai file condivisi tramite `--add-dir`. Le autorizzazioni automatiche si applicano nel worker isolato. Il controllo obbligatorio di `handoff.json`, sorgenti modificabili, riapertura e limiti resta attivo.
 - Il trasporto usa il protocollo documentato stdin/stdout `stream-json`, evitando limiti di lunghezza degli argomenti e prompt completi nell’elenco processi. Un risultato diverso da `SUCCESS` non diventa una consegna riuscita.
 
 ## Copertura del collaudo
 
-Verificati localmente il binario autentico 1.3.5, i flag, il protocollo senza account e il raggiungimento del flusso OAuth Google remoto. I test automatici coprono scelta condivisa, migrazione, inoltro dei risultati degli strumenti, schema della delega, isolamento del coordinatore, copia selettiva dei token e rifiuto degli errori. Le risposte del modello nei test unitari sono fixture dichiarate.
+Verificati localmente il binario autentico 1.3.5, i flag, il protocollo e il login Google remoto completato con l’account fornito per il collaudo. La prova reale ha rilevato e corretto il formato del catalogo (tabulazioni, non soltanto spazi), i link OSC spezzati tra chunk del terminale e la necessità del tool nativo `finish` per ottenere `structured_output`. Catalogo autenticato e delega del coordinatore sono stati eseguiti con la CLI reale; le ulteriori evidenze della consegna sono riportate nella [PR #5](https://github.com/ggmm82/artcraft-deerflow/pull/5). I test automatici coprono scelta condivisa, migrazione, inoltro dei risultati degli strumenti, schema della delega, isolamento del coordinatore, copia selettiva dei token e rifiuto degli errori. Le risposte del modello nei test unitari sono fixture dichiarate.
 
-**Da completare con l’account del proprietario:** login Google concluso, catalogo effettivo e quota Pro/Ultra, generazione del coordinatore, delega e riapertura dei file prodotti sulla VPS. Non sono certificati da test senza account né simulati come riusciti. Il login richiede l’azione del proprietario nel browser ufficiale Google.
+**Da completare sulla VPS dopo l’aggiornamento:** nuovo login dal pannello corretto, attivazione della squadra e consegna completa dalla chat. Il collaudo autenticato locale non dimostra da solo che la nuova revisione sia già distribuita su Hostinger. Le quote residue dell’abbonamento e tutte le combinazioni dei 13 strumenti non sono certificate da un singolo incarico. Il login richiede l’azione del proprietario nel browser ufficiale Google.
 
 ## Fonti ufficiali
 
@@ -37,3 +37,5 @@ Verificati localmente il binario autentico 1.3.5, i flag, il protocollo senza ac
 - [Permessi della CLI](https://antigravity.google/docs/permissions/)
 - [Archivio credenziali e aggiornamenti](https://antigravity.google/docs/cli/troubleshooting/)
 - [Annuncio della transizione Gemini CLI](https://developers.googleblog.com/an-important-update-transitioning-gemini-cli-to-antigravity-cli/)
+
+Quando il codice viene inviato, il pannello mostra lo stato di verifica e impedisce un secondo invio. Un codice rifiutato chiude il tentativo con un messaggio comprensibile. Riaprire il collegamento mentre è ancora attivo riprende la stessa sessione; non crea un altro URL. Le credenziali ricevute da Google vengono conservate anche se la successiva verifica del catalogo fallisce, senza dichiarare la squadra pronta prima del controllo.

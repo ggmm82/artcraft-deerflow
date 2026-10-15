@@ -52,10 +52,10 @@ def request(messages, model, tools=(), tool_choice=None):
             record['tool_call_id'] = item['tool_call_id']
         records.append(record)
     prompt = ('Sei il coordinatore ArtCraft nella conversazione JSON seguente. '
-              'Rispetta le istruzioni di sistema della conversazione e restituisci una decisione JSON. '
+              'Rispetta le istruzioni di sistema della conversazione. Usa il tool nativo finish per consegnare una decisione conforme allo schema JSON fornito, inclusi content e tool_calls. '
               'tool_calls richiede l’esecuzione degli strumenti di DeerFlow, non dichiara che siano già eseguiti. '
-              'Usa i risultati reali presenti nello storico. Non creare file o usare strumenti locali.\n'
-              + json.dumps({'messages': records, 'available_tools': [allowed[n] for n in sorted(names)]}, ensure_ascii=False))
+              'Usa i risultati reali presenti nello storico. Non creare file o usare strumenti operativi locali. L’unico tool nativo da usare è finish; le tool_calls dentro la decisione saranno eseguite da DeerFlow dopo la fine di questo processo.\n'
+              + json.dumps({'messages': records, 'available_tools': [allowed[n] for n in sorted(names)], 'output_schema': schema}, ensure_ascii=False))
     return {'model': model, 'prompt': prompt, 'schema': schema}
 
 

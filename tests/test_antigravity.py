@@ -58,7 +58,7 @@ class AntigravityTests(unittest.TestCase):
             self.assertIn('write_file(*)', settings['permissions']['deny'])
             self.assertFalse(settings['useG1Credits'])
             agent = (Path(directory)/'.gemini/config/agents/artcraft-coordinator.md').read_text()
-            self.assertIn('tools: []', agent)
+            self.assertIn('tools: [finish]', agent)
             self.assertEqual(value['content'], 'Pronto')
         for status in ('ERROR', 'WAITING', 'CANCELED', 'INTERRUPTED'):
             with tempfile.TemporaryDirectory() as directory, patch.object(Path, 'home', return_value=Path(directory)), \
@@ -88,7 +88,7 @@ class AntigravityTests(unittest.TestCase):
             with self.assertRaises(ValueError):cli.copy_auth(source,target)
 
     def test_live_catalog_parser_uses_native_slugs_and_rejects_auth_failure(self):
-        result=SimpleNamespace(returncode=0,stdout='Fetching available models...\ngemini-4-argon-high       Gemini 4 Argon (High)\ngemini-3.8-flash-medium   Gemini 3.8 Flash (Medium)\n')
+        result=SimpleNamespace(returncode=0,stdout='Fetching available models...\ngemini-4-argon-high\tGemini 4 Argon (High)\ngemini-3.8-flash-medium   Gemini 3.8 Flash (Medium)\n')
         with patch.object(cli.subprocess,'run',return_value=result):
             self.assertEqual([x['id'] for x in cli.models()],['gemini-4-argon-high','gemini-3.8-flash-medium'])
         with patch.object(cli.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout='private-token')):
@@ -105,3 +105,31 @@ class AntigravityTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+class TerminalLoginTests(unittest.TestCase):
+    def test_stream_split_hyperlinks_and_utf8_do_not_create_duplicate_oauth_links(self):
+        from studio.terminal_text import TerminalText, authorization_url
+        url='https://accounts.google.com/o/oauth2/auth?client_id=fixture&code_challenge=pkce&redirect_uri=https%3A%2F%2Fantigravity.google%2Foauth-callback&scope=openid&state=new&response_type=code'
+        wire=('Apri '+url+'\n\x1b]8;;'+url+'\x07→ Click here\x1b]8;;\x07\nCaffè\x1b[31m!\x1b[0m').encode()
+        decoder=TerminalText();text=''.join(decoder.feed(bytes([b])) for b in wire)
+        self.assertEqual(text,'Apri '+url+'\n→ Click here\nCaffè!')
+        self.assertEqual(authorization_url(text,'gemini'),url)
+        self.assertEqual(text.count(url),1)
+        newer=url.replace('state=new','state=newer')
+        self.assertEqual(authorization_url(text+'\n'+newer+'\x07→','gemini'),newer)
+        self.assertIsNone(authorization_url('https://accounts.google.com/o/oauth2/auth?client_id=partial','gemini'))
+        self.assertEqual(authorization_url('https://auth.openai.com/codex/device','codex'),'https://auth.openai.com/codex/device')
+
+    def test_login_public_state_reports_failure_and_resumes_same_session(self):
+        import threading
+        from studio import login
+        session=login.LoginSession.__new__(login.LoginSession)
+        session.id='fixture-session';session.engine='gemini';session.text='{"ok":false,"error":"Codice Google non valido o scaduto"}\n'
+        session._lock=threading.Lock();session.closed=True;session.returncode=1;session.input_sent=True
+        value=session.public()
+        self.assertIn('non valido',value['error'])
+        self.assertTrue(value['input_sent'])
+        session.closed=False
+        with patch.dict(login.SESSIONS,{'fixture-session':session},clear=True),patch.object(login,'LoginSession') as create:
+            self.assertEqual(login.start('gemini')['id'],'fixture-session')
+            create.assert_not_called()

@@ -19,7 +19,7 @@
 <p class="hint">Puoi lasciare Automatico. Per DeepSeek verifichiamo chiave e disponibilità del modello. Non occorre configurare i singoli specialisti.</p>
 <div class="row"><button id="team-save" type="submit">Salva e attiva la squadra</button><a id="start-work" class="primary" href="/workspace/chats/new" target="_top" hidden>Risolvi un problema →</a></div>
 </fieldset></form>
-<div id="login"><pre id="terminal"></pre><div id="auth-links"></div><label for="auth-code">Codice di autorizzazione richiesto</label><input id="auth-code" type="password" autocomplete="off"><div class="row"><button id="send-code">Invia codice</button><button id="cancel-login">Annulla accesso</button></div></div>
+<div id="login"><p id="login-state" role="status" aria-live="polite"></p><div id="auth-links"></div><div id="copy-login" hidden><label for="auth-url">Link ufficiale da copiare</label><input id="auth-url" readonly autocomplete="off"><button id="copy-auth-url" type="button">Copia link</button></div><label for="auth-code">Codice restituito da Google per questo accesso</label><input id="auth-code" type="password" autocomplete="off"><div class="row"><button id="send-code" type="button">Invia codice</button><button id="cancel-login" type="button">Annulla accesso</button></div><details><summary>Dettagli dell’accesso</summary><pre id="terminal"></pre></details></div>
 </section>
 <section class="box"><h2>Hai un problema da risolvere?</h2><p>Apri una chat, allega eventuali file e descrivi il risultato che ti serve. La squadra sceglie chi coinvolgere e ti restituisce i file scaricabili.</p><p class="hint">Per esempio: «Da queste vendite prepara un foglio con i totali e una breve relazione da condividere con il cliente».</p><p id="setup-needed">Collega un servizio qui sopra per iniziare.</p></section>
 <details id="specialists"><summary>Conosci la squadra e personalizza le preferenze</summary><p>Gli specialisti sono già pronti. Le preferenze sono facoltative; il modello si cambia soltanto nel riquadro della squadra.</p><div class="grid" id="agents"></div></details>
@@ -48,9 +48,43 @@ async function refresh(models=[]){const data=await api('catalog');currentTeam=da
 $('refresh-models').onclick=async()=>{const engine=$('team-engine').value,button=$('refresh-models');button.disabled=true;try{const data=await api('team/models?engine='+engine);modelLabels=Object.fromEntries((data.details||[]).map(item=>[item.id,item.label]));if($('team-engine').value===engine)modelOptions(data.models,$('team-model').value);status('Elenco aggiornato. Scegli il modello e salva la squadra.')}catch(e){status(e.message)}finally{button.disabled=false}};
 $('team-engine').onchange=()=>{modelOptions([],currentTeam?.engine===$('team-engine').value?currentTeam.model:'');$('custom-model').value='';serviceFields();if(['codex','gemini'].includes($('team-engine').value)&&connections[$('team-engine').value]?.credentials_present)$('refresh-models').click()};
 $('team-form').onsubmit=async event=>{event.preventDefault();const button=$('team-save');button.disabled=true;status('Verifica del servizio e attivazione della squadra…');try{const engine=$('team-engine').value;const value={engine,model:engine!=='deepseek'&&$('custom-model').value.trim()?$('custom-model').value.trim():$('team-model').value};if(engine==='deepseek'&&$('deepseek-key').value.trim())value.api_key=$('deepseek-key').value;const result=await api('team',{method:'PUT',body:JSON.stringify(value)});$('deepseek-key').value='';await refresh(result.models);status('Squadra pronta. Modello applicato al coordinatore e a tutti gli specialisti.')}catch(e){status(e.message)}finally{button.disabled=false}};
-async function pollLogin(){if(!currentLogin)return;try{const data=await api('login-session/'+currentLogin);$('terminal').textContent=data.text;$('auth-links').replaceChildren();for(const url of new Set(data.text.match(/https:\/\/[^\s<>\x1b]+/g)||[])){let parsed;try{parsed=new URL(url)}catch{continue}if(!['auth.openai.com','accounts.google.com','codeassist.google.com'].includes(parsed.hostname))continue;const a=element('a','Apri il login ufficiale');a.href=url;a.target='_blank';a.rel='noopener noreferrer';$('auth-links').append(a)}if(data.finished){clearInterval(timer);currentLogin=null;$('account-login').disabled=false;$('team-engine').disabled=false;$('team-save').disabled=false;if(data.returncode===0)$('login').style.display='none';connections=(await api('catalog')).connections;serviceFields();status(data.returncode===0?'Account collegato. Salva e attiva la squadra per usarlo.':'Accesso non completato. Leggi il messaggio sopra.')}}catch(e){status(e.message)}}
-$('account-login').onclick=async()=>{try{$('account-login').disabled=true;$('team-engine').disabled=true;$('team-save').disabled=true;const manual=$('team-engine').value==='gemini';$('auth-code').hidden=!manual;document.querySelector('label[for="auth-code"]').hidden=!manual;$('send-code').hidden=!manual;const data=await api('login/'+$('team-engine').value,{method:'POST'});currentLogin=data.id;$('login').style.display='block';$('terminal').textContent='Avvio dell’accesso…';timer=setInterval(pollLogin,1000);await pollLogin()}catch(e){status(e.message);$('account-login').disabled=false;$('team-engine').disabled=false;$('team-save').disabled=false}};
-$('send-code').onclick=async()=>{try{if(!currentLogin)throw Error('Avvia prima l’accesso');await api('login-session/'+currentLogin+'/input',{method:'POST',body:JSON.stringify({text:$('auth-code').value})});$('auth-code').value=''}catch(e){status(e.message)}};
+async function pollLogin(){
+ if(!currentLogin)return;
+ try{
+  const data=await api('login-session/'+currentLogin);
+  $('terminal').textContent=data.text;
+  $('auth-links').replaceChildren();
+  $('copy-login').hidden=true;
+  if(data.authorization_url){
+   const parsed=new URL(data.authorization_url);
+   if(parsed.protocol==='https:'&&['auth.openai.com','accounts.google.com'].includes(parsed.hostname)){
+    const a=element('a','Apri il login ufficiale');a.href=data.authorization_url;a.target='_blank';a.rel='noopener noreferrer';$('auth-links').append(a);
+    $('auth-url').value=data.authorization_url;$('copy-login').hidden=false;
+   }
+  }
+  $('send-code').disabled=!!data.input_sent||data.finished;
+  $('auth-code').disabled=!!data.input_sent||data.finished;
+  $('login-state').textContent=data.input_sent?'Codice inviato. Verifica dell’account e dei modelli in corso…':data.authorization_url?'Apri questo link, completa l’accesso Google e incolla qui il codice di questo tentativo.':'Avvio dell’accesso ufficiale…';
+  if(data.finished){
+   clearInterval(timer);currentLogin=null;
+   $('account-login').disabled=false;$('team-engine').disabled=false;$('team-save').disabled=false;
+   const success=data.returncode===0;
+   $('login-state').textContent=success?'Account collegato. Salva e attiva la squadra.':data.error||'Accesso non completato. Avvia un nuovo accesso e usa il codice del nuovo link.';
+   if(success)$('login').style.display='none';
+   else{$('auth-links').replaceChildren();$('copy-login').hidden=true;}
+   connections=(await api('catalog')).connections;serviceFields();status($('login-state').textContent);
+  }
+ }catch(e){status(e.message)}
+}
+$('copy-auth-url').onclick=async()=>{const input=$('auth-url');try{await navigator.clipboard.writeText(input.value);status('Link ufficiale copiato.')}catch{input.focus();input.select();status('Link selezionato: copialo e aprilo nel browser.')}};
+$('account-login').onclick=async()=>{try{$('account-login').disabled=true;$('team-engine').disabled=true;$('team-save').disabled=true;const manual=$('team-engine').value==='gemini';$('send-code').disabled=false;$('auth-code').disabled=false;$('auth-code').value='';$('auth-code').hidden=!manual;document.querySelector('label[for="auth-code"]').hidden=!manual;$('send-code').hidden=!manual;const data=await api('login/'+$('team-engine').value,{method:'POST'});currentLogin=data.id;$('login').style.display='block';$('terminal').textContent='Avvio dell’accesso…';timer=setInterval(pollLogin,1000);await pollLogin()}catch(e){status(e.message);$('account-login').disabled=false;$('team-engine').disabled=false;$('team-save').disabled=false}};
+$('send-code').onclick=async()=>{try{
+ if(!currentLogin)throw Error('Avvia prima l’accesso');
+ const code=$('auth-code').value.trim();if(!code)throw Error('Incolla il codice restituito da Google per questo accesso.');
+ $('send-code').disabled=true;
+ await api('login-session/'+currentLogin+'/input',{method:'POST',body:JSON.stringify({text:code})});
+ $('auth-code').value='';$('auth-code').disabled=true;$('login-state').textContent='Codice inviato. Verifica dell’account e dei modelli in corso…';await pollLogin();
+}catch(e){status(e.message);$('send-code').disabled=false}};
 $('cancel-login').onclick=async()=>{try{if(currentLogin)await api('login-session/'+currentLogin,{method:'DELETE'})}catch(e){status(e.message)}};
 function loadError(e){status(e.message);$('reload-config').hidden=false}
 $('reload-config').onclick=async()=>{const button=$('reload-config');button.disabled=true;try{await refresh();status('Configurazione caricata.')}catch(e){loadError(e)}finally{button.disabled=false}};
