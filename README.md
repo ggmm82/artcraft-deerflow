@@ -54,7 +54,7 @@ Non serve collegare account Codex/Gemini per usare DeepSeek:
 
 Il salvataggio della squadra rimuove le vecchie scelte di motore/modello dei singoli specialisti, preservando skills aggiuntive, istruzioni e stato attivo. Le conversazioni esistenti mantengono l’identificatore del profilo; il nome visibile diventa **Squadra ArtCraft**.
 
-Il [collaudo utente documentato](docs/COLLAUDO-UTENTE-DEEPSEEK.md) verifica dal browser un CSV passato a GridCraft e WordCraft, con download e controllo indipendente di XLSX/DOCX/PDF.
+Il [collaudo utente documentato](docs/COLLAUDO-UTENTE-DEEPSEEK.md) verifica con la chiave DeepSeek reale configurazione unica, scelta automatica di GridCraft e WordCraft, download e controllo indipendente di XLSX/DOCX/PDF, oltre alla riapertura dopo riavvio. La [guida della squadra](docs/CONFIGURAZIONE-SQUADRA.md) descrive il percorso dal problema ai file finali.
 
 La chiave resta nel volume privato `studio-state`, separata dalla configurazione dei modelli e dalle risposte pubbliche. Il worker DeepSeek riceve la cartella credenziali in sola lettura; come gli altri motori è destinato a un proprietario fidato. Le richieste del coordinatore e degli specialisti consumano la quota API DeepSeek. Un incarico ha timeout e limite di turni; errori, file mancanti o manifest non validi non vengono presentati come successo.
 

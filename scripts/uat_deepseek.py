@@ -41,6 +41,8 @@ def verify_team_ux(page, base_url, passed, snapshot):
     passed('Impostazioni Modelli apre la configurazione unica e chiude la finestra')
     assert frame.get_by_role('combobox').count() == 2
     passed('Due soli menu visibili: servizio e modello della squadra')
+    expect(frame.locator('#start-work')).to_be_in_viewport()
+    passed('Accesso alla chat visibile accanto al salvataggio, senza cercarlo sotto la pagina')
     page.set_viewport_size({'width': 390, 'height': 844})
     assert frame.locator('html').evaluate('(e) => e.scrollWidth <= window.innerWidth')
     assert page.locator('html').evaluate('(e) => e.scrollWidth <= window.innerWidth')

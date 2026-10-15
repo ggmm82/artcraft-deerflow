@@ -31,7 +31,9 @@ La conversione Markdown → DOCX della release 0.7.0 conserva titoli semantici e
 3. Verifica titolo, tabella, numeri e totale nell'ispezione e nel testo del PDF. Registra subito la consegna dei due file con i nomi finali; non perfezionare opzionalmente tutti gli stili prima di consegnare.
 4. Usa il percorso di modifica sotto solo per documenti esistenti, modelli da preservare o funzionalità che Markdown non rappresenta. Non implementare client MCP manuali: per il lavoro con stato usa `craft batch`, che imposta già le radici autorizzate e gestisce la sessione.
 
-## Avvio e scoperta
+## Scoperta per modifiche e funzioni avanzate
+
+Usa questa sezione solo quando il percorso rapido non basta. Per una nuova relazione breve, le conversioni e i controlli sopra sono sufficienti.
 
 1. Leggi la skill comune `artcraft-workspace`.
 2. Esegui `craft help wordcraft` e consulta `/opt/artcraft/reference/wordcraft/help.txt`.

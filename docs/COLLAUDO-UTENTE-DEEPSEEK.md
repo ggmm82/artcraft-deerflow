@@ -1,53 +1,70 @@
-# Collaudo utente con DeepSeek
+# Collaudo utente con DeepSeek · configurazione unica
 
-> Report del percorso precedente con configurazione manuale. Il nuovo flusso della [configurazione unica](CONFIGURAZIONE-SQUADRA.md) è in collaudo.
+**Esito: superato il 15 ottobre 2026**, usando dal browser la chiave DeepSeek più recente fornita dal proprietario. Il modello condiviso è `deepseek-flash`; coordinatore e specialisti eseguono chiamate API reali. Nessuna chiave è inclusa nel codice, nelle immagini del rapporto o nei file consegnati.
 
-Esito finale: **superato** sul percorso `CSV → GridCraft → WordCraft → download XLSX/DOCX/PDF` da un browser Chromium reale con Playwright. Il modello del coordinatore e degli specialisti è `deepseek-flash`; le chiamate sono state autenticate con la chiave del proprietario, senza inserirla nel codice o nei report.
+L’utente ha scritto una richiesta normale, senza nomi di agenti o strumenti:
+
+> Ho queste vendite e devo condividerle con un cliente. Prepara un foglio Excel modificabile con gli importi numerici e la formula del totale, poi una breve relazione in italiano sia Word sia PDF, con i risultati verificati. Usa i nomi vendite.xlsx, relazione.docx e relazione.pdf. Il lavoro deve essere essenziale e pronto da scaricare.
+
+La squadra ha scelto GridCraft e WordCraft. La ripetizione finale ha richiesto **due incarichi**, con 14 chiamate API per ciascun worker, senza ripetere la generazione dei documenti.
 
 ## Percorso verificato
 
-| Passo | Risultato osservato |
+| Passaggio | Risultato osservato |
 |---|---|
-| Primo accesso | Apertura della home, collegamento “Get Started”, creazione dell’amministratore dal form. |
-| Credenziale errata | Il pannello mostra “Chiave DeepSeek rifiutata”; la connessione non viene configurata. |
-| Credenziale reale | “Chiave configurata”, campo password svuotato, modello scelto tra quelli esposti dall’API. |
-| Specialisti | GridCraft e WordCraft impostati su DeepSeek API; scelta conservata dopo ricaricamento e riavvio del Gateway. |
-| Chat | “Studio · DeepSeek” selezionato dal menu; CSV con 10, 20, 30 caricato tramite il controllo allegati. |
-| Delega | Il coordinatore legge il CSV, avvia realmente i due worker Docker in sequenza e passa il riepilogo verificato al secondo. |
-| Consegna | Entrambi i worker concludono con `handoff.json` valido nella propria cartella. GridCraft: 13 chiamate API; WordCraft: 17 chiamate API. |
-| Stato del prodotto | Il run DeerFlow risulta `success`; circa 2 minuti e 15 secondi per lo scenario finale. |
-| Download | Da una nuova sessione browser: accesso con account, riapertura della conversazione, download dell’archivio con tre file e dell’XLSX individuale tramite i pulsanti della chat. |
-| Contenuti | XLSX integro: 10/20/30 numerici, formula `SUM(B2:B4)`, valore salvato 60. DOCX e PDF leggibili con totale 60. PDF di una pagina, aperto anche come immagine: testo leggibile senza tagli o sovrapposizioni. |
-| Protezione | Senza sessione DeerFlow, catalogo Studio e download del file restituiscono 401. Le risposte pubbliche di catalogo e modelli non contengono la chiave. |
+| Primo avvio | Creazione amministratore, nuova autenticazione e indirizzamento automatico alla configurazione. Verificati nella prima esecuzione completa. |
+| Accesso con la nuova chiave | Login utente dal browser; chiave errata rifiutata senza cambiare la squadra; chiave reale accettata e campo svuotato. |
+| Configurazione unica | Un salvataggio attiva coordinatore e tutti i 13 specialisti. Ogni ruolo conserva la skill comune e quella specifica. |
+| Cambio modello | Menu popolato dai modelli DeepSeek disponibili; cambio e ripristino propagati ai 13 ruoli senza reinserire la chiave. |
+| Un solo punto di gestione | Impostazioni → Modelli porta allo stesso pannello e chiude la finestra. Nessun selettore di motore/modello nelle schede dei singoli specialisti. |
+| Avvio del lavoro | Chat già sul profilo Squadra ArtCraft, senza selezione manuale. CSV con importi 10, 20 e 30 caricato dal controllo allegati. |
+| Collaborazione | Due worker Docker reali, in sequenza, con passaggio dei dati verificati. Entrambi i manifest validi; nessun controllo dichiarato fallito nella consegna finale. |
+| Consegna | Stato DeerFlow `success`; archivio con esattamente vendite.xlsx, relazione.docx e relazione.pdf, scaricato dalla chat. Provato anche il download individuale. |
+| Contenuto XLSX | Archivio ZIP/XML integro; importi numerici 10/20/30, formula di somma e valore salvato 60. Download individuale identico al file nell’archivio. |
+| Contenuto DOCX/PDF | File leggibili, totale 60 in entrambi; PDF di una pagina, titolo e tabella corretti. Rasterizzazione e ispezione visiva indipendente: nessun taglio o sovrapposizione. |
+| Riavvio | Nuova sessione browser dopo riavvio Gateway: login, riapertura della conversazione e nuovi download riusciti. Profilo DeepSeek e impostazioni ereditate conservati. |
+| Mobile | Pannello verificato a 390 pixel senza scorrimento orizzontale. Accesso alla chat visibile accanto al salvataggio sul desktop. |
+| Errore di lettura | Interruzione di rete simulata soltanto per il catalogo: modulo disabilitato, messaggio in italiano, pulsante Riprova; recupero contro l’API reale. |
+| Credenziali e accesso | Chiave assente da catalogo e modelli; senza sessione DeerFlow catalogo, elenco modelli collegati e download restituiscono 401, anche con autenticazione del proxy. |
 
-Gli handoff sono stati rivalidati sul filesystem persistito, montato in sola lettura nello stesso spazio virtuale `/mnt/user-data`. I conteggi delle chiamate provengono dai file di utilizzo dei worker; la verifica dei contenuti scaricati usa parser ZIP/XML e pypdf, separatamente dalle dichiarazioni del modello.
+La prova completa finale contiene 17 controlli riusciti. La verifica separata dell’interfaccia ne contiene 6, inclusa la posizione del pulsante per aprire la chat; la riapertura dopo riavvio ne contiene 5. I conteggi comprendono controlli ripetuti su accesso e download.
 
-## Problemi rilevati e corretti
+La qualità dei file è stata controllata anche con parser indipendenti ZIP/XML, pypdf e PyMuPDF, oltre alle verifiche riportate dai modelli. I manifest sono stati rivalidati con il validatore di produzione montando in sola lettura i file della conversazione. GridCraft riporta 10 controlli superati; WordCraft 9 superati e uno `not_run` per la visione delle anteprime, che il motore testuale non deve dichiarare di aver eseguito. L’ispezione visiva del PDF è stata svolta separatamente nel collaudo.
 
-1. Il prodotto iniziale supportava soltanto Codex/Gemini negli specialisti: il vecchio banco di prova DeepSeek non era un collaudo della chat. È stato aggiunto il collegamento API dal pannello, un provider per il coordinatore e il ciclo di strumenti nel worker reale.
-2. Un incarico poteva proporre un percorso di output in conflitto con la cartella assegnata dal runtime. Il prompt e la descrizione del tool rendono esplicita la priorità della cartella; i nomi richiesti dal coordinatore non la sostituiscono.
-3. Il modello poteva terminare senza aver scritto un manifest valido. Il ciclo DeepSeek ora restituisce l’errore di validazione al modello e richiede la correzione entro il limite di turni/timeout. La seconda prova aveva consegnato file con errori di handoff; la ripetizione finale ha superato entrambe le deleghe senza tali errori.
+## Problemi trovati e corretti
 
-Sono presenti test di regressione su chiave rifiutata, assenza della chiave dalle risposte e dal job, permessi 0600, mount credenziali in sola lettura e recupero da una risposta finale prematura. La chiave API resta separata dalla configurazione dei modelli. Non vengono registrati HAR, trace o corpi delle richieste di collegamento.
+- **Configurazione dispersa:** collegare il provider, impostare il coordinatore, modificare 13 schede e cambiare modello in chat erano passaggi distinti. Ora il profilo condiviso è la fonte unica; anche gli endpoint precedenti aggiornano la squadra. Il salvataggio elimina le vecchie scelte di modello/motore dei ruoli, preservando preferenze e skills.
+- **Primo accesso senza servizio:** la nuova chat indirizza alla configurazione finché la squadra non è pronta. Il modulo attende il caricamento; gli errori hanno un comando per riprovare. Il passaggio alla chat si trova accanto al salvataggio.
+- **Ricopie e segnaposto:** una prova con la nuova chiave ha prodotto file temporanei impropri mentre il coordinatore tentava di ricopiare i binari nella radice. Il coordinatore ora legge e delega; non dispone dei tool di scrittura e sostituzione del Gateway. Consegna direttamente i percorsi verificati nelle sottocartelle degli specialisti. La migrazione aggiorna anche installazioni già inizializzate.
+- **Turni esauriti prima del manifest:** alcuni incarichi WordCraft creavano documenti ma proseguivano con modifiche opzionali fino al limite. DeepSeek riserva gli ultimi turni o il tempo residuo a `submit_handoff`: una chiamata strutturata registra la consegna e verifica file e percorsi. I file mancanti restano un errore; i requisiti incompleti devono essere dichiarati. La compatibilità del tool forzato è stata provata anche con l’API reale. In una prova intermedia il manifest ha segnalato correttamente PDF mancante e nomi errati, consentendo una revisione mirata.
+- **Procedura WordCraft troppo lunga:** la skill ora privilegia, per nuove relazioni brevi, Markdown → DOCX → PDF con le CLI native, conservando titoli e tabelle. La ricetta è stata eseguita direttamente e poi dal modello nella ripetizione finale. Il controllo CI verifica anche la tabella DOCX e il totale nel testo del PDF.
+
+Restano i controlli precedenti su output nella cartella assegnata, risposta JSON completa, rifiuto di consegne prive di file, timeout e rimozione dei container. La suite Python comprende 36 test. Il controllo nativo `--mcp --render` comprende 59 verifiche sulle 13 CLI e sugli export di prova.
 
 ## Ambiente e limiti
 
-Il collaudo è stato svolto su un’istanza temporanea locale, non sulla VPS Hostinger. Gateway e frontend derivano dai runtime DeerFlow fissati dal repository; il codice Studio del branch è montato nel Gateway e nei worker. Il frontend compilato è eseguito come processo locale per ridurre lo spazio occupato da Docker.
+Il collaudo è locale e temporaneo, **non un deploy su Hostinger**. Gateway e frontend derivano dal commit DeerFlow fissato dal repository. Il frontend è stato ricompilato con le modifiche del progetto ed eseguito come processo locale; i controlli TypeScript e lint sui componenti modificati sono riusciti.
 
-Il driver Docker VFS e il limite disco di 32 GB hanno bloccato il primo tentativo di creare un worker completo. Il percorso finale usa un runner Python Bookworm ridotto, con le vere CLI GridCraft 0.7.0, WordCraft 0.7.0 e PdfCraft 0.8.0 estratte dall’immagine sandbox fissata e montate in sola lettura. Proxy e CA dell’ambiente sono stati forniti ai processi di prova mantenendo la verifica TLS. Queste differenze di infrastruttura non sono inserite nel Compose di produzione.
+Per il limite disco di 32 GB e il driver Docker VFS, i worker del collaudo usano Python Bookworm con le vere CLI GridCraft 0.7.0, WordCraft 0.7.0 e PdfCraft 0.8.0 estratte dall’immagine fissata, montate in sola lettura. Ricevono il codice del progetto, le skills, proxy e CA dell’ambiente con verifica TLS attiva. Questi adattamenti non sono inseriti nel Compose di produzione. GitHub Actions costruisce separatamente i quattro runtime completi, verifica tutte le CLI e avvia il Compose reale con autenticazione e CSRF.
 
-Il collaudo dimostra il funzionamento utente del percorso descritto, non copre tutti i formati dei 13 programmi, i login OAuth Codex/Gemini, le misure RAM sulla VPS o Traefik Hostinger. Il deploy esistente non è stato modificato e richiede immagini aggiornate per ottenere il nuovo motore.
+I tentativi preliminari hanno distinto problemi del prodotto da problemi del banco di prova: dipendenze native del frontend per un sistema differente, interruzione dell’ambiente durante la compilazione e avvio del browser prima della readiness del Gateway. Il test corretto attende il caricamento delle impostazioni e la readiness dell’istanza.
 
-## Ripetizione
+Il risultato dimostra il percorso concreto CSV → XLSX + DOCX + PDF e l’ereditarietà della configurazione su tutti i ruoli. Non certifica ogni formato/import/export dei 13 programmi, gli account OAuth Codex/Gemini o il consumo di RAM su Hostinger. Le applicazioni Craft restano alpha.
 
-Su un’istanza di prova già avviata:
+Le credenziali temporanee, i container di prova e i volumi vengono rimossi alla conclusione; il pacchetto di collaudo conserva soltanto prove e prodotti, dopo verifica dell’assenza delle chiavi.
+
+## Riproduzione
+
+Su un’istanza isolata del progetto, installa `requirements-uat.txt` e fornisci nell’ambiente `UAT_EMAIL`, `UAT_PASSWORD`, `DEEPSEEK_API_KEY`. Se il proxy usa autenticazione HTTP, aggiungi `UAT_HTTP_USER` e `UAT_HTTP_PASSWORD`. Non inserire credenziali nei comandi versionati.
 
 ```bash
-python -m pip install -r requirements-uat.txt
-python -m playwright install chromium --only-shell
-# Imposta nell’ambiente: DEEPSEEK_API_KEY, UAT_EMAIL, UAT_PASSWORD.
-# Se il proxy usa Basic Auth, imposta anche UAT_HTTP_USER e UAT_HTTP_PASSWORD.
-python scripts/uat_deepseek.py --base-url http://127.0.0.1:2026 --initialize-admin
+python scripts/uat_deepseek.py --initialize-admin --output reports/uat-team
 ```
 
-`--initialize-admin` serve solo al primo avvio dell’istanza isolata. `--thread-url` riapre una conversazione già completata e ripete accesso, download e controlli dei contenuti senza nuove chiamate LLM. I report, screenshot e file scaricati restano in `reports/`, esclusa da Git. I tentativi iniziali e le loro limitazioni restano distinti dal risultato finale.
+`--initialize-admin` serve soltanto a creare il primo account della propria istanza di prova. Per verificare interfaccia e recupero senza nuove chiamate LLM, su un’istanza già collegata:
+
+```bash
+python scripts/uat_deepseek.py --settings-only --output reports/uat-settings
+```
+
+Per riprovare login e download di una conversazione completata, usa `--thread-url URL --output reports/uat-reopened`: non invia una nuova richiesta al modello. Non vengono registrati HAR, trace o corpi delle richieste di collegamento.

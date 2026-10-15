@@ -10,7 +10,7 @@ Esempio: «Ho queste vendite e devo condividerle con un cliente. Prepara un fogl
 
 Non occorre indicare agenti, skills o strumenti. Il modello condiviso coordina il lavoro; ciascuno dei 13 specialisti mantiene la propria procedura, i comandi del programma e i controlli sul formato. Gli incarichi vengono eseguiti uno alla volta per il profilo VPS da 4 GB.
 
-Per cambiare modello torna nello stesso riquadro. **Aggiorna elenco modelli** legge quelli disponibili nel servizio già collegato; non richiede di reinserire la chiave. Il salvataggio aggiorna coordinatore e specialisti. **Impostazioni → Modelli** rimanda a questo stesso pannello.
+Per cambiare modello torna nello stesso riquadro. **Aggiorna elenco modelli** legge quelli disponibili nel servizio già collegato; non richiede di reinserire la chiave. Premi **Salva modifiche**: il salvataggio aggiorna coordinatore e specialisti. **Risolvi un problema** si trova accanto al pulsante di salvataggio. **Impostazioni → Modelli** rimanda a questo stesso pannello.
 
 Le schede degli specialisti sono chiuse per impostazione iniziale: puoi consultarne i ruoli e, facoltativamente, aggiungere preferenze o competenze. Non contengono selettori di motore o modello.
 
