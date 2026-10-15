@@ -4,11 +4,38 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: studio-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
-  packages: write
+  actions: read
+  pull-requests: read
 jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      reuse: ${{ steps.resolve.outputs.reuse }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.3
+      - id: resolve
+        name: Reuse a successful PR with identical content
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/release_pipeline.py resolve --directory reports/reuse
+      - uses: actions/upload-artifact@v4
+        if: steps.resolve.outputs.reuse == 'true'
+        with:
+          name: reusable-runtime
+          path: reports/reuse/
+          overwrite: true
   tests:
+    needs: resolve
+    if: needs.resolve.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,10 +49,14 @@ jobs:
         env:
           STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
           TRAEFIK_HOST: srv-test.hstgr.cloud
-        run: docker compose config --quiet && docker compose -f compose.hostinger.yaml config --quiet
+        run: docker compose config --quiet && docker compose -f config/compose.hostinger.template.yaml config --quiet
   images:
-    needs: tests
+    needs: [resolve, tests]
+    if: needs.resolve.outputs.reuse != 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -34,13 +65,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build pinned runtime
+      - name: Build runtime once
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -79,25 +110,57 @@ jobs:
         if: matrix.component == 'proxy'
         run: |
           docker run --rm --entrypoint caddy -e STUDIO_SITE=:2026 -e STUDIO_USER=admin -e STUDIO_PASSWORD_HASH='$2a$14$7TqSh37TK/yl18PM9eaMOu/fA7YKMsBFUMDsHRUZTiZoFoRL66Eu6' artcraft-deerflow-proxy:0.1.0 validate --config /etc/caddy/Caddyfile --adapter caddyfile
-      - name: Publish runtime image
-        if: github.event_name != 'pull_request'
+      - name: Publish candidate by immutable digest after component checks
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
           COMPONENT: ${{ matrix.component }}
-          REGISTRY_IMAGE: ghcr.io/${{ github.repository_owner }}/artcraft-deerflow-${{ matrix.component }}
         run: |
-          docker tag "artcraft-deerflow-${COMPONENT}:0.1.0" "${REGISTRY_IMAGE}:latest"
-          docker tag "artcraft-deerflow-${COMPONENT}:0.1.0" "${REGISTRY_IMAGE}:sha-${GITHUB_SHA}"
-          docker push "${REGISTRY_IMAGE}:latest"
-          docker push "${REGISTRY_IMAGE}:sha-${GITHUB_SHA}"
+          registry_image="ghcr.io/${GITHUB_REPOSITORY,,}-${COMPONENT}:ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker tag "artcraft-deerflow-${COMPONENT}:0.1.0" "$registry_image"
+          docker push "$registry_image"
+          python scripts/release_pipeline.py record --component "$COMPONENT" --image "$registry_image" --directory reports/runtime
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          name: runtime-${{ matrix.component }}
+          path: reports/runtime/${{ matrix.component }}.json
+          overwrite: true
   startup:
-    needs: images
+    needs: [resolve, images]
+    if: needs.resolve.outputs.reuse != 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.3
+      - name: Login to pull exact candidate images
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        with:
+          pattern: runtime-*
+          merge-multiple: true
+          path: reports/runtime
+      - name: Load the same images already checked, without rebuilding
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          python scripts/release_pipeline.py assemble
+          python scripts/release_pipeline.py pull
+      # Forks never receive registry/release write access. They still get integration checks.
       - uses: docker/setup-buildx-action@v3
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
       - uses: docker/build-push-action@v6
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         with:
           context: .
           file: docker/Dockerfile.gateway
@@ -107,6 +170,7 @@ jobs:
             deerflow=https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
           cache-from: type=gha,scope=gateway
       - uses: docker/build-push-action@v6
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         with:
           context: .
           file: docker/Dockerfile.frontend
@@ -116,6 +180,7 @@ jobs:
             deerflow=https://github.com/bytedance/deer-flow.git#0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
           cache-from: type=gha,scope=frontend
       - uses: docker/build-push-action@v6
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         with:
           context: .
           file: docker/Dockerfile.sandbox
@@ -123,34 +188,52 @@ jobs:
           load: true
           cache-from: type=gha,scope=sandbox
       - uses: docker/build-push-action@v6
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         with:
           context: .
           file: docker/Dockerfile.proxy
           tags: artcraft-deerflow-proxy:0.1.0
           load: true
           cache-from: type=gha,scope=proxy
-      - name: Boot full Compose without model credentials
+      - name: Boot full Compose with the checked runtime images
         run: bash scripts/ci_boot.sh
-      - name: Prepare Hostinger release from published and tested runtimes
-        if: github.event_name != 'pull_request'
+      - name: Prepare and seal the verified Hostinger Compose
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
+          TRAEFIK_HOST: srv-test.hstgr.cloud
         run: |
-          python -m pip install PyYAML==6.0.3
-          python scripts/prepare_hostinger.py --commit "$GITHUB_SHA" --output reports/release/compose.hostinger.yaml
-          STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 TRAEFIK_HOST=srv-test.hstgr.cloud docker compose -f reports/release/compose.hostinger.yaml config --quiet
+          python scripts/prepare_hostinger.py --commit "$GITHUB_SHA" --manifest reports/verified-runtime/runtime-manifest.json --output reports/verified-runtime/compose.hostinger.yaml
+          docker compose -f reports/verified-runtime/compose.hostinger.yaml config --quiet
+          python scripts/release_pipeline.py seal
       - uses: actions/upload-artifact@v4
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         with:
-          name: hostinger-compose-${{ github.sha }}
-          path: reports/release/compose.hostinger.yaml
-      - name: Publish tested Compose for Hostinger URL deployment
-        if: github.event_name != 'pull_request'
+          name: verified-runtime
+          path: reports/verified-runtime/
+          overwrite: true
+  release:
+    needs: [resolve, startup]
+    if: >-
+      always() && needs.resolve.result == 'success' &&
+      (needs.resolve.outputs.reuse == 'true' || needs.startup.result == 'success') &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.3
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.resolve.outputs.reuse == 'true' && 'reusable-runtime' || 'verified-runtime' }}
+          path: reports/verified-runtime
+      - name: Publish PR Compose or promote the verified images to stable
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          python scripts/release_notes.py --commit "$GITHUB_SHA" --output reports/release/notes.md
-          release_tag="studio-${GITHUB_SHA}"
-          if gh release view "$release_tag" >/dev/null 2>&1; then
-            gh release upload "$release_tag" reports/release/compose.hostinger.yaml --clobber
-          else
-            gh release create "$release_tag" reports/release/compose.hostinger.yaml --target "$GITHUB_SHA" --title "ArtCraft Studio ${GITHUB_SHA:0:8}" --notes-file reports/release/notes.md --latest
-          fi
+        run: python scripts/release_pipeline.py publish

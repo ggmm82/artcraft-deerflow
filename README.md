@@ -23,7 +23,13 @@ La suite locale verifica configurazione, API del pannello, isolamento dei percor
 
 **Login con account reali e consumo RAM su Hostinger richiedono il collaudo sull'istanza con i tuoi account.** Non sono dichiarati già verificati. Le applicazioni Craft sono alpha; la presenza di un tool non garantisce ogni import/export.
 
-## Deploy con Hostinger · Compose from URL
+## Prova prima del merge e deploy Hostinger
+
+Per le PR dello stesso repository: attendi la CI verde, apri il riepilogo del controllo **release → Compose pronto** e scarica il **Compose di prova PR**. Le immagini sono già costruite e collaudate: puoi installare la prova prima del merge. Il prerelease è distinto dal rilascio stabile. Dopo il collaudo fai il merge: se il contenuto è identico, la pipeline promuove quelle stesse immagini senza una seconda build.
+
+Per la prova usa un progetto separato e dati/account di prova, con `ARTCRAFT_PROJECT_NAME=artcraft-prova` (nome diverso dalla produzione), conservando separati i volumi. La configurazione della squadra si fa una volta anche nel progetto di prova. Il collaudo umano con i tuoi provider resta distinto dai test automatici. [Procedura completa](docs/AGGIORNAMENTO-HOSTINGER.md).
+
+### Compose stabile per Hostinger
 
 URL diretto:
 
@@ -34,7 +40,7 @@ https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hos
 1. In Hostinger apri VPS → Docker Manager → Compose → Compose from URL e inserisci l'URL.
 2. Imposta `STUDIO_PASSWORD` con almeno 16 caratteri casuali. Non mettere password o credenziali CLI nel repository pubblico.
 3. Imposta `TRAEFIK_HOST` con il dominio base fornito da Hostinger, per esempio `srv0000000.hstgr.cloud`. Il progetto sarà disponibile su `https://<nome-progetto>.<TRAEFIK_HOST>`.
-4. Avvia il progetto. Hostinger scarica le quattro immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
+4. Avvia il progetto. Hostinger scarica le immagini pubbliche e già collaudate da `ghcr.io/ggmm82`; il Compose non richiede BuildKit e non compila sulla VPS.
 5. Apri il dominio e crea il primo account amministratore DeerFlow. La password `STUDIO_PASSWORD` protegge i segreti interni e non è la password dell'account DeerFlow.
 6. Apri **La tua squadra**, scegli DeepSeek e incolla la chiave, oppure scegli Codex o Gemini e completa il collegamento ufficiale.
 7. Lascia **Automatico** oppure scegli un modello e premi **Salva e attiva la squadra**. La scelta vale per tutti gli specialisti e le loro skills. Anche **Impostazioni → Modelli** rimanda a questo pannello.
@@ -99,7 +105,7 @@ docker compose build
 docker compose up -d
 ```
 
-`compose.hostinger.yaml` usa immagini pubbliche GHCR già costruite; `docker-compose.yaml` usa il checkout locale per sviluppo. Entrambi usano volumi nominati: non richiedono una cartella del repository montata sul server.
+Il **Compose allegato alla PR o al rilascio** usa immagini pubbliche GHCR fissate per digest; `docker-compose.yaml` usa il checkout locale per sviluppo. `config/compose.hostinger.template.yaml` è soltanto il template interno della pipeline: il vecchio Compose installabile nel repository è stato rimosso per evitare deploy di versioni obsolete. Entrambi usano volumi nominati: non richiedono una cartella del repository montata sul server.
 
 ## Risorse e confini
 
@@ -140,9 +146,11 @@ python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/
 
 I report e le consegne restano in `reports/`, esclusa da Git. Il modello viene scelto tra quelli esposti dall'API; `--model` permette di selezionarlo. La prima prova controlla struttura e scoperta dei comandi, senza assegnare un voto alla qualità del piano. `--execute` richiede Docker e avvia container senza rete, senza socket Docker e senza credenziali Codex/Gemini; solo il processo sul computer chiamante usa la chiave DeepSeek. Le verifiche dei file sono automatiche, mentre le dichiarazioni di qualità del modello restano da valutare. Questo banco di prova è distinto dal percorso DeepSeek integrato nel pannello e non sostituisce il collaudo utente né i login delle CLI. Ogni prova consuma la quota del provider.
 
-Per verificare modifiche in produzione ricostruisci le immagini dal checkout oppure, dopo CI e pubblicazione, aggiorna i riferimenti `sha-…` del Compose Hostinger. I tag già fissati non ricevono le modifiche dei sorgenti automaticamente.
+Il workflow costruisce una volta i quattro runtime della PR, li verifica e pubblica un prerelease con `compose.hostinger.yaml` e `runtime-manifest.json`. Il test di avvio scarica e usa gli stessi digest, senza altre build. Il riepilogo **Compose pronto** contiene il collegamento diretto di prova.
 
-Dopo un workflow completo verde su `main` o un rilascio manuale, l’artefatto `hostinger-compose-<SHA>` e il rilascio GitHub contengono il Compose con tutte le immagini di quel commit. Il link stabile `releases/latest/download/compose.hostinger.yaml` si aggiorna solo dopo il collaudo di avvio. `scripts/prepare_hostinger.py` permette di preparare lo stesso file controllando prima che le immagini siano pubblicate.
+Dopo il merge il workflow cerca una CI PR riuscita, dello stesso repository e workflow, con lo stesso contenuto Git. Se esiste, promuove il Compose e i digest già verificati e salta build e test ripetuti. Se il contenuto è cambiato, la prova non è riutilizzabile e il workflow verifica il nuovo contenuto. Un push diretto o un avvio manuale su `main` senza prova riutilizzabile costruisce e verifica una nuova versione. Le PR da fork ricevono i test ma non pubblicano immagini o prerelease con permessi di scrittura.
+
+Il link stabile `releases/latest/download/compose.hostinger.yaml` si aggiorna solo dopo i controlli; i prerelease PR non lo modificano. Il merge non installa sul VPS: aggiorna il progetto Hostinger con il Compose stabile. Non occorre modificare tag o digest a mano. Un vecchio run non può sostituire il rilascio di un `main` più recente.
 
 Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non usare `down -v` salvo richiesta esplicita di cancellazione. Per aggiornare, modifica insieme `versions.lock.json`, versioni CLI nei Dockerfile, commit DeerFlow nei Compose/workflow e collaudi. I dati non si aggiornano automaticamente a un nuovo schema.
 
