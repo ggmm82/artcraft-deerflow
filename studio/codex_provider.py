@@ -11,14 +11,23 @@ class StudioCodexChatModel(CodexChatModel):
     """Keep DeerFlow's provider while matching current Codex request fields."""
 
     def _stream_response(self, headers: dict, payload: dict) -> dict:
-        try:
-            return super()._stream_response(headers, modernize_codex_payload(payload))
-        except httpx.HTTPStatusError as exc:
-            # The upstream exception hides the response body, which made all
-            # endpoint validation failures look like an unexplained HTTP 400.
+        from .docker_runtime import refresh_codex_credentials
+        for attempt in range(2):
+            credential = self._load_codex_auth()
+            if not credential:
+                raise RuntimeError('Ricollega Codex nel pannello La tua squadra')
+            current_headers = {**headers, 'Authorization': f'Bearer {credential.access_token}',
+                               'ChatGPT-Account-ID': credential.account_id}
             try:
-                detail = exc.response.text.strip()
-            except (httpx.ResponseNotRead, httpx.StreamClosed):
-                detail = ""
-            suffix = f": {detail[:2000]}" if detail else ""
-            raise RuntimeError(f"Codex API HTTP {exc.response.status_code}{suffix}") from exc
+                return super()._stream_response(current_headers, modernize_codex_payload(payload))
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 401 and attempt == 0:
+                    refresh_codex_credentials()
+                    continue
+                try:
+                    detail = exc.response.text.strip()
+                except (httpx.ResponseNotRead, httpx.StreamClosed):
+                    detail = ''
+                detail = detail.replace(credential.access_token, '[REDACTED]')
+                suffix = f": {detail[:2000]}" if detail else ''
+                raise RuntimeError(f"Codex API HTTP {exc.response.status_code}{suffix}") from None

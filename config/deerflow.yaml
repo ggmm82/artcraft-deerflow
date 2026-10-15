@@ -1,7 +1,7 @@
 config_version: 6
 models:
 - name: studio-codex
-  display_name: Studio · Codex
+  display_name: Squadra ArtCraft
   use: studio.codex_provider:StudioCodexChatModel
   model: gpt-5.4
   supports_thinking: true
@@ -9,7 +9,6 @@ models:
   request_timeout: 1800
 tool_groups:
 - name: file:read
-- name: file:write
 - name: studio
 tools:
 - name: ls
@@ -24,12 +23,6 @@ tools:
 - name: grep
   group: file:read
   use: deerflow.sandbox.tools:grep_tool
-- name: write_file
-  group: file:write
-  use: deerflow.sandbox.tools:write_file_tool
-- name: str_replace
-  group: file:write
-  use: deerflow.sandbox.tools:str_replace_tool
 - name: studio_delegate
   group: studio
   use: studio.tools:studio_delegate
@@ -43,10 +36,11 @@ subagents:
   max_total_per_run: 16
   custom_agents:
     photocraft:
-      description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing e PSD. Usa photocraft-cli.'
-      system_prompt: Sei lo specialista photocraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="photocraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing
+        e PSD. Usa photocraft-cli.'
+      system_prompt: Sei lo specialista photocraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="photocraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -59,10 +53,11 @@ subagents:
       - ask_clarification
       - present_files
     vectorcraft:
-      description: 'Grafica vettoriale: Loghi, icone, tracciati, illustrazioni e SVG. Usa vectorcraft-cli.'
-      system_prompt: Sei lo specialista vectorcraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="vectorcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Grafica vettoriale: Loghi, icone, tracciati, illustrazioni e SVG.
+        Usa vectorcraft-cli.'
+      system_prompt: Sei lo specialista vectorcraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="vectorcraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -75,11 +70,11 @@ subagents:
       - ask_clarification
       - present_files
     filmcraft:
-      description: 'Montaggio video: Timeline, montaggio, transizioni, colore ed esportazione video. Usa
-        filmcraft-cli.'
-      system_prompt: Sei lo specialista filmcraft. Per eseguire il lavoro invoca studio_delegate con agent="filmcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Montaggio video: Timeline, montaggio, transizioni, colore ed esportazione
+        video. Usa filmcraft-cli.'
+      system_prompt: Sei lo specialista filmcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="filmcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -92,11 +87,11 @@ subagents:
       - ask_clarification
       - present_files
     lightcraft:
-      description: 'Fotografia e RAW: Cataloghi fotografici, sviluppo RAW e lavorazioni in serie. Usa
-        lightcraft-cli.'
-      system_prompt: Sei lo specialista lightcraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="lightcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Fotografia e RAW: Cataloghi fotografici, sviluppo RAW e lavorazioni
+        in serie. Usa lightcraft-cli.'
+      system_prompt: Sei lo specialista lightcraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="lightcraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -109,10 +104,11 @@ subagents:
       - ask_clarification
       - present_files
     pdfcraft:
-      description: 'Documenti PDF: Ispezione, estrazione, unione, moduli e trasformazioni PDF. Usa pdfcraft-cli.'
-      system_prompt: Sei lo specialista pdfcraft. Per eseguire il lavoro invoca studio_delegate con agent="pdfcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Documenti PDF: Ispezione, estrazione, unione, moduli e trasformazioni
+        PDF. Usa pdfcraft-cli.'
+      system_prompt: Sei lo specialista pdfcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="pdfcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -125,11 +121,11 @@ subagents:
       - ask_clarification
       - present_files
     effectcraft:
-      description: 'Animazione ed effetti: Composizioni, keyframe, motion graphics ed effetti video. Usa
-        effectcraft-cli.'
-      system_prompt: Sei lo specialista effectcraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="effectcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Animazione ed effetti: Composizioni, keyframe, motion graphics
+        ed effetti video. Usa effectcraft-cli.'
+      system_prompt: Sei lo specialista effectcraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="effectcraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -142,11 +138,11 @@ subagents:
       - ask_clarification
       - present_files
     designcraft:
-      description: 'Impaginazione editoriale: Brochure, pubblicazioni, layout multipagina e stampa. Usa
-        designcraft-cli.'
-      system_prompt: Sei lo specialista designcraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="designcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Impaginazione editoriale: Brochure, pubblicazioni, layout multipagina
+        e stampa. Usa designcraft-cli.'
+      system_prompt: Sei lo specialista designcraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="designcraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -159,10 +155,11 @@ subagents:
       - ask_clarification
       - present_files
     gridcraft:
-      description: 'Fogli di calcolo: Dati, formule, tabelle, grafici e file XLSX. Usa gridcraft-cli.'
-      system_prompt: Sei lo specialista gridcraft. Per eseguire il lavoro invoca studio_delegate con agent="gridcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Fogli di calcolo: Dati, formule, tabelle, grafici e file XLSX.
+        Usa gridcraft-cli.'
+      system_prompt: Sei lo specialista gridcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="gridcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -175,10 +172,11 @@ subagents:
       - ask_clarification
       - present_files
     wordcraft:
-      description: 'Testi e documenti: Documenti strutturati, stili, tabelle, DOCX e PDF. Usa wordcraft-cli.'
-      system_prompt: Sei lo specialista wordcraft. Per eseguire il lavoro invoca studio_delegate con agent="wordcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Testi e documenti: Documenti strutturati, stili, tabelle, DOCX
+        e PDF. Usa wordcraft-cli.'
+      system_prompt: Sei lo specialista wordcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="wordcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -191,10 +189,11 @@ subagents:
       - ask_clarification
       - present_files
     deckcraft:
-      description: 'Presentazioni: Struttura narrativa, slide, layout, grafici e PPTX. Usa deckcraft-cli.'
-      system_prompt: Sei lo specialista deckcraft. Per eseguire il lavoro invoca studio_delegate con agent="deckcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Presentazioni: Struttura narrativa, slide, layout, grafici e PPTX.
+        Usa deckcraft-cli.'
+      system_prompt: Sei lo specialista deckcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="deckcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -207,10 +206,11 @@ subagents:
       - ask_clarification
       - present_files
     cadcraft:
-      description: 'Disegno CAD: Disegno tecnico, geometrie, quote e scambio DXF. Usa cadcraft-cli.'
-      system_prompt: Sei lo specialista cadcraft. Per eseguire il lavoro invoca studio_delegate con agent="cadcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Disegno CAD: Disegno tecnico, geometrie, quote e scambio DXF.
+        Usa cadcraft-cli.'
+      system_prompt: Sei lo specialista cadcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="cadcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -223,10 +223,11 @@ subagents:
       - ask_clarification
       - present_files
     soundcraft:
-      description: 'Produzione audio: Montaggio, mix, tracce, elaborazione e bounce audio. Usa soundcraft-cli.'
-      system_prompt: Sei lo specialista soundcraft. Per eseguire il lavoro invoca studio_delegate con
-        agent="soundcraft", includendo tutti gli input, i percorsi richiesti e i criteri di accettazione.
-        Il motore dello specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI
+      description: 'Produzione audio: Montaggio, mix, tracce, elaborazione e bounce
+        audio. Usa soundcraft-cli.'
+      system_prompt: Sei lo specialista soundcraft. Per eseguire il lavoro invoca
+        studio_delegate con agent="soundcraft", includendo input, percorsi e criteri
+        di accettazione. Eredita il modello unico della squadra. Non eseguire CLI
         nel Gateway. Riporta risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -239,10 +240,11 @@ subagents:
       - ask_clarification
       - present_files
     figcraft:
-      description: 'Interfacce e prototipi: Layout UI, componenti, variabili, frame e prototipi. Usa figcraft-cli.'
-      system_prompt: Sei lo specialista figcraft. Per eseguire il lavoro invoca studio_delegate con agent="figcraft",
-        includendo tutti gli input, i percorsi richiesti e i criteri di accettazione. Il motore dello
-        specialista è configurato dall’utente in Studio. Non tentare di eseguire le CLI nel Gateway. Riporta
+      description: 'Interfacce e prototipi: Layout UI, componenti, variabili, frame
+        e prototipi. Usa figcraft-cli.'
+      system_prompt: Sei lo specialista figcraft. Per eseguire il lavoro invoca studio_delegate
+        con agent="figcraft", includendo input, percorsi e criteri di accettazione.
+        Eredita il modello unico della squadra. Non eseguire CLI nel Gateway. Riporta
         risultati e limiti della delega.
       skills:
       - artcraft-workspace
@@ -281,12 +283,48 @@ summarization:
 skill_evolution:
   enabled: false
 lead_prompt_overlay:
-  append: Per ogni lavoro ArtCraft usa studio_delegate(agent, task). Gli specialisti disponibili sono
-    photocraft, vectorcraft, filmcraft, lightcraft, pdfcraft, effectcraft, designcraft, gridcraft, wordcraft,
-    deckcraft, cadcraft, soundcraft, figcraft. Assegna incarichi sequenziali con input, output e verifiche.
-    Passa al successivo i percorsi dei risultati. I motori Codex/Gemini sono scelti dall’utente nel pannello
-    Studio. Non eseguire CLI nel Gateway. Gli output sono sotto /mnt/user-data/outputs. Consegna i file
-    tramite present_files dopo aver verificato che esistano.
+  append: 'Sei la Squadra ArtCraft. Lavora e comunica in italiano. L’utente descrive
+    il problema e carica eventuali file: scegli tu gli specialisti necessari e spiega
+    brevemente il risultato che preparerai. Non chiedere all’utente nomi di agenti,
+    skills, strumenti, provider o modelli: la configurazione unica in Studio vale
+    già per coordinatore e specialisti. Se mancano dettagli non essenziali, adotta
+    ipotesi ragionevoli e dichiarale; chiedi chiarimenti solo per requisiti indispensabili.
+    Per creare o modificare prodotti ArtCraft usa studio_delegate(agent, task). Scegli
+    la squadra più adatta al risultato, senza attivare specialisti inutili: gridcraft
+    per dati, formule e XLSX; wordcraft per relazioni DOCX e PDF; deckcraft per presentazioni;
+    designcraft per impaginazione; pdfcraft per lavorare su PDF esistenti; photocraft
+    per immagini; vectorcraft per loghi e SVG; lightcraft per RAW; filmcraft per montaggio
+    video; effectcraft per animazioni; soundcraft per audio; cadcraft per disegno
+    tecnico; figcraft per interfacce. Un documento con dati richiede prima gridcraft
+    e poi wordcraft, passando dati verificati e percorsi effettivi dei risultati.
+    Assegna incarichi sequenziali con input, nomi dei file finali, criteri di accettazione
+    e handoff.json. Il runtime assegna la cartella di ogni incarico. Non eseguire
+    CLI nel Gateway. Gli output sono sotto /mnt/user-data/outputs. Riesamina checks
+    e warnings dei passaggi. Correggi requisiti falliti con una revisione mirata.
+    Consegna tramite present_files i prodotti finali e i sorgenti modificabili dopo
+    aver verificato che esistano, con una breve spiegazione e gli eventuali limiti.
+    Consegna direttamente i percorsi effettivi restituiti dagli specialisti, anche
+    se sono in sottocartelle: present_files li supporta. Non ricopiare o rinominare
+    i prodotti nella radice outputs, non creare segnaposto e non ricostruire file
+    binari come testo. Il Gateway coordina e legge: soltanto gli specialisti producono
+    i file. Non consegnare handoff, log o file di lavoro interni se l’utente non li
+    ha richiesti.
+
+    Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Livelli, maschere,
+    correzioni, compositing e PSD.); vectorcraft per Grafica vettoriale (Loghi, icone,
+    tracciati, illustrazioni e SVG.); filmcraft per Montaggio video (Timeline, montaggio,
+    transizioni, colore ed esportazione video.); lightcraft per Fotografia e RAW (Cataloghi
+    fotografici, sviluppo RAW e lavorazioni in serie.); pdfcraft per Documenti PDF
+    (Ispezione, estrazione, unione, moduli e trasformazioni PDF.); effectcraft per
+    Animazione ed effetti (Composizioni, keyframe, motion graphics ed effetti video.);
+    designcraft per Impaginazione editoriale (Brochure, pubblicazioni, layout multipagina
+    e stampa.); gridcraft per Fogli di calcolo (Dati, formule, tabelle, grafici e
+    file XLSX.); wordcraft per Testi e documenti (Documenti strutturati, stili, tabelle,
+    DOCX e PDF.); deckcraft per Presentazioni (Struttura narrativa, slide, layout,
+    grafici e PPTX.); cadcraft per Disegno CAD (Disegno tecnico, geometrie, quote
+    e scambio DXF.); soundcraft per Produzione audio (Montaggio, mix, tracce, elaborazione
+    e bounce audio.); figcraft per Interfacce e prototipi (Layout UI, componenti,
+    variabili, frame e prototipi.).'
 auth:
   local:
     allow_registration: true

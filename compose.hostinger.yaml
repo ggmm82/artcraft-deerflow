@@ -1,7 +1,8 @@
+# Immagini pubblicate del commit: c91e8032d7eed716b4dd19c81526abe778f35158
 name: artcraft-studio
 services:
   sandbox-image:
-    image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
+    image: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-c91e8032d7eed716b4dd19c81526abe778f35158
     command:
     - python3
     - -c
@@ -34,12 +35,12 @@ services:
   gateway:
     restart: unless-stopped
     init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-ca3e1d501f125d258005592385be0f54f44a5a6e
+    image: ghcr.io/ggmm82/artcraft-deerflow-gateway:sha-c91e8032d7eed716b4dd19c81526abe778f35158
     mem_limit: 1024m
     stop_grace_period: 30s
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare una password di almeno 16 caratteri}
-      STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
+      STUDIO_SANDBOX_IMAGE: ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-c91e8032d7eed716b4dd19c81526abe778f35158
       DEER_FLOW_STREAM_BRIDGE_REDIS_URL: redis://redis:6379/0
       DEER_FLOW_INTERNAL_GATEWAY_BASE_URL: http://gateway:8001
       AUTH_TRUSTED_PROXIES: ''
@@ -56,7 +57,8 @@ services:
         condition: service_completed_successfully
     labels:
     - traefik.enable=true
-    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && PathPrefix(`/api/langgraph/`)
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+      && PathPrefix(`/api/langgraph/`)
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.entrypoints=websecure
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.tls=true
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.tls.certresolver=letsencrypt
@@ -65,7 +67,8 @@ services:
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-langgraph.service=${COMPOSE_PROJECT_NAME}-gateway
     - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-langgraph-rewrite.replacepathregex.regex=^/api/langgraph/(.*)
     - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-langgraph-rewrite.replacepathregex.replacement=/api/$${1}
-    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`) && (PathPrefix(`/api`) || PathPrefix(`/studio`) || PathPrefix(`/health`))
+    - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.rule=Host(`${COMPOSE_PROJECT_NAME}.${TRAEFIK_HOST}`)
+      && (PathPrefix(`/api`) || PathPrefix(`/studio`) || PathPrefix(`/health`))
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.entrypoints=websecure
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls=true
     - traefik.http.routers.${COMPOSE_PROJECT_NAME}-gateway.tls.certresolver=letsencrypt
@@ -85,7 +88,7 @@ services:
   frontend:
     restart: unless-stopped
     init: true
-    image: ghcr.io/ggmm82/artcraft-deerflow-frontend:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23
+    image: ghcr.io/ggmm82/artcraft-deerflow-frontend:sha-c91e8032d7eed716b4dd19c81526abe778f35158
     mem_limit: 512m
     environment:
       STUDIO_PASSWORD: ${STUDIO_PASSWORD:?Impostare STUDIO_PASSWORD}

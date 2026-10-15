@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Accesso CLI/MCP locale alle 13 applicazioni nella sandbox DeerFlow."""
+"""Accesso CLI/MCP locale alle applicazioni del catalogo nella sandbox DeerFlow."""
 import argparse
 import json
 import os
@@ -84,6 +84,7 @@ class McpSession:
             except subprocess.TimeoutExpired:
                 self.process.kill()
                 self.process.wait()
+        self.reader.join(timeout=5)
         self.process.stdin.close()
         self.process.stdout.close()
         self.errors.close()
@@ -92,9 +93,25 @@ class McpSession:
 def resolve_references(value, results):
     if isinstance(value, dict) and set(value) == {'$result'}:
         parts = str(value['$result']).split('.')
+        if not parts[0].isdecimal() or int(parts[0]) >= len(results):
+            raise ValueError('Riferimento $result: indice precedente non valido')
         result = results[int(parts[0])]
         for part in parts[1:]:
-            result = result[int(part)] if isinstance(result, list) else result[part]
+            if part == '$json':
+                if not isinstance(result, str):
+                    raise ValueError('Riferimento $result: $json richiede testo JSON')
+                try:
+                    result = json.loads(result)
+                except ValueError:
+                    raise ValueError('Riferimento $result: testo JSON non valido') from None
+            elif isinstance(result, list):
+                if not part.isdecimal() or int(part) >= len(result):
+                    raise ValueError('Riferimento $result: indice di lista non valido')
+                result = result[int(part)]
+            elif isinstance(result, dict) and part in result:
+                result = result[part]
+            else:
+                raise ValueError('Riferimento $result: percorso non valido')
         return result
     if isinstance(value, dict):
         return {k: resolve_references(v, results) for k, v in value.items()}

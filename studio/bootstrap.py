@@ -11,18 +11,49 @@ import yaml
 from .state import STATE, ROOT, catalog
 
 
-def configure_coordinator(model):
-    from .state import LOCK
+def configure_team(engine, model, api_key=None):
+    """One public profile drives coordinator and every specialist/skill."""
+    from .state import LOCK, atomic_json, credential_dir
+    if engine not in ('codex', 'deepseek', 'gemini'):
+        raise ValueError('Servizio non disponibile per il coordinamento')
+    if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
+        raise ValueError('Modello non valido')
     with LOCK:
         path = STATE / 'config.yaml'
         content = yaml.safe_load(path.read_text())
-        for item in content['models']:
-            if item['name'] == 'studio-codex':
-                item['model'] = model
+        entry = {'name': 'studio-codex', 'display_name': 'Squadra ArtCraft',
+                 'use': {'deepseek': 'studio.deepseek_provider:StudioDeepSeekChatModel',
+                         'codex': 'studio.codex_provider:StudioCodexChatModel',
+                         'gemini': 'studio.gemini_provider:StudioGeminiChatModel'}[engine],
+                 'model': model, 'supports_thinking': engine == 'codex',
+                 'supports_reasoning_effort': engine == 'codex', 'request_timeout': 1800}
+        # Keep old saved conversation identifiers working, with the same profile.
+        aliases = [{**entry, 'name': item['name']} for item in content.get('models', [])
+                   if item['name'] == 'studio-deepseek']
+        content['models'] = [entry, *aliases, *[m for m in content.get('models', [])
+                              if m['name'] not in ('studio-codex', 'studio-deepseek')]]
         temporary = path.with_suffix('.yaml.tmp')
-        temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
-        temporary.chmod(0o600)
-        temporary.replace(path)
+        try:
+            temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
+            temporary.chmod(0o600)
+            if api_key is not None:
+                atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
+            agents = catalog()
+            for settings in agents.values():
+                settings.update(engine='inherit', model='')
+            atomic_json(STATE / 'agents.json', agents)
+            temporary.replace(path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def configure_coordinator(model):
+    from .state import team
+    configure_team(team()['engine'], model)
+
+
+def configure_deepseek(api_key, model):
+    configure_team('deepseek', model, api_key)
 
 
 def initialize():
@@ -50,9 +81,31 @@ def initialize():
         content = yaml.safe_load(path.read_text())
         changed = False
         for item in content.get('models', []):
-            if item.get('name') == 'studio-codex' and item.get('use') != 'studio.codex_provider:StudioCodexChatModel':
+            if item.get('name') == 'studio-codex' and item.get('use') == 'deerflow.models.openai_codex_provider:CodexChatModel':
                 item['use'] = 'studio.codex_provider:StudioCodexChatModel'
                 changed = True
+        template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
+        definitions = content.setdefault('subagents', {}).setdefault('custom_agents', {})
+        for identifier, definition in template['subagents']['custom_agents'].items():
+            if identifier not in definitions:
+                definitions[identifier] = definition
+                changed = True
+        overlay = content.get('lead_prompt_overlay', {})
+        if overlay.get('append', '').startswith(('Per ogni lavoro ArtCraft usa studio_delegate', 'Sei la Squadra ArtCraft.')):
+            if overlay['append'] != template['lead_prompt_overlay']['append']:
+                overlay['append'] = template['lead_prompt_overlay']['append']
+                changed = True
+        if any(t.get('name') == 'studio_delegate' for t in content.get('tools', [])):
+            # Coordinator writes could turn a binary export into a text placeholder.
+            # The specialists own product creation; retain custom unrelated tools.
+            previous = content['tools']
+            content['tools'] = [t for t in previous if not (
+                t.get('name') in ('write_file', 'str_replace')
+                and t.get('use', '').startswith('deerflow.sandbox.tools:'))]
+            if previous != content['tools']:
+                changed = True
+                if not any(t.get('group') == 'file:write' for t in content['tools']):
+                    content['tool_groups'] = [g for g in content.get('tool_groups', []) if g.get('name') != 'file:write']
         if changed:
             temporary = path.with_suffix('.yaml.tmp')
             temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))

@@ -30,7 +30,7 @@ class StudioTests(unittest.TestCase):
         self.assertIn('artcraft-vectorcraft', self.state.catalog()['gridcraft']['skills'])
         self.assertIn('artcraft-gridcraft', self.state.catalog()['gridcraft']['skills'])
         self.assertFalse(self.state.connection_status('gemini'))
-        self.assertEqual(len(self.state.catalog()), 13)
+        self.assertEqual(set(self.state.catalog()), {app['id'] for app in self.state.applications()})
 
     def test_codex_payload_matches_current_cli_contract(self):
         from studio.codex_compat import modernize_codex_payload
@@ -95,6 +95,33 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(captured[-1][:3], ['docker', 'rm', '-f'])
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
+    def test_gemini_coordinator_has_no_workspace_and_cleans_up_before_delegation(self):
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        captured = []
+        def execute(args, **kwargs):
+            captured.append(args)
+            job = next((self.state.STATE / 'jobs').glob('*.json'))
+            self.assertEqual(json.loads(job.read_text())['model'], 'gemini-2.5-pro')
+            return type('Result', (), {'returncode': 0, 'stdout': '{"ok":true,"response":{"candidates":[]}}'})()
+        with patch.object(self.runtime, 'host_path', return_value='/host/private'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute), patch.object(self.runtime, 'remove'):
+            result = self.runtime.generate_gemini({'model': 'gemini-2.5-pro', 'contents': []})
+        self.assertEqual(result, {'candidates': []})
+        self.assertFalse(any('dst=/mnt/user-data' in arg or 'docker.sock' in arg for arg in captured[0]))
+        self.assertTrue(any('dst=/credentials' in arg for arg in captured[0]))
+        self.assertFalse(list((self.state.STATE / 'jobs').glob('*.json')))
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
+    def test_gemini_provider_errors_are_sanitized_and_release_admission(self):
+        (self.state.credential_dir('gemini') / 'oauth_creds.json').write_text('{"fixture":true}')
+        result = type('Result', (), {'returncode': 1, 'stdout': '{"ok":false,"error":"fixture-private-token"}'})()
+        with patch.object(self.runtime, 'host_path', return_value='/host/private'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=result), patch.object(self.runtime, 'remove'):
+            with self.assertRaisesRegex(RuntimeError, 'Gemini non disponibile') as failure:
+                self.runtime.generate_gemini({'model': 'gemini-2.5-pro'})
+        self.assertNotIn('fixture-private-token', str(failure.exception))
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
     def test_worker_timeout_reclaims_container_and_releases_admission(self):
         import subprocess
         (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
@@ -133,6 +160,61 @@ class StudioTests(unittest.TestCase):
                 self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
         self.assertTrue(self.runtime.EXECUTION_LOCK.locked())
         self.runtime.EXECUTION_LOCK.release()
+
+    def test_long_worker_response_remains_valid_json(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        class Result:
+            returncode = 0
+            stdout = json.dumps({'ok': True, 'response': 'x' * 30000})
+            stderr = ''
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=Result()), \
+             patch.object(self.runtime, 'remove'):
+            result = self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertEqual(len(json.loads(result)['response']), 30000)
+
+    def test_deepseek_credentials_are_read_only_and_absent_from_job(self):
+        key = 'test-only-api-credential'
+        (self.state.credential_dir('deepseek') / 'api.json').write_text(json.dumps({'api_key': key}))
+        self.state.update_agent('gridcraft', {'engine': 'deepseek', 'model': 'deepseek-flash'})
+        captured = []
+        class Result:
+            returncode = 0
+            stdout = '{"ok":true}'
+            stderr = ''
+        def execute(argv, **kwargs):
+            captured.append(argv)
+            jobs = list((self.state.STATE / 'jobs').glob('*.json'))
+            self.assertEqual(len(jobs), 1)
+            self.assertNotIn(key, jobs[0].read_text())
+            return Result()
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute), \
+             patch.object(self.runtime, 'remove'):
+            self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertTrue(any('dst=/credentials,readonly' in arg for arg in captured[0]))
+
+    def test_unsuccessful_worker_json_is_not_reported_as_success(self):
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        class Result:
+            returncode = 0
+            stdout = '{"ok":false}'
+            stderr = ''
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=Result()), \
+             patch.object(self.runtime, 'remove'):
+            with self.assertRaisesRegex(RuntimeError, 'completamento'):
+                self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+
+    def test_login_setup_errors_release_admission(self):
+        from studio import login
+        for failing_operation in ('credential_dir', 'atomic_json', 'pty.openpty'):
+            with self.subTest(operation=failing_operation), \
+                 patch('studio.login.' + failing_operation, side_effect=OSError('setup failed')):
+                with self.assertRaises(OSError):
+                    login.LoginSession('gemini')
+            self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
     def test_browser_api_rejects_cross_origin_configuration(self):
         from fastapi import FastAPI

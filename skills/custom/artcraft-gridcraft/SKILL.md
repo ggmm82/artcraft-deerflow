@@ -5,25 +5,45 @@ description: "Dati, formule, tabelle, grafici e file XLSX. Usa questa skill per 
 
 # Fogli di calcolo
 
+Specialista: `gridcraft` per `studio_delegate`; nome della skill: `artcraft-gridcraft`.
 CLI: `gridcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Quando usarla
+
+Usa GridCraft per dati, formule, tabelle, grafici e XLSX. Fornisci a DeckCraft dati verificati e definizioni delle metriche quando serve una presentazione.
+
+## Ricetta operativa collaudata
+
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
 
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.
 2. Esegui `craft help gridcraft` e consulta `/opt/artcraft/reference/gridcraft/help.txt`.
-3. Salva il registro reale con `craft commands gridcraft > /mnt/user-data/work/gridcraft-commands.txt`.
+3. Salva il registro reale con `craft commands gridcraft > "$ARTCRAFT_OUTPUT_DIR/work/gridcraft-commands.txt"`.
 4. Cerca nel registro solo i comandi pertinenti. I parametri non sono uniformi tra applicazioni.
-5. Per i tool MCP nativi usa `craft tools gridcraft --out /mnt/user-data/work/gridcraft-tools.json`.
+5. Per i tool MCP nativi usa `craft tools gridcraft --out "$ARTCRAFT_OUTPUT_DIR/work/gridcraft-tools.json"`.
    È un processo locale nella sandbox: non occorre un server sempre acceso.
 6. Per una sequenza MCP con stato usa `craft batch gridcraft sequenza.json`; tutte le chiamate della sequenza condividono la stessa sessione.
    La sequenza deve includere il salvataggio del documento prima dell'uscita.
 
 ## Procedura professionale
 
-- Conserva i valori numerici come numeri; unità e descrizioni nelle intestazioni.
-- Presenta numeri con convenzioni italiane; nelle API mantieni la sintassi canonica richiesta dalla CLI.
-- Controlla formule, riferimenti, totali e valori di errore dopo il ricalcolo.
-- Consegna XLSX con formule e, se richiesto, CSV UTF-8 con separatore esplicito.
+1. Inventaria fogli, intervalli, intestazioni, tipi, formule, righe nascoste e celle unite. Distingui zero, vuoto e dato mancante; registra duplicati e date ambigue prima della pulizia.
+2. Mantieni importi e percentuali come numeri, date come date e unità nelle intestazioni. Usa la sintassi canonica delle funzioni/API; applica separatori italiani soltanto alla presentazione. Non convertire tutte le celle in testo.
+3. Conserva dati originali in una copia o foglio dedicato. Inserisci formule con riferimenti corretti, ricalcola, controlla errori e riconcilia i totali con un calcolo indipendente. Non mascherare divisioni per zero senza spiegazione.
+
+## Diagnosi e recupero CLI
+
+- Se una formula restituisce un errore, verifica tipi delle celle, sintassi canonica, intervallo e ricalcolo. Non sostituire la formula con il risultato costante per far passare il controllo.
+- Se un ID di documento o foglio diventa sconosciuto tra chiamate MCP, ricrea apertura, modifica e salvataggio in un unico craft batch; usa $result sul campo effettivo restituito e riapri poi il file salvato.
+- Dopo un errore leggi il risultato e lo schema del solo tool coinvolto. Riparti dalla copia salvata più recente e verifica gli effetti già applicati prima di ripetere una mutazione.
+
+## Controlli di accettazione
+
+- Riapri XLSX e verifica fogli, tipi, formule e valori ricalcolati; esegui check e controlla celle con errori.
+- Riconcilia numero righe e totali prima/dopo; per grafici controlla intervalli, etichette e unità.
+- Consegna XLSX con formule e dati verificati in CSV/JSON per i colleghi, specificando separatore, periodo, unità e definizioni.
 
 ## Sintassi di riferimento
 
@@ -41,7 +61,7 @@ gridcraft-cli check input.xlsx --json
 
 ## Consegna
 
-Restituisci al coordinatore: file sorgente, export, anteprime, controlli superati, controlli non eseguiti ed eventuali perdite di compatibilità.
+Scrivi `handoff.json` nella cartella assegnata secondo `artcraft-workspace`: elenca sorgenti, export, anteprime e controlli con prove concrete. Per ogni limite usa `warnings`; per un controllo non eseguito usa `status: "not_run"`.
 Non presentare una semplice anteprima come documento modificabile.
 
 ## Fonti

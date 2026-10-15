@@ -41,10 +41,16 @@ def catalog():
     with LOCK:
         path = STATE / 'agents.json'
         if not path.exists():
-            atomic_json(path, {app['id']: {'engine': 'codex', 'model': '',
+            atomic_json(path, {app['id']: {'engine': 'inherit', 'model': '',
                         'instructions': '', 'enabled': True, 'skills': default_skills(app['id'])} for app in applications()})
         agents = json.loads(path.read_text())
         changed = False
+        for app in applications():
+            identifier = app['id']
+            if identifier not in agents:
+                agents[identifier] = {'engine': 'inherit', 'model': '', 'instructions': '',
+                                     'enabled': True, 'skills': default_skills(identifier)}
+                changed = True
         for identifier, config in agents.items():
             if 'skills' not in config:
                 config['skills'] = default_skills(identifier)
@@ -57,7 +63,7 @@ def catalog():
 def update_agent(identifier, value):
     if identifier not in {a['id'] for a in applications()}:
         raise ValueError('Specialista sconosciuto')
-    if value['engine'] not in ('codex', 'gemini'):
+    if value['engine'] not in ('inherit', 'codex', 'gemini', 'deepseek'):
         raise ValueError('Motore sconosciuto')
     model = value.get('model', '').strip()
     if len(model) > 200 or any(ord(c) < 32 for c in model):
@@ -78,13 +84,38 @@ def update_agent(identifier, value):
 
 
 def credential_dir(engine):
-    if engine not in ('codex', 'gemini'):
+    if engine not in ('codex', 'gemini', 'deepseek'):
         raise ValueError('Motore sconosciuto')
-    directory = STATE / 'credentials' / ('.codex' if engine == 'codex' else '.gemini')
+    directory = STATE / 'credentials' / ('.' + engine)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     return directory
 
 
 def connection_status(engine):
-    filename = 'auth.json' if engine == 'codex' else 'oauth_creds.json'
+    filename = {'codex': 'auth.json', 'gemini': 'oauth_creds.json', 'deepseek': 'api.json'}[engine]
     return (credential_dir(engine) / filename).is_file()
+
+
+def team():
+    """The first model profile is the single source for the whole team."""
+    import yaml
+    path = STATE / 'config.yaml'
+    with LOCK:
+        content = yaml.safe_load(path.read_text()) if path.exists() else {}
+        profile = next(iter(content.get('models', [])), {})
+        engine = {'studio.deepseek_provider:StudioDeepSeekChatModel': 'deepseek',
+                  'studio.gemini_provider:StudioGeminiChatModel': 'gemini'}.get(profile.get('use'), 'codex')
+        return {'engine': engine, 'model': profile.get('model', 'gpt-5.4'),
+                'ready': connection_status(engine)}
+
+
+def effective_agent(identifier):
+    with LOCK:
+        settings = catalog().get(identifier)
+        if settings is None:
+            return None
+        settings = dict(settings)
+        if settings['engine'] == 'inherit':
+            profile = team()
+            settings.update(engine=profile['engine'], model=profile['model'])
+        return settings

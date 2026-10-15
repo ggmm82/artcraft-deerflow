@@ -4,6 +4,7 @@ import ast
 import json
 from pathlib import Path
 import re
+import runpy
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +15,10 @@ def main():
     local=yaml.safe_load((ROOT/'docker-compose.yaml').read_text())
     remote=yaml.safe_load((ROOT/'compose.hostinger.yaml').read_text())
     ids={a['id'] for a in lock['applications']}
-    assert len(ids)==13 and ids==set(cfg['subagents']['custom_agents'])
-    assert len(list((ROOT/'skills/custom').glob('*/SKILL.md')))==15
+    assert len(ids)==len(lock['applications']) and ids==set(cfg['subagents']['custom_agents'])
+    expected_skills={'artcraft-'+identifier for identifier in ids}|{'artcraft-workspace','artcraft-studio'}
+    assert {p.parent.name for p in (ROOT/'skills/custom').glob('*/SKILL.md')}==expected_skills
+    assert ids == set(runpy.run_path(str(ROOT/'scripts/acceptance.py'))['CASES'])
     assert (ROOT/'studio/deerflow.yaml').read_bytes()==(ROOT/'config/deerflow.yaml').read_bytes()
     assert (ROOT/'studio/versions.lock.json').read_bytes()==(ROOT/'versions.lock.json').read_bytes()
     for a in lock['applications']:
@@ -24,13 +27,14 @@ def main():
             assert asset['url'].startswith(a['repository']+'/releases/download/'+a['version']+'/')
         skill=ROOT/'skills/custom'/('artcraft-'+a['id'])/'SKILL.md'
         assert skill.is_file()
+        assert (skill.parent/'references/CLI-RECIPE.md').is_file()
         front=yaml.safe_load(skill.read_text().split('---',2)[1])
         assert front['name']==skill.parent.name and front['description']
     assert cfg['sandbox']['allow_host_bash'] is False
     assert cfg['subagent_runtime']['max_running']==1
     assert any(t['name']=='studio_delegate' for t in cfg['tools'])
     assert cfg['models'][0]['use']=='studio.codex_provider:StudioCodexChatModel'
-    assert not any(t['name']=='bash' for t in cfg['tools'])
+    assert not any(t['name'] in ('bash', 'write_file', 'str_replace') for t in cfg['tools'])
     for compose in [local,remote]:
         assert compose['services']['gateway']['environment']['STUDIO_SANDBOX_IMAGE']==compose['services']['sandbox-image']['image']
         assert not any('.env' in str(s.get('env_file','')) for s in compose['services'].values())
@@ -53,6 +57,6 @@ def main():
     assert 'handle /api/langgraph/*' in caddy and 'uri replace /api/langgraph /api' in caddy
     for folder in ['scripts','studio','tests']:
         for path in (ROOT/folder).glob('*.py'):ast.parse(path.read_text(),str(path))
-    print('OK: 13 specialisti, 15 skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')
+    print(f'OK: {len(ids)} specialisti, {len(expected_skills)} skills, checksum, profilo seriale, Compose locale/remoto e assenza socket nei worker.')
 
 if __name__=='__main__':main()

@@ -59,7 +59,19 @@ jobs:
       - name: Verify CLI registries and all native MCP servers
         if: matrix.component == 'sandbox'
         run: |
-          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --output /tmp/checks.json
+          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --render --output /tmp/checks.json
+      - name: Check Codex credentials rotation with the pinned DeerFlow provider
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_codex_provider.py -v
+      - name: Check Gemini coordinator and official CLI bridge
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_gemini_provider.py -v
+      - name: Check official Gemini CLI core without account credentials
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --entrypoint node --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/tests/gemini_bridge.mjs
+      - name: Run representative native file workflows for all specialists
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |
@@ -77,6 +89,8 @@ jobs:
   startup:
     needs: images
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -114,3 +128,26 @@ jobs:
           cache-from: type=gha,scope=proxy
       - name: Boot full Compose without model credentials
         run: bash scripts/ci_boot.sh
+      - name: Prepare Hostinger release from published and tested runtimes
+        if: github.event_name != 'pull_request'
+        run: |
+          python -m pip install PyYAML==6.0.3
+          python scripts/prepare_hostinger.py --commit "$GITHUB_SHA" --output reports/release/compose.hostinger.yaml
+          STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 TRAEFIK_HOST=srv-test.hstgr.cloud docker compose -f reports/release/compose.hostinger.yaml config --quiet
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: hostinger-compose-${{ github.sha }}
+          path: reports/release/compose.hostinger.yaml
+      - name: Publish tested Compose for Hostinger URL deployment
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/release_notes.py --commit "$GITHUB_SHA" --output reports/release/notes.md
+          release_tag="studio-${GITHUB_SHA}"
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release upload "$release_tag" reports/release/compose.hostinger.yaml --clobber
+          else
+            gh release create "$release_tag" reports/release/compose.hostinger.yaml --target "$GITHUB_SHA" --title "ArtCraft Studio ${GITHUB_SHA:0:8}" --notes-file reports/release/notes.md --latest
+          fi

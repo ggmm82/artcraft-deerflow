@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import zipfile
+import xml.etree.ElementTree as ET
 
 
 def run(command, timeout=120):
@@ -21,6 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--render', action='store_true')
     parser.add_argument('--mcp', action='store_true')
+    parser.add_argument('--workspace-root', type=Path, default=Path('/mnt/user-data'))
     parser.add_argument('--output', type=Path, default=Path('/tmp/artcraft-checks.json'))
     args = parser.parse_args()
     root = Path(os.environ.get('ARTCRAFT_INSTALL_ROOT', '/opt/artcraft'))
@@ -43,19 +46,20 @@ def main():
         (reference / 'commands.txt').write_text(registry['stdout'], encoding='utf-8')
         checks.append(registry)
         if args.mcp:
-            Path('/mnt/user-data').mkdir(parents=True, exist_ok=True)
+            args.workspace_root.mkdir(parents=True, exist_ok=True)
             mcp = run(['craft', 'tools', app['id'], '--out', str(reference / 'mcp-tools.json')], timeout=210)
             mcp['ok'] = mcp['returncode'] == 0
             checks.append(mcp)
     if args.render:
         with tempfile.TemporaryDirectory(prefix='artcraft-render-') as directory:
             d = Path(directory)
-            (d / 'input.txt').write_text('Prova ArtCraft\nDocumento di verifica in italiano.\n', encoding='utf-8')
+            (d / 'input.md').write_text('# Prova ArtCraft\n\n| Voce | Importo |\n| --- | ---: |\n| A | 10,00 |\n| B | 20,00 |\n| C | 30,00 |\n| Totale | 60,00 |\n', encoding='utf-8')
             tasks = [
                 (['gridcraft-cli', 'eval', '=SUM(1,2,3)'], None),
-                (['wordcraft-cli', 'convert', str(d/'input.txt'), str(d/'documento.docx')], d/'documento.docx'),
+                (['wordcraft-cli', 'convert', str(d/'input.md'), str(d/'documento.docx')], d/'documento.docx'),
                 (['wordcraft-cli', 'convert', str(d/'documento.docx'), str(d/'documento.pdf')], d/'documento.pdf'),
                 (['pdfcraft-cli', 'info', str(d/'documento.pdf')], None),
+                (['pdfcraft-cli', 'text', str(d/'documento.pdf')], None),
                 (['deckcraft-cli', 'render', '--sample', '--slide', '1', str(d/'slide.png')], d/'slide.png'),
                 (['cadcraft-cli', 'run', '--sample', '--save', str(d/'disegno.dxf')], d/'disegno.dxf'),
             ]
@@ -64,6 +68,14 @@ def main():
                 result['ok'] = result['returncode'] == 0 and (expected is None or (expected.is_file() and expected.stat().st_size > 0))
                 if command[:2] == ['gridcraft-cli', 'eval']:
                     result['ok'] = result['ok'] and result['stdout'].strip() == '6'
+                if command[:2] == ['wordcraft-cli', 'convert'] and expected and expected.suffix == '.docx' and result['ok']:
+                    with zipfile.ZipFile(expected) as archive:
+                        tree = ET.fromstring(archive.read('word/document.xml'))
+                    ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+                    content = ''.join(n.text or '' for n in tree.findall('.//w:t', ns))
+                    result['ok'] = len(tree.findall('.//w:tbl', ns)) == 1 and '60,00' in content
+                if command[:2] == ['pdfcraft-cli', 'text']:
+                    result['ok'] = result['ok'] and '60,00' in result['stdout']
                 checks.append(result)
     report = {'timestamp_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'passed': all(x['ok'] for x in checks), 'checks': checks}
     args.output.parent.mkdir(parents=True, exist_ok=True)

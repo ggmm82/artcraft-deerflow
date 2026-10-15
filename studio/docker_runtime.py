@@ -6,7 +6,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from .state import STATE, catalog, credential_dir, connection_status
+from .state import STATE, effective_agent, credential_dir, connection_status
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
 EXECUTION_LOCK = threading.Lock()
@@ -66,8 +66,62 @@ def cleanup_orphans():
         remove(container)
 
 
+def generate_gemini(payload, timeout=1800):
+    """No file tools or conversation volume in a coordinator generation container."""
+    if not connection_status('gemini'):
+        raise ValueError('Collega Gemini nel pannello La tua squadra')
+    if not EXECUTION_LOCK.acquire(timeout=120):
+        raise RuntimeError('Squadra occupata; attendi il termine del lavoro attivo')
+    name = 'artcraft-coordinator-' + uuid.uuid4().hex[:12]
+    try:
+        jobs = STATE / 'jobs'
+        jobs.mkdir(exist_ok=True)
+        job = jobs / (name + '.json')
+        from .state import atomic_json
+        atomic_json(job, payload)
+        installation = (STATE / 'installation-id').read_text().strip()
+        args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
+            '--mount', mount(credential_dir('gemini'), '/credentials'),
+            '--mount', mount(job, '/job.json', True),
+            IMAGE, 'node', '/opt/studio/gemini_bridge.mjs', '/job.json']
+        try:
+            completed = subprocess.run(['docker', *args], capture_output=True, text=True,
+                                       timeout=timeout + 60)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError('Timeout Gemini: riprova dalla chat') from None
+        try:
+            result = json.loads(completed.stdout)
+        except (ValueError, TypeError):
+            raise RuntimeError('Risposta del coordinatore Gemini non valida') from None
+        if completed.returncode or result.get('ok') is not True:
+            raise RuntimeError('Gemini non disponibile: verifica account, quota e modello in La tua squadra')
+        return result['response']
+    finally:
+        remove(name)
+        if 'job' in locals():
+            job.unlink(missing_ok=True)
+        EXECUTION_LOCK.release()
+
+
+def refresh_codex_credentials():
+    if not EXECUTION_LOCK.acquire(timeout=120):
+        raise RuntimeError('Squadra occupata: riprova tra poco')
+    name = 'artcraft-refresh-' + uuid.uuid4().hex[:12]
+    try:
+        installation = (STATE / 'installation-id').read_text().strip()
+        args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
+            '--mount', mount(credential_dir('codex'), '/root/.codex'),
+            IMAGE, 'python3', '/opt/studio/refresh_codex.py']
+        result = subprocess.run(['docker', *args], capture_output=True, text=True, timeout=90)
+        if result.returncode or json.loads(result.stdout).get('ok') is not True:
+            raise RuntimeError('Ricollega Codex in La tua squadra')
+    finally:
+        remove(name)
+        EXECUTION_LOCK.release()
+
+
 def delegate(agent_id, task, workspace):
-    settings = catalog().get(agent_id)
+    settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
     engine = settings['engine']
@@ -86,21 +140,31 @@ def delegate(agent_id, task, workspace):
         payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500}
+        if engine == 'deepseek' and not payload['model']:
+            import yaml
+            config = yaml.safe_load((STATE / 'config.yaml').read_text())
+            payload['model'] = next(m['model'] for m in config['models'] if m['use'] == 'studio.deepseek_provider:StudioDeepSeekChatModel')
         from .state import atomic_json
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(workspace, '/mnt/user-data'),
-            '--mount', mount(credential_dir(engine), '/credentials'),
+            '--mount', mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek'),
             '--mount', mount(job, '/job.json', True),
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
         completed = subprocess.run(['docker', *args], capture_output=True, text=True,
                                    timeout=1560)
-        response = completed.stdout[-24000:]
+        response = completed.stdout
         if completed.returncode:
             raise RuntimeError('Lo specialista ha fallito: ' +
                                (response or completed.stderr)[-3000:])
-        return response
+        try:
+            result = json.loads(response)
+        except (ValueError, TypeError):
+            raise RuntimeError('Risposta JSON dello specialista non valida') from None
+        if not isinstance(result, dict) or result.get('ok') is not True:
+            raise RuntimeError('Lo specialista non ha confermato il completamento')
+        return json.dumps(result, ensure_ascii=False)
     except subprocess.TimeoutExpired:
         raise RuntimeError('Timeout dello specialista; il container viene rimosso') from None
     finally:
