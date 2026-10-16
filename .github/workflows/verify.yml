@@ -45,6 +45,15 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m unittest discover -s tests -v
       - run: python scripts/validate.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Browser acceptance for specialist progress
+        run: |
+          npm install --prefix /tmp/studio-ui-tests --no-audit --no-fund react@19.2.4 react-dom@19.2.4 esbuild@0.25.12
+          pip install playwright==1.62.0
+          python -m playwright install --with-deps chromium
+          python scripts/check_delegate_progress_ui.py --node-modules /tmp/studio-ui-tests/node_modules
       - name: Compose configuration
         env:
           STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
@@ -100,6 +109,9 @@ jobs:
       - name: Check background work survives browser disconnect
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_background_runs.py -v
+      - name: Check persisted progress authorization and user isolation
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_progress_routes.py -v
       - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py

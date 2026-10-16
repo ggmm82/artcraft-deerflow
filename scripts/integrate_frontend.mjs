@@ -57,4 +57,8 @@ messages=replaceRequired(messages,
   '    if (timerThreadRef.current !== threadId) {\n      timerThreadRef.current = threadId;\n      turnStartTimeRef.current = null;\n    }\n    if (thread.isLoading) {\n      const start = serverStartTime ?? turnStartTimeRef.current ?? Date.now();\n      if (turnStartTimeRef.current !== start) {\n        turnStartTimeRef.current = start;\n        setTurnStartTime(start);\n      }', 'live timer reconciliation');
 messages=replaceRequired(messages, '  }, [groupedMessages, thread.error, thread.isLoading, threadId]);',
   '  }, [groupedMessages, thread.error, thread.isLoading, threadId, serverStartTime]);', 'timer effect');
+messages=replaceRequired(messages, 'import { RunActivity, RunDuration } from "./run-duration";',
+  'import { RunActivity, RunDuration } from "./run-duration";\nimport { DelegateProgress } from "./delegate-progress";\nimport { hasPendingDelegate } from "./delegate-progress-state";', 'delegate progress import');
+messages=replaceRequired(messages, '          {renderTaskEventLines(placedTaskEvents?.tail)}',
+  '          <DelegateProgress threadId={threadId} active={thread.isLoading} pending={thread.isLoading && hasPendingDelegate(messages)} />\n          {renderTaskEventLines(placedTaskEvents?.tail)}', 'delegate progress panel');
 fs.writeFileSync(messagesFile,messages);

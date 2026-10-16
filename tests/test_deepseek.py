@@ -81,13 +81,20 @@ class DeepSeekTests(unittest.TestCase):
         responses = [
             {'choices': [{'message': {'role': 'assistant', 'content': 'Premature completion'}}]},
             {'choices': [{'message': {'role': 'assistant', 'content': None,
-                'tool_calls': [{'id': '1', 'type': 'function', 'function': {
+                'tool_calls': [{'id': '0', 'type': 'function', 'function': {
+                    'name': 'report_progress', 'arguments': json.dumps({'phase': 'planning', 'summary': 'Creo il report e controllo il contenuto'})}},
+                    {'id': '1', 'type': 'function', 'function': {
                     'name': 'run_command', 'arguments': json.dumps({'command': command})}}]}}]},
             {'choices': [{'message': {'role': 'assistant', 'content': 'Completed'}}]},
         ]
+        events = []
+        from types import SimpleNamespace
+        progress = SimpleNamespace(emit=lambda *args, **kwargs: events.append(args))
         with patch.object(deepseek, 'Path', side_effect=path), \
              patch.object(deepseek, 'request', side_effect=responses) as request:
-            self.assertEqual(deepseek.run('deepseek-flash', 'Make report', output, 30), 'Completed')
+            self.assertEqual(deepseek.run('deepseek-flash', 'Make report', output, 30, progress=progress), 'Completed')
+        self.assertIn(('planning', 'Creo il report e controllo il contenuto'), events)
+        self.assertTrue(any(event[0] == 'running_tool' for event in events))
         self.assertEqual((output / 'report.txt').read_text().strip(), 'verified')
         self.assertEqual(request.call_count, 3)
         self.assertTrue(any('La consegna non è ancora valida' in (m.get('content') or '')

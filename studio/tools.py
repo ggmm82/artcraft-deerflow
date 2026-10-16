@@ -31,4 +31,5 @@ def studio_delegate(agent: str, task: str, runtime: Runtime) -> str:
     user = resolve_runtime_user_id(runtime)
     paths = get_paths()
     paths.ensure_thread_dirs(thread, user_id=user)
-    return delegate(agent, task, paths.sandbox_user_data_dir(thread, user_id=user))
+    return delegate(agent, task, paths.sandbox_user_data_dir(thread, user_id=user),
+                    tool_call_id=getattr(runtime, 'tool_call_id', None))
