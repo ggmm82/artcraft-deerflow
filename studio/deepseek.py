@@ -57,6 +57,14 @@ HANDOFF_TOOL = {'type': 'function', 'function': {
         'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings', 'delivery'],
         'additionalProperties': False}}}
 
+PROGRESS_TOOL = {'type': 'function', 'function': {
+    'name': 'report_progress',
+    'description': 'Mostra all’utente un breve aggiornamento operativo: obiettivo, azione scelta o verifica. Non includere ragionamenti interni, credenziali, prompt o percentuali inventate.',
+    'parameters': {'type': 'object', 'properties': {
+        'phase': {'type': 'string', 'enum': ['planning', 'creating', 'exporting', 'checking', 'finalizing']},
+        'summary': {'type': 'string', 'maxLength': 280}}, 'required': ['phase', 'summary'],
+        'additionalProperties': False}}}
+
 
 def submit_handoff(output_dir, value):
     """Finalize through a checked tool instead of asking the model to quote shell JSON."""
@@ -74,7 +82,7 @@ def submit_handoff(output_dir, value):
     finally:
         Path(temporary).unlink(missing_ok=True)
 
-def run(model, prompt, output_dir, timeout):
+def run(model, prompt, output_dir, timeout, progress=None):
     key = json.loads(Path('/credentials/api.json').read_text())['api_key']
     messages = [{'role': 'system', 'content': prompt}, {'role': 'user', 'content':
         'Esegui adesso l’incarico del coordinatore con run_command. '
@@ -102,10 +110,12 @@ def run(model, prompt, output_dir, timeout):
                 'e dichiara nei warnings eventuali requisiti incompleti. '
                 'I cataloghi, i batch e le prove sotto work/ non sostituiscono i prodotti richiesti.'})
         payload = {'model': model, 'messages': messages,
-                   'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL], 'max_tokens': 6000,
+                   'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL, PROGRESS_TOOL], 'max_tokens': 6000,
                    'thinking': {'type': 'disabled'}}
         if force_handoff:
             payload['tool_choice'] = {'type': 'function', 'function': {'name': 'submit_handoff'}}
+        if progress:
+            progress.emit('finalizing' if finalizing else 'waiting_model', turn=turn + 1)
         result = request(key, '/chat/completions', payload, timeout=min(remaining, 180))
         usage.append(result.get('usage', {}))
         (output_dir / 'work/deepseek-usage.json').write_text(json.dumps(usage))
@@ -128,8 +138,18 @@ def run(model, prompt, output_dir, timeout):
         for call in calls:
             try:
                 if call['function']['name'] == 'submit_handoff':
+                    if progress:
+                        progress.emit('checking')
                     handoff = submit_handoff(output_dir, json.loads(call['function']['arguments']))
                     return 'Consegna registrata e file verificati: ' + ', '.join(handoff['output_files'])
+                if call['function']['name'] == 'report_progress' and not force_handoff:
+                    note = json.loads(call['function']['arguments'])
+                    if note.get('phase') not in ('planning', 'creating', 'exporting', 'checking', 'finalizing') or not isinstance(note.get('summary'), str):
+                        raise ValueError('Aggiornamento operativo non valido')
+                    if progress:
+                        progress.emit(note['phase'], note['summary'])
+                    messages.append({'role': 'tool', 'tool_call_id': call['id'], 'content': 'Aggiornamento registrato'})
+                    continue
                 if force_handoff:
                     raise ValueError('La produzione è conclusa: usa submit_handoff per i file già esistenti')
                 if call['function']['name'] != 'run_command':
@@ -140,11 +160,21 @@ def run(model, prompt, output_dir, timeout):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError('Timeout dello specialista DeepSeek')
+                if progress:
+                    try:
+                        from .progress import tool_label
+                    except ImportError:
+                        from progress import tool_label
+                    progress.emit('running_tool', tool_label(command))
                 completed = subprocess.run(['bash', '-lc', command], cwd=output_dir,
                     capture_output=True, text=True, errors='replace', timeout=min(90, remaining))
+                if progress:
+                    progress.emit('waiting_model', 'Comando concluso (uscita ' + str(completed.returncode) + ')')
                 response = {'returncode': completed.returncode,
                             'stdout': completed.stdout[-12000:], 'stderr': completed.stderr[-3000:]}
             except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
+                if progress:
+                    progress.emit('waiting_model', 'Passaggio non riuscito: il modello sta valutando la correzione')
                 response = {'error': str(error).replace(key, '[REDACTED]')}
             messages.append({'role': 'tool', 'tool_call_id': call['id'],
                              'content': json.dumps(response, ensure_ascii=False)})

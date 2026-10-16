@@ -8,8 +8,12 @@ from pathlib import Path
 
 try:
     from .handoff import validate_handoff
+    from .progress import Reporter
+    from .cli_runner import run_cli
 except ImportError:  # Direct invocation inside the worker image.
     from handoff import validate_handoff
+    from progress import Reporter
+    from cli_runner import run_cli
 
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
@@ -149,7 +153,13 @@ def main():
         'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
-        'Non dichiarare verifiche visive/audio che non hai eseguito.'
+        'Non dichiarare verifiche visive/audio che non hai eseguito.',
+        'Aggiornamenti per l’utente: registra un breve piano operativo e poi i cambi di fase '
+        '(creazione, export, verifica). Riporta azioni e decisioni pratiche, non ragionamenti interni, '
+        'prompt, credenziali o trascrizioni. Usa report_progress se disponibile; con le CLI usa '
+        '/usr/bin/python3 /opt/studio/progress.py --phase planning --summary "Breve obiettivo e prossima azione". '
+        'Fasi ammesse: planning, creating, exporting, checking, finalizing. '
+        'Non inventare percentuali o tempi di completamento.'
     ])
     if engine == 'gemini':
         prompt += ('\nChiusura obbligatoria Antigravity: quando file e handoff.json sono pronti, '
@@ -157,6 +167,7 @@ def main():
                    'percorsi, verifiche e limiti. Non limitarti a ripetere un messaggio testuale: '
                    'finish conclude il processo. Non ricreare i file già verificati.')
     final = Path('/tmp/last-message.txt')
+    reporter = Reporter(output_dir, job).start(job['timeout'])
     try:
         if engine == 'deepseek':
             try:
@@ -164,13 +175,15 @@ def main():
             except ImportError:
                 from deepseek import run
             os.environ['ARTCRAFT_OUTPUT_DIR'] = str(output_dir)
-            message = run(job['model'], prompt, output_dir, job['timeout'])
+            message = run(job['model'], prompt, output_dir, job['timeout'], progress=reporter)
         else:
-            result = subprocess.run(command(engine, job['model'], prompt, final), cwd=output_dir,
+            reporter.emit('waiting_model')
+            result = run_cli(command(engine, job['model'], prompt, final), cwd=output_dir,
                                 input=(json.dumps({'event': 'user', 'message': {'content': prompt}}) + '\n') if engine == 'gemini' else prompt,
                                 env={**(cli_env() if engine == 'gemini' else os.environ), 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
-                                capture_output=True, text=True, timeout=job['timeout'])
+                                timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event))
             if result.returncode:
+                reporter.emit('failed')
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
                               'exit_code': result.returncode,
                               'error': worker_error(engine, result)}))
@@ -184,18 +197,28 @@ def main():
                 message = parsed.get('structured_output', {}).get('summary')
                 if not isinstance(message, str) or not message.strip():
                     raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
+        reporter.emit('checking')
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except ValueError as exc:
+            reporter.emit('failed', 'Controlli di consegna non superati')
             print(json.dumps({'ok': False, 'agent': job['agent'], 'engine': engine,
                               'output_dir': str(output_dir),
                               'error': handoff_error(output_dir, exc)}, ensure_ascii=False))
             return 1
+        reporter.emit('completed')
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
                           'output_dir': str(output_dir), 'handoff': handoff,
                           'response': message}, ensure_ascii=False))
         return 0
+    except (TimeoutError, subprocess.TimeoutExpired):
+        reporter.emit('timed_out')
+        raise
+    except Exception:
+        reporter.emit('failed')
+        raise
     finally:
+        reporter.close()
         # One worker at a time. Preserve refreshed tokens for the next run.
         if engine != 'deepseek':
             copy_credentials(auth, Path('/credentials'), engine)

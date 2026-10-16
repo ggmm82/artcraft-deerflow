@@ -154,4 +154,6 @@ Il link stabile `releases/latest/download/compose.hostinger.yaml` si aggiorna so
 
 Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non usare `down -v` salvo richiesta esplicita di cancellazione. Per aggiornare, modifica insieme `versions.lock.json`, versioni CLI nei Dockerfile, commit DeerFlow nei Compose/workflow e collaudi. I dati non si aggiornano automaticamente a un nuovo schema.
 
-Il codice dell'integrazione è in `studio/`; il frontend upstream riceve soltanto un collegamento e la pagina del pannello. Dockerfile Gateway e frontend sono adattati dai corrispondenti file DeerFlow: la licenza originale è in `docs/DEERFLOW-LICENSE`.
+La chat mostra anche gli [avanzamenti degli specialisti](docs/AVANZAMENTO-DELEGHE.md): riepilogo operativo, fase, ultima attività, file provvisori e limite di esecuzione, conservati quando si riapre la conversazione.
+
+Il codice dell'integrazione è in `studio/`; il frontend upstream riceve onboarding, configurazione della squadra, avanzamenti e le correzioni condivise di modalità e timer tramite integrazioni verificate in build. Dockerfile Gateway e frontend sono adattati dai corrispondenti file DeerFlow: la licenza originale è in `docs/DEERFLOW-LICENSE`.

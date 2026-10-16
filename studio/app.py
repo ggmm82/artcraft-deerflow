@@ -4,6 +4,7 @@ from app.gateway.deps import require_admin_user
 from fastapi import Depends, Request
 from .router import router
 from .team_routing import TeamRoutingMiddleware
+from .progress_routes import router as progress_router
 
 
 async def studio_admin(request: Request):
@@ -11,5 +12,6 @@ async def studio_admin(request: Request):
 
 
 app.include_router(router, dependencies=[Depends(studio_admin)])
+app.include_router(progress_router)
 
 app.add_middleware(TeamRoutingMiddleware)

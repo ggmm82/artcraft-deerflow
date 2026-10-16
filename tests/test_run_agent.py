@@ -23,7 +23,7 @@ class WorkerTests(unittest.TestCase):
                 (root / name).mkdir(parents=True)
             (root / 'mnt/skills/custom/artcraft-workspace/SKILL.md').write_text('Common procedure')
             jobfile = root / 'job.json'
-            job = {'engine': 'codex', 'agent': 'gridcraft', 'run_id': 'success',
+            job = {'engine': 'codex', 'agent': 'gridcraft', 'run_id': 'artcraft-job-111111111111',
                    'skills': ['artcraft-workspace'], 'instructions': '', 'task': 'Analysis',
                    'timeout': 10, 'model': ''}
             # Real CLI subprocess fixture verifies cwd and env, then creates outputs.
@@ -51,7 +51,7 @@ pathlib.Path(sys.argv[1]).write_text('Completed')
                 self.assertTrue(result['ok'])
                 self.assertTrue(Path(result['handoff']['output_files'][0]).is_file())
                 self.assertTrue((root / 'root/.agents/skills/artcraft-workspace/SKILL.md').is_file())
-                job['run_id'] = 'missing'
+                job['run_id'] = 'artcraft-job-222222222222'
                 jobfile.write_text(json.dumps(job))
                 with patch.object(run_agent, 'command', return_value=[sys.executable, '-c', 'pass']):
                     with self.assertRaises(FileNotFoundError):

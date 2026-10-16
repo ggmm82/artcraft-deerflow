@@ -52,3 +52,18 @@ assert.equal(getRunStartTime([{ ...run, created_at: 'invalid' }], null, 'chat', 
 assert.equal(getRunStartTime([{ ...run, created_at: new Date(now + 10000).toISOString() }], null, 'chat', now), null);
 assert.equal(getRunStartTime(undefined, null, 'chat', now), null);
 console.log('Run clock: reopen, reload, new submissions, thread ownership and invalid dates verified');
+
+const { hasPendingDelegate, jobHealth } = await import(
+  pathToFileURL(path.resolve(root, 'src/components/workspace/messages/delegate-progress-state.ts')).href
+);
+const call = { type: 'ai', tool_calls: [{ id: 'delegate-1', name: 'studio_delegate' }] };
+assert.equal(hasPendingDelegate([call]), true);
+assert.equal(hasPendingDelegate([call, { type: 'tool', tool_call_id: 'delegate-1' }]), false);
+assert.equal(hasPendingDelegate([{ type: 'ai', tool_calls: [{ id: 'read-1', name: 'read_file' }] }]), false);
+const job = { phase: 'running_tool', heartbeat_at: new Date(now).toISOString(),
+  last_activity_at: new Date(now - 120000).toISOString(), deadline_at: new Date(now + 10000).toISOString() };
+assert.match(jobHealth(job, now), /Nessun nuovo avanzamento/);
+assert.match(jobHealth({ ...job, heartbeat_at: '' }, now), /Segnale del worker assente/);
+assert.match(jobHealth(job, now + 11000), /Tempo limite superato/);
+assert.equal(jobHealth({ ...job, phase: 'completed' }, now), null);
+console.log('Delegate status: pending tool correlation, idle worker, missing heartbeat and deadline verified');

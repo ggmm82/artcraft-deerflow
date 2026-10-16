@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from .state import STATE, effective_agent, credential_dir, connection_status
+from .progress import clean_summary, create_job, read_status, update
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
 EXECUTION_LOCK = threading.Lock()
@@ -151,7 +152,7 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace):
+def delegate(agent_id, task, workspace, tool_call_id=None):
     settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
@@ -160,11 +161,14 @@ def delegate(agent_id, task, workspace):
         raise ValueError(f'Collega {engine} nel pannello Studio prima di usare lo specialista')
     workspace = Path(workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
+    name = 'artcraft-job-' + uuid.uuid4().hex[:12]
+    progress = create_job(workspace, name, agent_id, engine, settings['model'], tool_call_id)
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
     if not EXECUTION_LOCK.acquire(timeout=120):
+        update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
         raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
-    name = 'artcraft-job-' + uuid.uuid4().hex[:12]
     try:
+        update(progress, 'starting')
         jobs = STATE / 'jobs'
         jobs.mkdir(exist_ok=True)
         job = jobs / (name + '.json')
@@ -175,6 +179,7 @@ def delegate(agent_id, task, workspace):
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
             payload['model'] = next(m['model'] for m in config['models'] if m['use'] == 'studio.deepseek_provider:StudioDeepSeekChatModel')
+        update(progress, model=clean_summary(payload['model']))
         from .state import atomic_json
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
@@ -195,11 +200,25 @@ def delegate(agent_id, task, workspace):
             raise RuntimeError('Risposta JSON dello specialista non valida') from None
         if not isinstance(result, dict) or result.get('ok') is not True:
             raise RuntimeError('Lo specialista non ha confermato il completamento')
+        update(progress, 'completed')
         return json.dumps(result, ensure_ascii=False)
     except subprocess.TimeoutExpired:
+        update(progress, 'timed_out')
         raise RuntimeError('Timeout dello specialista; il container viene rimosso') from None
+    except Exception:
+        # Retain a more specific worker timeout or failed-delivery explanation.
+        try:
+            if read_status(progress)['phase'] not in ('failed', 'timed_out'):
+                update(progress, 'failed')
+        except (OSError, ValueError):
+            pass
+        raise
     finally:
-        remove(name)
+        try:
+            remove(name)
+        except Exception:
+            update(progress, 'failed', 'Pulizia del worker non confermata: la squadra richiede un controllo')
+            raise
         if 'job' in locals():
             job.unlink(missing_ok=True)
         EXECUTION_LOCK.release()
