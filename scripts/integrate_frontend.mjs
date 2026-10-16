@@ -17,3 +17,13 @@ const unsupportedMode='  if (thinking === "unsupported") {\n    return "flash";\
 if(reasoning.split(unsupportedMode).length !== 2)throw Error('DeerFlow reasoning resolver changed; review mode integration before building');
 reasoning=reasoning.replace(unsupportedMode, '  if (thinking === "unsupported") {\n    // Workflow modes do not require a provider-level thinking toggle.\n    return mode === "pro" || mode === "ultra" ? mode : "flash";\n  }');
 fs.writeFileSync(reasoningFile,reasoning);
+
+// A resumable stream alone does not keep a run alive: the Gateway defaults to
+// cancelling the creating run when its SSE connection closes. Cover new turns
+// and edit/regenerate replay submissions, while leaving explicit Stop intact.
+const hooksFile=root+'/src/core/threads/hooks.ts';
+let hooks=fs.readFileSync(hooksFile,'utf8');
+const resumable='streamResumable: true,';
+if(hooks.split(resumable).length !== 3)throw Error('DeerFlow submit paths changed; review background run integration before building');
+hooks=hooks.replaceAll(resumable, 'onDisconnect: "continue",\n            '+resumable);
+fs.writeFileSync(hooksFile,hooks);

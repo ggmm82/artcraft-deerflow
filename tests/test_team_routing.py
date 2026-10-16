@@ -5,6 +5,25 @@ from studio.team_routing import TeamRoutingMiddleware
 
 
 class TeamRoutingTests(unittest.TestCase):
+    def test_submission_disconnect_defaults_and_explicit_stop_are_distinct(self):
+        app = FastAPI()
+
+        @app.post('/api/{path:path}')
+        async def echo(path: str, request: Request):
+            return await request.json()
+
+        app.add_middleware(TeamRoutingMiddleware)
+        with TestClient(app) as client:
+            for path in ('runs', 'runs/stream', 'runs/wait', 'threads/t/runs',
+                         'threads/t/runs/stream', 'threads/t/runs/wait'):
+                with self.subTest(path=path):
+                    result = client.post('/api/' + path, json={'input': {'messages': []}}).json()
+                    self.assertEqual(result['on_disconnect'], 'continue')
+                    explicit = client.post('/api/' + path, json={'on_disconnect': 'cancel'}).json()
+                    self.assertEqual(explicit['on_disconnect'], 'cancel')
+            cancel = {'action': 'interrupt'}
+            self.assertEqual(client.post('/api/threads/t/runs/r/cancel', json=cancel).json(), cancel)
+
     def test_workflow_modes_survive_shared_model_routing(self):
         app = FastAPI()
 
