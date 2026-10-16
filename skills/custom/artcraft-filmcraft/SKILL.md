@@ -75,3 +75,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Integra realmente i video di EffectCraft, gli asset visivi di PhotoCraft/VectorCraft e il mix di SoundCraft quando previsti. Verifica in timeline sincronizzazione, ritmo, durata, aspect ratio, media online e traccia audio udibile/non silenziosa; ffprobe non dimostra da solo qualità visiva o ascolto. Consegna .fcproj con media e il video finale.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Prova completa e revisioni mirate
+
+Puoi integrare file recuperati da colleghi con processo interrotto, dopo averli verificati. Non aspettare perfezione o tutti i manifesti per produrre una bozza completa. Verifica nel video esportato traccia audio, durata e segnale non silenzioso; se serve musica un MP4 muto non è il prodotto definitivo. Preserva il mix pronto durante le revisioni visive; correggi soltanto sincronizzazione e punti effettivamente cambiati.

@@ -74,3 +74,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Prepara identità visiva, immagini, texture, sfondi e parti separate a livelli. Concorda dimensioni, alpha e palette con VectorCraft/EffectCraft/FilmCraft. Non sostituire animazione, suono e montaggio con un solo export immagine.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Prova completa e revisioni mirate
+
+Prima di produrre tutti gli asset, prepara una prova riconoscibile del soggetto e della palette. Conserva separazione delle parti utili; verifica che il risultato sia leggibile nel prodotto, non soltanto che i PNG esistano.

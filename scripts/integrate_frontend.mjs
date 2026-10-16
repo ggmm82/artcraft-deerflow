@@ -57,8 +57,19 @@ messages=replaceRequired(messages,
   '    if (timerThreadRef.current !== threadId) {\n      timerThreadRef.current = threadId;\n      turnStartTimeRef.current = null;\n    }\n    if (thread.isLoading) {\n      const start = serverStartTime ?? turnStartTimeRef.current ?? Date.now();\n      if (turnStartTimeRef.current !== start) {\n        turnStartTimeRef.current = start;\n        setTurnStartTime(start);\n      }', 'live timer reconciliation');
 messages=replaceRequired(messages, '  }, [groupedMessages, thread.error, thread.isLoading, threadId]);',
   '  }, [groupedMessages, thread.error, thread.isLoading, threadId, serverStartTime]);', 'timer effect');
-messages=replaceRequired(messages, 'import { RunActivity, RunDuration } from "./run-duration";',
-  'import { RunActivity, RunDuration } from "./run-duration";\nimport { DelegateProgress } from "./delegate-progress";\nimport { hasPendingDelegate } from "./delegate-progress-state";', 'delegate progress import');
-messages=replaceRequired(messages, '          {renderTaskEventLines(placedTaskEvents?.tail)}',
-  '          <DelegateProgress threadId={threadId} active={thread.isLoading} pending={thread.isLoading && hasPendingDelegate(messages)} />\n          {renderTaskEventLines(placedTaskEvents?.tail)}', 'delegate progress panel');
 fs.writeFileSync(messagesFile,messages);
+
+// Put one compact project control next to the composer, outside the scrolling
+// transcript. Cover normal chats and custom-agent chats, with no duplicate panel.
+for (const relative of [
+  '/src/components/workspace/chats/chat-page.tsx',
+  '/src/app/workspace/agents/[agent_name]/chats/[thread_id]/page.tsx',
+]) {
+  const pageFile=root+relative;
+  let page=fs.readFileSync(pageFile,'utf8');
+  page=replaceRequired(page, '"use client";', '"use client";\n\nimport { DelegateProgress } from "@/components/workspace/messages/delegate-progress";\nimport { hasPendingDelegate } from "@/components/workspace/messages/delegate-progress-state";', 'project dock import');
+  const anchor='                  {(hasGoal || goalOutcome !== null || hasTodos) && (';
+  const dock='                  {!isNewThread && !isMock && <DelegateProgress threadId={threadId} active={thread.isLoading} pending={thread.isLoading && hasPendingDelegate(thread.messages)} coordinatorError={!!thread.error} onContinue={() => handleSubmit({ text: "Riprendi il lavoro dai file disponibili. Verifica il servizio AI, integra una versione completa e correggi soltanto ciò che manca.", files: [] })} />}\n';
+  page=replaceRequired(page, anchor, dock+anchor, 'project composer placement');
+  fs.writeFileSync(pageFile,page);
+}

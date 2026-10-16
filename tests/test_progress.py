@@ -11,6 +11,15 @@ from studio.cli_runner import run_cli
 
 
 class ProgressTests(unittest.TestCase):
+    def test_actual_cli_commands_show_useful_actions_without_arguments(self):
+        self.assertEqual(progress.tool_label('/usr/local/bin/effectcraft-cli --project /mnt/user-data/robot.ecproj render --out /mnt/user-data/robot.mp4'),
+                         'Esporto il risultato con Effectcraft')
+        self.assertEqual(progress.tool_label('craft batch filmcraft /mnt/user-data/edit.json'), 'Comando Filmcraft in esecuzione')
+        self.assertEqual(progress.tool_label('soundcraft-cli run --in session.scraft --bounce mix.wav'), 'Esporto il risultato con Soundcraft')
+        self.assertEqual(progress.tool_label('craft help photocraft'), 'Consulto i comandi di Photocraft')
+        self.assertEqual(progress.tool_label('ffprobe -show_streams private-movie.mp4'), 'Verifico formato, durata e tracce del file')
+        self.assertNotIn('private', progress.tool_label('ffmpeg -i private-audio.wav -af volumedetect -f null -'))
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -67,3 +68,13 @@ assert.match(jobHealth({ ...job, heartbeat_at: '' }, now), /Segnale del worker a
 assert.match(jobHealth(job, now + 11000), /Tempo limite superato/);
 assert.equal(jobHealth({ ...job, phase: 'completed' }, now), null);
 console.log('Delegate status: pending tool correlation, idle worker, missing heartbeat and deadline verified');
+
+for (const relative of ['src/components/workspace/chats/chat-page.tsx', 'src/app/workspace/agents/[agent_name]/chats/[thread_id]/page.tsx']) {
+  const source=fs.readFileSync(path.join(root,relative),'utf8');
+  assert.equal(source.split('<DelegateProgress ').length,2,'one project dock per chat');
+  assert.ok(source.indexOf('<DelegateProgress ') > source.indexOf('<MessageList'),'outside historical messages');
+  assert.ok(source.indexOf('<DelegateProgress ') < source.indexOf('<InputBox'),'beside the composer');
+  assert.match(source,/onContinue=\{\(\) => handleSubmit/,'continue uses the normal authenticated submit flow');
+}
+assert.ok(!fs.readFileSync(path.join(root,'src/components/workspace/messages/message-list.tsx'),'utf8').includes('<DelegateProgress'),'no project panel hidden in scrolling history');
+console.log('Project dock: normal and agent chats, fixed composer placement, authenticated continue and no duplicate transcript panel verified');

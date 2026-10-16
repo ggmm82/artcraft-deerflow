@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .state import STATE, effective_agent, credential_dir, connection_status
 from .progress import clean_summary, create_job, read_status, update
+from .work_results import failure_info, partial_files
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
 EXECUTION_LOCK = threading.Lock()
@@ -152,7 +153,7 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
+def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None):
     settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
@@ -177,7 +178,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
         job = jobs / (name + '.json')
         payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
-                   'run_id': name, 'timeout': 1500}
+                   'run_id': name, 'timeout': 1500, 'requirements': requirements or {}}
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
@@ -204,8 +205,14 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
                 failure = {}
             if not isinstance(failure, dict):
                 failure = {}
-            return json.dumps({'ok': False, 'agent': agent_id, 'output_dir': output_dir,
-                               'error': clean_summary(failure.get('error') or completed.stderr or 'Specialista non completato'),
+            error = failure.get('error') or completed.stderr or 'Specialista non completato'
+            attention = failure_info(error)
+            available = ['/mnt/user-data/' + str(Path(p).relative_to(workspace)) for p in
+                         partial_files(workspace / 'outputs' / agent_id / name)]
+            update(progress, 'failed', attention['message'], error_code=attention['code'],
+                   action=attention['action'])
+            return json.dumps({'ok': False, 'agent': agent_id, 'engine': engine, 'output_dir': output_dir,
+                               'error': clean_summary(error), 'attention': attention, 'available_files': available,
                                'partial': True, 'resume': 'Ispeziona i file salvati e work/checkpoint.json, '
                                'poi assegna una continuazione mirata. I file non sono ancora una consegna verificata.'}, ensure_ascii=False)
         try:
@@ -219,6 +226,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
     except subprocess.TimeoutExpired:
         update(progress, 'timed_out')
         return json.dumps({'ok': False, 'agent': agent_id, 'output_dir': output_dir,
+                           'available_files': ['/mnt/user-data/' + str(Path(p).relative_to(workspace)) for p in
+                               partial_files(workspace / 'outputs' / agent_id / name)],
                            'partial': True, 'error': 'Limite della singola fase raggiunto (25 minuti più chiusura).',
                            'resume': 'Il container viene rimosso, i file persistono. Ispeziona work/checkpoint.json '
                            'e continua questa fase in una nuova delega; non consegnare i file provvisori come verificati.'}, ensure_ascii=False)

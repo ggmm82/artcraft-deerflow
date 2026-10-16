@@ -75,3 +75,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Prepara tracce, ritmo, mix ed effetti usando la CLI SoundCraft e una sessione multitraccia modificabile. Per video di danza concorda BPM, durata esatta e cue con EffectCraft/FilmCraft. Usa audio fornito/autorizzato o una base originale dichiarata: non promettere il brano originale da un semplice ritmo sintetico. Passa WAV/stem non silenziosi, senza clipping e con sample rate dichiarato, insieme alla sessione e ai media.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Prova completa e revisioni mirate
+
+Per una prima bozza produci presto un loop completo breve con ritmo, basso e accenti, usando una sessione modificabile. Raggruppa la costruzione di tracce e note in batch; non comporre centinaia di note una chiamata per volta prima di verificare il primo bounce. Un master già esportato e riapribile resta utilizzabile per un’integrazione anche se la chiusura LLM fallisce. Se serve solo una piccola correzione di loudness/true peak, limita il lavoro a quella.

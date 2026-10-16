@@ -1,3 +1,5 @@
+> Nota: la regia e l’interfaccia descritte qui sono state aggiornate. Per il comportamento corrente vedi [Regia adattabile](REGIA-ADATTABILE.md); la pipeline obbligatoria e il limite permanente di tre tentativi sono superati.
+
 # Avanzamento degli specialisti
 
 La chat mostra **Lavoro della squadra** durante `studio_delegate`. Il pannello indica specialista, provider/modello condiviso, riepilogo operativo, fase corrente, tempo trascorso, ultima attività, file provvisori e cronologia. Restano visibili gli incarichi attivi e gli ultimi tre conclusi. Il polling ogni due secondi è indipendente dallo stream del coordinatore: riaprire la pagina recupera lo stesso stato persistito.

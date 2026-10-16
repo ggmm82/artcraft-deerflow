@@ -51,6 +51,13 @@ pathlib.Path(sys.argv[1]).write_text('Completed')
                 self.assertTrue(result['ok'])
                 self.assertTrue(Path(result['handoff']['output_files'][0]).is_file())
                 self.assertTrue((root / 'root/.agents/skills/artcraft-workspace/SKILL.md').is_file())
+                job['run_id'] = 'artcraft-job-333333333333'
+                job['requirements'] = {'audio': True, 'video': True}
+                jobfile.write_text(json.dumps(job))
+                with contextlib.redirect_stdout(io.StringIO()):
+                    with self.assertRaisesRegex(ValueError, 'Manca il prodotto media finale'):
+                        run_agent.main()
+                job.pop('requirements')
                 job['run_id'] = 'artcraft-job-222222222222'
                 jobfile.write_text(json.dumps(job))
                 with patch.object(run_agent, 'command', return_value=[sys.executable, '-c', 'pass']):

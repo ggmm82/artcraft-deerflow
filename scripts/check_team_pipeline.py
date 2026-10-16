@@ -15,11 +15,13 @@ import wave
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.acceptance import Case, png, step
 from studio.projects import create_plan, execute_step, read_project
+from studio.work_results import validate_media
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--simulate-audio-interruption', action='store_true', help='Keep a real exported mix usable after an interrupted worker')
     args = parser.parse_args()
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -33,19 +35,31 @@ def main():
 
     def execute(sid, agent, produce):
         c = Case(root / 'outputs', agent)
+        produced = []
         def invoke(task, started):
             started(str(c.root))
             inputs, outputs = produce(c)
+            produced.extend(outputs)
             commands.extend(c.commands)
             handoff = {'source_files': [str(p) for p in inputs], 'output_files': [str(p) for p in outputs],
                 'checks': c.checks, 'delivery': {'source_status': 'included', 'files': [
                     {'path': str(p), 'reopen': {'status': 'passed'}} for p in outputs]}}
             # Every returned path must be a real, nonempty file.
             assert all(p.is_file() and p.stat().st_size for p in [*inputs, *outputs])
-            return json.dumps({'ok': True, 'output_dir': str(c.root), 'handoff': handoff})
-        value = json.loads(execute_step(root, agent, 'Execute declared native fixture', sid, invoke))
-        assert value['ok'], value
-        results[sid] = [Path(p) for p in value['handoff']['output_files']]
+            if sid == 'audio' and args.simulate_audio_interruption:
+                return json.dumps({'ok': False, 'output_dir': str(c.root), 'available_files': [str(p) for p in outputs],
+                                   'error': 'Limite dei turni DeepSeek prima della chiusura formale'})
+            verified = []
+            if sid == 'final':
+                checks = validate_media(outputs[-1], {'audio': True, 'video': True})
+                assert all(check['status'] == 'passed' for check in checks), checks
+                verified = [str(outputs[-1])]
+            return json.dumps({'ok': True, 'output_dir': str(c.root), 'handoff': handoff,
+                               'product_verified': bool(verified), 'verified_products': verified})
+        value = json.loads(execute_step(root, agent, 'Execute declared native fixture', sid, invoke,
+                                       purpose='delivery' if sid == 'final' else 'work'))
+        assert value['ok'] or (sid == 'audio' and args.simulate_audio_interruption), value
+        results[sid] = produced
 
     def photo(c):
         source, native, exported = [c.root / n for n in ('input.png', 'asset.pcraft', 'asset.png')]
@@ -123,9 +137,12 @@ def main():
                                 ('audio', 'soundcraft', audio), ('final', 'filmcraft', film)]:
         execute(sid, agent, produce)
     plan = read_project(root)
-    assert all(s['status'] == 'completed' for s in plan['steps'])
+    assert all(s['status'] == ('paused' if s['id'] == 'audio' and args.simulate_audio_interruption else 'completed') for s in plan['steps'])
+    from studio.projects import create_plan as update_project
+    plan = update_project(root, '', [], status='ready', product_path=str(results['final'][-1]), summary='Video con audio verificato')
+    assert plan['status'] == 'ready'
     (root / 'report.json').write_text(json.dumps({'fixture': True, 'project': plan, 'commands': commands}, indent=2))
-    print('Native team pipeline OK: PhotoCraft asset → EffectCraft animation → SoundCraft mix → FilmCraft AV timeline.')
+    print('Native collaboration OK: asset, animation and real mix integrated in FilmCraft; final video/audio validated; interrupted audio does not block delivery:', args.simulate_audio_interruption)
 
 
 if __name__ == '__main__':

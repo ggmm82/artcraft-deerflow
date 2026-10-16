@@ -87,6 +87,8 @@ def run(model, prompt, output_dir, timeout, progress=None):
     messages = [{'role': 'system', 'content': prompt}, {'role': 'user', 'content':
         'Esegui adesso l’incarico del coordinatore con run_command. '
         'Scrivi realmente i file nella cartella assegnata dal sistema. '
+        'Raggruppa operazioni correlate in script o batch: non consumare un turno '
+        'per ogni nota, keyframe o proprietà. Usa gli schemi salvati, senza riscoprirli. '
         'Usa submit_handoff quando la consegna minima è pronta, senza attendere il limite dei turni.'}]
     tools = [{'type': 'function', 'function': {'name': 'run_command',
         'description': 'Esegue un comando shell nella sandbox ArtCraft. Salva i risultati nella cartella assegnata.',
@@ -101,7 +103,7 @@ def run(model, prompt, output_dir, timeout, progress=None):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError('Timeout dello specialista DeepSeek')
-        finalizing = turn >= MAX_TURNS - 4 or remaining <= min(90, timeout / 5)
+        finalizing = turn >= MAX_TURNS - 12 or remaining <= min(90, timeout / 5)
         force_handoff = turn == MAX_TURNS - 1 or remaining <= min(30, timeout / 10)
         if finalizing and not finalization_notice:
             finalization_notice = True

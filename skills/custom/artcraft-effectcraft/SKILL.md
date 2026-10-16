@@ -74,3 +74,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Importa gli asset di PhotoCraft/VectorCraft, conserva alpha e separazione delle parti, definisci rig, keyframe e movimento coerenti con il brief. Condividi durata, fps, BPM e cue con SoundCraft. Passa animazione e .ecproj con asset a FilmCraft. Per un robot 3D verifica le funzioni 3D reali della release: non degradare in silenzio il brief a un disegno isometrico. Non assorbire texture, colonna sonora e montaggio assegnati ai colleghi.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Prova completa e revisioni mirate
+
+Prima di un render lungo crea una breve sequenza con gli asset reali e pose campione: controlla soggetto grande e leggibile, proporzioni in rotazione, giunture, ritmo e continuità. Correggi su quella prova, poi estendi il render. Una revisione non richiede di riscrivere da zero un rig già valido.

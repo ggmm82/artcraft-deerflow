@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
-type Project = { id: string; brief: string; steps: { id: string; agent: string; goal: string;
-  status: string; depends_on: string[]; attempts: { output_files?: string[] }[] }[] };
+type Project = { summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+  status: string; note?: string; error?: string; attempt_count?: number }[] };
+type Result = { path: string; agent: string; label: string; validated: boolean; at: string };
 const stepLabels: Record<string, string> = { pending: "Da fare", running: "In corso",
-  completed: "Verificata", needs_revision: "Da riprendere o correggere" };
+  completed: "Verificata", needs_revision: "Da rivedere", review: "Da valutare", paused: "In pausa", skipped: "Non necessaria" };
 
 function JobCard({ job, now }: { job: JobProgress; now: number }) {
   const terminal = terminalJob(job);
@@ -51,13 +52,61 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
   </article>;
 }
 
-export function DelegateProgress({ threadId, active, pending }: { threadId: string; active: boolean; pending: boolean }) {
+type Props = { threadId: string; active: boolean; pending: boolean; coordinatorError?: boolean; onContinue?: () => void | Promise<void> };
+const person = (agent: string) => agent.charAt(0).toUpperCase() + agent.slice(1);
+const kind = (path: string) => /\.(mp4|webm|mov)$/i.test(path) ? "video" : /\.(wav|mp3|m4a|ogg)$/i.test(path) ? "audio" : /\.(png|jpe?g|gif|webp)$/i.test(path) ? "image" : "source";
+function artifactURL(threadId: string, path: string, download = false) {
+  if (!path.startsWith("/mnt/user-data/")) return "";
+  const encoded = path.split("/").map(encodeURIComponent).join("/");
+  return `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/artifacts${encoded}${download ? "?download=true" : ""}`;
+}
+
+export function DelegateProgress({ threadId, active, pending, coordinatorError = false, onContinue }: Props) {
   const [snapshot, setSnapshot] = useState<{ threadId: string; jobs: JobProgress[]; project: Project | null } | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [panel, setPanel] = useState<{ threadId: string; tab: string } | null>(null);
+  const [resumeRequested, setResumeRequested] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const resumeOwner = useRef(threadId);
+  const resumeSequence = useRef(0);
+  resumeOwner.current = threadId;
   const [now, setNow] = useState(Date.now);
   const jobs = snapshot?.threadId === threadId ? snapshot.jobs : [];
   const project = snapshot?.threadId === threadId ? snapshot.project : null;
-  const working = jobs.some((job) => !terminalJob(job));
+  const tab = panel?.threadId === threadId ? panel.tab : null;
+  const current = jobs.find((job) => !terminalJob(job));
+  const working = !!current;
+  const results = (project?.results ?? []).filter((r) => artifactURL(threadId, r.path));
+  const media = [...results].sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
+  const preview = media.find((r) => r.path === project?.product_path) ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const audio = media.find((r) => kind(r.path) === "audio");
+  const attention = !working && !active ? project?.attention : null;
+  const ready = project?.status === "ready" && !!project.product_path && !coordinatorError && !working;
+  const title = working ? `${person(current.agent)} sta lavorando` : active ? "La squadra sta preparando il prossimo risultato"
+    : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
+  const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
+    && current.summary !== "Esecuzione di uno strumento";
+  const summary = working ? (specificAction ? current.summary : current.work_summary || current.summary) : attention?.message
+    ?? (coordinatorError ? "Il coordinatore si è fermato. I file già salvati restano disponibili." : project?.summary || project?.brief);
+  const toggle = (value: string) => setPanel(tab === value ? null : { threadId, tab: value });
+  useEffect(() => { setPanel(null); setResumeRequested(null); setResumeError(null); }, [threadId]);
+  useEffect(() => { if (active) { setResumeRequested(null); setResumeError(null); } }, [active]);
+  useEffect(() => {
+    if (resumeRequested !== threadId || active || working) return;
+    const timer = setTimeout(() => { setResumeRequested(null); setResumeError("Avvio non confermato: verifica lo stato e riprova se il lavoro resta fermo."); }, 15000);
+    return () => clearTimeout(timer);
+  }, [resumeRequested, threadId, active, working]);
+  async function resume() {
+    const owner = threadId;
+    const sequence = ++resumeSequence.current;
+    setResumeRequested(threadId); setResumeError(null);
+    try { await onContinue?.(); }
+    catch {
+      if (resumeOwner.current === owner && resumeSequence.current === sequence) {
+        setResumeRequested(null); setResumeError("Non riesco a inviare la richiesta di ripresa. I risultati restano disponibili: riprova.");
+      }
+    }
+  }
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -72,13 +121,14 @@ export function DelegateProgress({ threadId, active, pending }: { threadId: stri
         if (controller.signal.aborted) return;
         setSnapshot({ threadId, jobs: data.jobs, project: data.project ?? null });
         setUnavailable(false);
-        running = data.jobs.some((job) => !terminalJob(job)) || !!data.project?.steps.some((step) => step.status === "running");
+        running = data.jobs.some((job) => !terminalJob(job));
       } catch {
         if (controller.signal.aborted) return;
         setUnavailable(true);
-        running = true;
       }
-      if (!controller.signal.aborted && (active || running)) timer = setTimeout(() => void refresh(), 2000);
+      // Keep watching an open conversation even between delegate calls or after a
+      // background reconnect. A missing SSE event must not leave a frozen board.
+      if (!controller.signal.aborted) timer = setTimeout(() => void refresh(), active || running ? 2000 : 5000);
     }
     if (threadId) void refresh();
     return () => { controller.abort(); if (timer) clearTimeout(timer); };
@@ -89,27 +139,61 @@ export function DelegateProgress({ threadId, active, pending }: { threadId: stri
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [working, pending]);
-  if (!jobs.length && !pending && !project) return null;
-  const visible = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 3)];
-  return <section className="w-full space-y-3" aria-label="Avanzamento specialisti" data-testid="delegate-progress">
-    <h3 className="text-sm font-medium">Lavoro della squadra</h3>
-    {project && <article className="bg-background space-y-2 rounded-lg border p-4" data-testid="team-plan">
-      <p className="text-sm font-medium">{project.brief}</p>
-      <p className="text-muted-foreground text-xs">{project.steps.filter((step) => step.status === "completed").length} di {project.steps.length} fasi verificate · Gli specialisti lavorano in sequenza e si passano i file.</p>
-      <ol className="space-y-2 text-sm">
-        {project.steps.map((step) => <li key={step.id}>
-          <div><strong>{step.agent.charAt(0).toUpperCase() + step.agent.slice(1)}</strong> · {stepLabels[step.status] ?? step.status}</div>
-          <p>{step.goal}</p>
-          {step.depends_on.length > 0 && <p className="text-muted-foreground text-xs">Riceve da: {step.depends_on.map((id) => {
-            const agent = project.steps.find((candidate) => candidate.id === id)?.agent;
-            return agent ? agent.charAt(0).toUpperCase() + agent.slice(1) : "Fase precedente";
-          }).join(", ")}</p>}
-        </li>)}
-      </ol>
-      <p className="text-muted-foreground text-xs">Il limite di 25 minuti vale per ogni incarico, non per tutto il progetto. Se una fase si interrompe, i file salvati restano disponibili per una continuazione; i risultati incompleti richiedono verifica.</p>
-    </article>}
-    {unavailable && <p className="text-sm" role="status">Aggiornamenti non disponibili: l’ultimo stato visibile potrebbe non essere attuale. Riprovo automaticamente.</p>}
-    {!jobs.length && pending && <p className="text-muted-foreground text-sm">Delega avviata. In attesa dello stato del worker; le esecuzioni precedenti a questo aggiornamento non hanno una cronologia operativa.</p>}
-    {visible.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}
+  if (!jobs.length && !project && !pending && !coordinatorError) return null;
+  const health = current ? jobHealth(current, now) : null;
+  const recent = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 4)];
+  return <section className="bg-background relative mb-2 rounded-xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
+    {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 max-h-[60dvh] overflow-y-auto rounded-xl border p-4 shadow-xl" data-testid="studio-drawer">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="font-medium">{tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra al lavoro" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
+        <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
+      </div>
+      {tab === "preview" && <div className="space-y-3">
+        <p className="text-sm">{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</p>
+        {preview && <div>
+          {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "audio" && <audio controls aria-label="Anteprima audio" src={artifactURL(threadId, preview.path)} />}
+          <a className="text-sm underline" href={artifactURL(threadId, preview.path, true)}>{preview.label}</a>
+        </div>}
+        {audio && preview && kind(preview.path) === "video" && audio.path !== preview.path && <div>
+          {!ready && <p className="text-sm">Audio disponibile separatamente. Questa bozza video potrebbe non contenerlo ancora.</p>}
+          <audio controls preload="metadata" aria-label="Traccia audio disponibile" src={artifactURL(threadId, audio.path)} />
+        </div>}
+        {!preview && <p className="text-sm">Nessuna anteprima disponibile. Puoi controllare attività e file salvati.</p>}
+      </div>}
+      {tab === "team" && <div data-testid="team-plan" className="space-y-3">
+        <p className="text-sm">La squadra si adatta al risultato: può riprendere, cambiare ordine e integrare i file già disponibili.</p>
+        {(project?.steps ?? []).map((step) => <article className="rounded border p-3 text-sm" key={step.id}>
+          <strong>{person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
+          <p>{step.goal}</p>{step.note && <p className="text-muted-foreground">{step.note}</p>}
+        </article>)}
+      </div>}
+      {tab === "files" && <ul className="space-y-2 text-sm">
+        {results.map((r) => <li key={r.path}><a className="break-all underline" href={artifactURL(threadId, r.path, true)}>{r.label}</a>
+          <span className="text-muted-foreground"> · {person(r.agent)} · {r.validated ? "File consegnato" : "Da verificare"}</span></li>)}
+        {!results.length && <li>I file appariranno qui quando saranno disponibili.</li>}
+      </ul>}
+      {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
+    </div>}
+    <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">
+      <div className="flex items-center justify-between gap-2"><strong className="text-sm" data-testid="studio-status">{title}</strong>
+        {current && <span className="text-muted-foreground shrink-0 text-xs">{duration(secondsSince(current.started_at || current.created_at, now))}</span>}
+      </div>
+      {summary && <p className="line-clamp-2 text-sm" data-testid="studio-summary">{summary}</p>}
+      {health && <p className="text-xs" data-testid="studio-health">{health}</p>}
+      {!working && project?.next_action && !attention && <p className="text-muted-foreground line-clamp-2 text-xs">Prossimo passo: {project.next_action}</p>}
+      {(attention || coordinatorError) && !active && !working && <p className="text-xs">{attention?.action ?? "Verifica il servizio AI e riprendi il lavoro dai risultati disponibili."}
+        {(!attention || attention.code.startsWith("provider_")) && <> <a className="underline" href="/workspace/studio">Apri La tua squadra</a></>}</p>}
+      {unavailable && <p className="text-xs" role="alert">Aggiornamenti non disponibili: questo stato potrebbe non essere attuale. Riprovo automaticamente.</p>}
+      {resumeError && <p className="text-xs" role="alert">{resumeError}</p>}
+    </div>
+    <nav className="flex flex-wrap gap-2 border-t px-3 py-2 text-xs" aria-label="Controlli del progetto">
+      <button type="button" className="rounded border px-3 py-1.5 disabled:opacity-50" disabled={!preview} aria-expanded={tab === "preview"} onClick={() => toggle("preview")}>Vedi risultato</button>
+      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
+      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
+      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
+      {!active && !working && !ready && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : "Riprendi lavoro"}</button>}
+    </nav>
   </section>;
 }
