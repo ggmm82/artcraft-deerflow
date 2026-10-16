@@ -85,12 +85,22 @@ def load(folder, workspace):
     return value
 
 
-def artifact_path(workspace, filename):
+def workspace_path(workspace, filename, worker_root=Path('/mnt/user-data')):
     root = Path(workspace).resolve()
     path = Path(str(filename))
-    if path.is_relative_to('/mnt/user-data'):
-        path = root / path.relative_to('/mnt/user-data')
+    # A physical workspace may itself live below /mnt/user-data (native tests
+    # and some installations). Prefer an already-scoped path before translating
+    # the worker's virtual root, otherwise the conversation prefix is doubled.
+    if not path.is_relative_to(root) and path.is_relative_to(worker_root):
+        path = root / path.relative_to(worker_root)
     if not path.is_absolute() or not path.resolve().is_relative_to(root):
+        return None
+    return path
+
+
+def artifact_path(workspace, filename):
+    path = workspace_path(workspace, filename)
+    if path is None:
         return None
     if not path.is_file() or path.is_symlink() or not path.stat().st_size:
         return None
@@ -106,11 +116,8 @@ def available_paths(workspace, attempt):
     paths = attempt.get('output_files', [])
     if paths or not workspace or not attempt.get('output_dir'):
         return paths
-    root = Path(workspace).resolve()
-    folder = Path(attempt['output_dir'])
-    if folder.is_relative_to('/mnt/user-data'):
-        folder = root / folder.relative_to('/mnt/user-data')
-    if not folder.is_absolute() or not folder.resolve().is_relative_to(root):
+    folder = workspace_path(workspace, attempt['output_dir'])
+    if folder is None:
         return []
     return partial_files(folder)
 
@@ -308,7 +315,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'riduci l’incarico o integra i file recuperati. Le altre attività restano disponibili.',
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
-        contract = ('\n\nObiettivo del prodotto: ' + value['brief'] + '\nAttività: ' + step['goal'] +
+        contract = ('\n\nObiettivo del prodotto: ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
                     'rifare tutto per un controllo facoltativo o una chiusura formale mancante.')

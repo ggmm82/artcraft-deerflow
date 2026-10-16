@@ -18,6 +18,17 @@ VIDEO = [
 
 
 class ProjectTests(unittest.TestCase):
+    def test_nested_physical_workspace_is_not_mapped_twice_as_a_worker_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            virtual = Path(directory)
+            workspace = virtual / 'outputs/conversation'
+            file = workspace / 'outputs/filmcraft/final.mp4'
+            file.parent.mkdir(parents=True)
+            file.write_text('fixture')
+            self.assertEqual(projects.workspace_path(workspace, file, worker_root=virtual), file)
+            self.assertEqual(projects.workspace_path(workspace, virtual / 'outputs/filmcraft/final.mp4',
+                                                    worker_root=virtual), file)
+            self.assertIsNone(projects.workspace_path(workspace, '/etc/passwd', worker_root=virtual))
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name) / 'conversation'
@@ -88,6 +99,7 @@ class ProjectTests(unittest.TestCase):
         reply = self.run_step('final', final, capture=captured, purpose='integration')
         self.assertTrue(reply['ok'])
         self.assertIn(partial['available_files'][0], captured[0])
+        self.assertIn('Scopo incarico: integration', captured[0])
         self.assertIn('GUI desktop', reply['review_notes'])
         p = projects.read_project(self.root)
         self.assertEqual(next(s for s in p['steps'] if s['id'] == 'audio')['status'], 'paused')
