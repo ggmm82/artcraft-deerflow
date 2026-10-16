@@ -1,4 +1,4 @@
-"""Keep legacy chat preferences from selecting a different specialist engine."""
+"""Apply shared team routing and keep submitted work alive after browser disconnect."""
 import json
 import re
 
@@ -9,6 +9,9 @@ def shared_run(body):
     if not isinstance(body, dict):
         return body
     result = dict(body)
+    # Missing browser options must not inherit the Gateway's cancel default.
+    # An explicit API cancellation policy remains supported; Stop uses its own endpoint.
+    result.setdefault('on_disconnect', 'continue')
     result['context'] = {**(body.get('context') or {}), 'model_name': 'studio-codex'}
     config = dict(body.get('config') or {})
     if isinstance(config.get('configurable'), dict) and 'model_name' in config['configurable']:

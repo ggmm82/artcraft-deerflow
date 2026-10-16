@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Check actual pinned CLI entry points; no credentials or provider requests."""
 import subprocess
+import json
+from pathlib import Path
 
 
 def main():
+    antigravity_version = json.loads(Path(__file__).with_name('antigravity.lock.json').read_text())['version']
     contracts = [
         (['codex', '--version'], ['0.162.1']),
         (['codex', 'login', '--help'], ['--device-auth']),
         (['codex', 'exec', '--help'], ['--model', '--json', '--output-last-message',
              '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox']),
-        (['agy', '--version'], ['1.3.5']),
+        (['agy', '--version'], [antigravity_version]),
         (['agy', '--help'], ['--print', '--output-format', '--model', '--add-dir',
                             '--json-schema', '--agent', '--disable-slash-commands',
                             '--print-timeout', '--dangerously-skip-permissions']),

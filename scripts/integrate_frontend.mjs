@@ -8,3 +8,53 @@ source=source.replace(marker, '          <TeamOnboarding />\n'+marker+'\n       
 source=source.replace('import { ThreadDeleteDialogProvider }', 'import { TeamOnboarding } from \"./team-onboarding\";\nimport { ThreadDeleteDialogProvider }');
 source=source.replace('"use client";', '"use client";\n\nimport Link from "next/link";');
 fs.writeFileSync(file,source);
+
+// Pro/Ultra select the workflow, independently of provider thinking controls.
+// Patch the shared resolver so selection, saved settings and model switches agree.
+const reasoningFile=root+'/src/core/models/reasoning.ts';
+let reasoning=fs.readFileSync(reasoningFile,'utf8');
+const unsupportedMode='  if (thinking === "unsupported") {\n    return "flash";\n  }';
+if(reasoning.split(unsupportedMode).length !== 2)throw Error('DeerFlow reasoning resolver changed; review mode integration before building');
+reasoning=reasoning.replace(unsupportedMode, '  if (thinking === "unsupported") {\n    // Workflow modes do not require a provider-level thinking toggle.\n    return mode === "pro" || mode === "ultra" ? mode : "flash";\n  }');
+fs.writeFileSync(reasoningFile,reasoning);
+
+// A resumable stream alone does not keep a run alive: the Gateway defaults to
+// cancelling the creating run when its SSE connection closes. Cover new turns
+// and edit/regenerate replay submissions, while leaving explicit Stop intact.
+const hooksFile=root+'/src/core/threads/hooks.ts';
+let hooks=fs.readFileSync(hooksFile,'utf8');
+const resumable='streamResumable: true,';
+if(hooks.split(resumable).length !== 3)throw Error('DeerFlow submit paths changed; review background run integration before building');
+hooks=hooks.replaceAll(resumable, 'onDisconnect: "continue",\n            '+resumable);
+
+function replaceRequired(text, before, after, label) {
+  if(text.split(before).length !== 2)throw Error('DeerFlow '+label+' changed; review timer integration before building');
+  return text.replace(before, after);
+}
+hooks=replaceRequired(hooks, 'import { getMessageRunId } from "../messages/run-duration";',
+  'import { getMessageRunId } from "../messages/run-duration";\nimport { getRunStartTime } from "../messages/run-start-time";', 'timer import');
+hooks=replaceRequired(hooks, '      submittedRunIdRef.current = meta.run_id;',
+  '      submittedRunIdRef.current = meta.run_id;\n      void queryClient.invalidateQueries({ queryKey: ["thread", meta.thread_id], exact: true });', 'run creation');
+hooks=replaceRequired(hooks, '    stop: stopThread,',
+  '    stop: stopThread,\n    studioRunStartedAt: getRunStartTime(runsQuery.data, submittedRunIdRef.current, currentViewThreadId),', 'run timer metadata');
+hooks=replaceRequired(hooks, '  } as typeof thread;',
+  '  } as typeof thread & { studioRunStartedAt: number | null };', 'merged thread type');
+fs.writeFileSync(hooksFile,hooks);
+
+const messagesFile=root+'/src/components/workspace/messages/message-list.tsx';
+let messages=fs.readFileSync(messagesFile,'utf8');
+messages=replaceRequired(messages, '  thread: BaseStream<AgentThreadState>;',
+  '  thread: BaseStream<AgentThreadState> & { studioRunStartedAt?: number | null };', 'message list props');
+messages=replaceRequired(messages,
+  '  // The backend exposes no live start timestamp, so a mid-run mount measures\n  // from mount until authoritative persisted turn_duration replaces it.',
+  '  // Reconnects use the persisted run clock, not the time this page mounted.\n  const serverStartTime = thread.studioRunStartedAt ?? null;', 'message timer start');
+messages=replaceRequired(messages, '    thread.isLoading ? Date.now() : null,',
+  '    thread.isLoading ? (serverStartTime ?? Date.now()) : null,', 'initial timer');
+messages=replaceRequired(messages, '  const prevIsLoading = useRef(thread.isLoading);',
+  '  const prevIsLoading = useRef(thread.isLoading);\n  const timerThreadRef = useRef(threadId);', 'timer thread ownership');
+messages=replaceRequired(messages,
+  '    if (thread.isLoading && !prevIsLoading.current) {\n      const now = Date.now();\n      turnStartTimeRef.current = now;\n      setTurnStartTime(now);',
+  '    if (timerThreadRef.current !== threadId) {\n      timerThreadRef.current = threadId;\n      turnStartTimeRef.current = null;\n    }\n    if (thread.isLoading) {\n      const start = serverStartTime ?? turnStartTimeRef.current ?? Date.now();\n      if (turnStartTimeRef.current !== start) {\n        turnStartTimeRef.current = start;\n        setTurnStartTime(start);\n      }', 'live timer reconciliation');
+messages=replaceRequired(messages, '  }, [groupedMessages, thread.error, thread.isLoading, threadId]);',
+  '  }, [groupedMessages, thread.error, thread.isLoading, threadId, serverStartTime]);', 'timer effect');
+fs.writeFileSync(messagesFile,messages);

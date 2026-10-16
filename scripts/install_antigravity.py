@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the pinned official native agy release, verifying Google's SHA-512."""
+"""Install the pinned official native agy release, verifying the pinned SHA-512 and publisher SHA-256."""
 import hashlib
 import json
 from pathlib import Path
@@ -19,6 +19,8 @@ def install(arch, destination='/usr/local/bin/agy'):
             shutil.copyfileobj(response, output)
         if hashlib.sha512(archive.read_bytes()).hexdigest() != release['sha512']:
             raise ValueError('Checksum Antigravity non valido')
+        if hashlib.sha256(archive.read_bytes()).hexdigest() != release['sha256']:
+            raise ValueError('Checksum SHA-256 Antigravity non valido')
         with tarfile.open(archive) as payload:
             stream = payload.extractfile('antigravity')
             target = Path(destination)

@@ -97,6 +97,9 @@ jobs:
       - name: Check Antigravity coordinator contract
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_gemini_provider.py -v
+      - name: Check background work survives browser disconnect
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_background_runs.py -v
       - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py

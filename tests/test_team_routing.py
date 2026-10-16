@@ -5,6 +5,42 @@ from studio.team_routing import TeamRoutingMiddleware
 
 
 class TeamRoutingTests(unittest.TestCase):
+    def test_submission_disconnect_defaults_and_explicit_stop_are_distinct(self):
+        app = FastAPI()
+
+        @app.post('/api/{path:path}')
+        async def echo(path: str, request: Request):
+            return await request.json()
+
+        app.add_middleware(TeamRoutingMiddleware)
+        with TestClient(app) as client:
+            for path in ('runs', 'runs/stream', 'runs/wait', 'threads/t/runs',
+                         'threads/t/runs/stream', 'threads/t/runs/wait'):
+                with self.subTest(path=path):
+                    result = client.post('/api/' + path, json={'input': {'messages': []}}).json()
+                    self.assertEqual(result['on_disconnect'], 'continue')
+                    explicit = client.post('/api/' + path, json={'on_disconnect': 'cancel'}).json()
+                    self.assertEqual(explicit['on_disconnect'], 'cancel')
+            cancel = {'action': 'interrupt'}
+            self.assertEqual(client.post('/api/threads/t/runs/r/cancel', json=cancel).json(), cancel)
+
+    def test_workflow_modes_survive_shared_model_routing(self):
+        app = FastAPI()
+
+        @app.post('/api/threads/{thread}/runs/stream')
+        async def run(thread: str, request: Request):
+            return await request.json()
+
+        app.add_middleware(TeamRoutingMiddleware)
+        with TestClient(app) as client:
+            for mode in ('flash', 'pro', 'ultra'):
+                with self.subTest(mode=mode):
+                    context = {'mode': mode, 'model_name': 'old-profile',
+                               'is_plan_mode': mode in ('pro', 'ultra'),
+                               'subagent_enabled': mode == 'ultra'}
+                    result = client.post('/api/threads/test/runs/stream', json={'context': context}).json()
+                    self.assertEqual(result['context'], {**context, 'model_name': 'studio-codex'})
+
     def test_saved_legacy_selection_cannot_split_coordinator_and_workers(self):
         app = FastAPI()
         @app.post('/api/threads/{thread}/runs/stream')
