@@ -71,3 +71,13 @@ Esempio strutturale: sostituisci i percorsi con quelli reali di `ARTCRAFT_OUTPUT
   }
 }
 ```
+
+## Collaborazione e salvataggio progressivo
+
+Il coordinatore può assegnarti una fase di un piano con colleghi di qualunque disciplina del catalogo. Mantieni il tuo ruolo: usa la tua CLI per la lavorazione di competenza e gli output effettivi dei colleghi come input; non sostituire il lavoro assegnato ad altri con una scorciatoia procedurale. I programmi di supporto possono preparare dati o convertire formati, ma non dimostrano l’uso della CLI né la qualità artistica.
+
+- Ispeziona dimensioni, unità, fps, durata, BPM, alpha, profilo colore e risorse pertinenti prima dell’importazione. Risolvi le incompatibilità del passaggio, senza ricreare in silenzio gli asset.
+- Registra in `source_files` i percorsi effettivamente utilizzati dei colleghi (almeno un prodotto pertinente per ciascuna dipendenza della fase). Nei `checks` descrivi anche l’importazione e la conservazione del contenuto utile. Il runtime verifica il collegamento dei percorsi; questo controllo non sostituisce la verifica visiva/audio.
+- Salva il sorgente modificabile presto e dopo ogni traguardo. Aggiorna `work/checkpoint.json` con `completed`, `files`, `remaining`, `next_action`. Il budget è 25 minuti per incarico, non per l’intero progetto: se non basta, lascia file reali e istruzioni di ripresa. Un file presente ma non verificato resta provvisorio.
+- Se riprendi un incarico interrotto, ispeziona sorgenti, checkpoint e risorse precedenti, porta il lavoro valido nella nuova cartella e ripara i collegamenti. Non sovrascrivere gli input e non dichiarare completate verifiche che devi ancora eseguire.
+- La consegna finale deve preservare anche i sorgenti intermedi e le dipendenze necessari a modificare il prodotto completo; non basta un archivio di export appiattiti.

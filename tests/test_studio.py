@@ -134,8 +134,11 @@ class StudioTests(unittest.TestCase):
         with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
              patch.object(self.runtime.subprocess, 'run', side_effect=subprocess.TimeoutExpired('worker', 1)), \
              patch.object(self.runtime, 'remove') as remove:
-            with self.assertRaisesRegex(RuntimeError, 'Timeout'):
-                self.runtime.delegate('wordcraft', 'Crea documento', Path(self.temp.name) / 'work')
+            result = json.loads(self.runtime.delegate('wordcraft', 'Crea documento', Path(self.temp.name) / 'work'))
+            self.assertFalse(result['ok'])
+            self.assertTrue(result['partial'])
+            self.assertIn('/mnt/user-data/outputs/wordcraft/artcraft-job-', result['output_dir'])
+            self.assertIn('checkpoint', result['resume'])
         remove.assert_called_once()
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 

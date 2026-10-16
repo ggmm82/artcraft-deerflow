@@ -69,3 +69,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/soundcraft/tree/v0.7.0
 - https://github.com/storytold/soundcraft/releases
+
+## Ruolo nella squadra
+
+Prepara tracce, ritmo, mix ed effetti usando la CLI SoundCraft e una sessione multitraccia modificabile. Per video di danza concorda BPM, durata esatta e cue con EffectCraft/FilmCraft. Usa audio fornito/autorizzato o una base originale dichiarata: non promettere il brano originale da un semplice ritmo sintetico. Passa WAV/stem non silenziosi, senza clipping e con sample rate dichiarato, insieme alla sessione e ai media.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

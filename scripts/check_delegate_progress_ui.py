@@ -35,7 +35,16 @@ def main():
            'files': [{'name': 'robot-source.json', 'size': 120}], 'files_count': 1,
            'events': [{'at': iso(now - timedelta(minutes=18)), 'phase': 'planning',
                        'summary': 'Creo il modello modificabile e controllo le dimensioni'}]}
-    state = {'job': job, 'unavailable': False}
+    project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'steps': [
+        {'id': 'visual', 'agent': 'photocraft', 'goal': 'Preparo immagini e texture',
+         'status': 'completed', 'depends_on': [], 'attempts': []},
+        {'id': 'motion', 'agent': 'effectcraft', 'goal': 'Animo il robot con gli asset dei colleghi',
+         'status': 'running', 'depends_on': ['visual'], 'attempts': []},
+        {'id': 'audio', 'agent': 'soundcraft', 'goal': 'Preparo la base ritmica',
+         'status': 'pending', 'depends_on': ['motion'], 'attempts': []},
+        {'id': 'final', 'agent': 'filmcraft', 'goal': 'Monto animazione e audio',
+         'status': 'pending', 'depends_on': ['motion', 'audio'], 'attempts': []}]}
+    state = {'job': job, 'unavailable': False, 'project': project}
     with tempfile.TemporaryDirectory(prefix='progress-ui-') as directory:
         folder = Path(directory)
         (folder / 'fetch.ts').write_text('export const fetch = (...args: Parameters<typeof globalThis.fetch>) => globalThis.fetch(...args);')
@@ -65,7 +74,8 @@ window.showThread();
                     self.send_header('Content-Type', 'application/json')
                     self.end_headers()
                     jobs = [state['job']] if '/fixture/' in self.path else []
-                    self.wfile.write(json.dumps({'jobs': jobs}).encode())
+                    self.wfile.write(json.dumps({'jobs': jobs,
+                        'project': state['project'] if '/fixture/' in self.path else None}).encode())
                 else:
                     super().do_GET()
 
@@ -79,6 +89,12 @@ window.showThread();
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(f'http://127.0.0.1:{server.server_port}')
                 card = page.get_by_test_id('delegate-job')
+                plan = page.get_by_test_id('team-plan')
+                expect(plan.get_by_text('1 di 4 fasi verificate', exact=False)).to_be_visible()
+                for name in ('Photocraft', 'Effectcraft', 'Soundcraft', 'Filmcraft'):
+                    expect(plan.get_by_text(name, exact=True)).to_be_visible()
+                expect(plan.get_by_text('Riceve da: Effectcraft, Soundcraft')).to_be_visible()
+                expect(plan.get_by_text('Il limite di 25 minuti', exact=False)).to_be_visible()
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
                 expect(card.get_by_text('Nessun nuovo avanzamento', exact=False)).to_be_visible()
                 expect(card.get_by_text('Worker raggiungibile')).to_be_visible()
@@ -90,6 +106,7 @@ window.showThread();
                                 'heartbeat_at': iso(datetime.now(timezone.utc))}
                 expect(card.get_by_test_id('delegate-summary')).to_have_text(state['job']['summary'], timeout=6000)
                 page.reload()
+                expect(plan.get_by_text('Robot che balla', exact=True)).to_be_visible()
                 expect(card.get_by_test_id('delegate-summary')).to_have_text(state['job']['summary'])
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
                 state['job'] = {**state['job'], 'heartbeat_at': iso(now - timedelta(minutes=2))}
@@ -100,15 +117,18 @@ window.showThread();
                 state['unavailable'] = False
                 state['job'] = {**state['job'], 'phase': 'completed', 'summary': 'Consegna verificata',
                                 'finished_at': iso(datetime.now(timezone.utc))}
+                state['project']['steps'][1]['status'] = 'needs_revision'
+                expect(plan.get_by_text('Da riprendere o correggere', exact=False)).to_be_visible(timeout=6000)
                 expect(card.get_by_test_id('delegate-summary')).to_have_text('Consegna verificata', timeout=6000)
                 expect(card.get_by_text('Segnale del worker assente', exact=False)).not_to_be_visible()
                 page.evaluate("window.showThread('another-conversation',false,false)")
                 expect(page.get_by_test_id('delegate-job')).to_have_count(0)
+                expect(page.get_by_test_id('team-plan')).to_have_count(0)
                 page.evaluate("window.showThread('fixture',false,false)")
                 expect(page.get_by_test_id('delegate-summary')).to_have_text('Consegna verificata')
                 assert not errors, errors
                 browser.close()
-            print('Browser OK: live updates, 18-minute clock, slow work, lost heartbeat, network retry, reload, completion and conversation isolation.')
+            print('Browser OK: team plan, dependencies, partial recovery, live updates, 18-minute clock, lost heartbeat, network retry, reload and conversation isolation.')
         finally:
             server.shutdown()
             server.server_close()

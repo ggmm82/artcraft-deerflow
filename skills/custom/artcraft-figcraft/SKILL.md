@@ -69,3 +69,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/figcraft/tree/v0.6.0
 - https://github.com/storytold/figcraft/releases
+
+## Ruolo nella squadra
+
+Progetta UI e prototipi con componenti, varianti e stili, usando gli asset di PhotoCraft/VectorCraft e i contenuti/dati dei colleghi. Verifica frame, collegamenti e risorse del progetto modificabile; non confondere un PNG con un prototipo funzionante.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

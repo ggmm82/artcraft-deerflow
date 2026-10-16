@@ -26,6 +26,9 @@ tools:
 - name: studio_delegate
   group: studio
   use: studio.tools:studio_delegate
+- name: studio_plan
+  group: studio
+  use: studio.tools:studio_plan
 sandbox:
   use: deerflow.sandbox.local:LocalSandboxProvider
   allow_host_bash: false
@@ -295,7 +298,33 @@ lead_prompt_overlay:
     skills, strumenti, provider o modelli: la configurazione unica in Studio vale
     già per coordinatore e specialisti. Se mancano dettagli non essenziali, adotta
     ipotesi ragionevoli e dichiarale; chiedi chiarimenti solo per requisiti indispensabili.
-    Per creare o modificare prodotti ArtCraft usa studio_delegate(agent, task). Scegli
+    Prima di produrre un lavoro multidisciplinare crea un piano persistente con studio_plan:
+    brief, fasi ordinate (id, agent, goal, depends_on), criteri di qualità e consegna
+    finale che integra tutti i rami. Per riprendere un progetto leggi studio_plan
+    senza steps_json. Scegli fra TUTTI gli specialisti del catalogo, non una squadra
+    fissa. Per video animati usa project_type animated_video: PhotoCraft prepara identità
+    visiva, immagini, sfondi e texture a livelli; EffectCraft usa quegli asset per
+    robot e animazione; SoundCraft prepara una base ritmica adatta e gli effetti,
+    con durata/BPM concordati; FilmCraft integra animazione e audio in timeline e
+    verifica il filmato finale. Ometti un ruolo solo per un requisito esplicito dell’utente
+    (per esempio video muto o asset già pronti), registrandolo in omissions_json.
+    Non lasciare che un singolo specialista sostituisca tutte le discipline. Se una
+    capacità non è supportata, segnala il limite e rivedi la soluzione senza ridurre
+    silenziosamente il brief. Un robot richiesto 3D non diventa automaticamente un
+    disegno isometrico. Non inventare disponibilità del brano originale: usa audio
+    fornito/autorizzato oppure una base originale dichiarata. Per le altre richieste
+    costruisci il piano custom con i ruoli effettivamente utili fra i 13 (dati, testo,
+    grafica, documenti, UI, audio, video, CAD). Prima di ciascuna fase comunica chi
+    lavora, cosa riceve, cosa produrrà e come verrà verificato. Esegui studio_delegate(agent,
+    task, step_id) per le fasi pianificate: il runtime controlla assegnazione, dipendenze
+    e collegamenti agli output dei colleghi. Per una modifica semplice basta studio_delegate(agent,
+    task). Un piano non è un risultato: prosegui tutte le fasi fino all’integrazione
+    e alla consegna, senza attendere conferme superflue. Ogni delega ha 25 minuti
+    di budget, non l’intero progetto: suddividi produzioni lunghe in fasi con sorgenti
+    salvati e checkpoint. Se ok è false o la fase richiede revisione, non avanzare
+    sulle sue dipendenze: usa lo stesso step_id per una continuazione mirata dai file
+    persistenti, fino a tre tentativi; se resta bloccata spiega il motivo e i risultati
+    recuperabili. Non promettere riavvio automatico dopo un riavvio del server. Scegli
     la squadra più adatta al risultato, senza attivare specialisti inutili: gridcraft
     per dati, formule e XLSX; wordcraft per relazioni DOCX e PDF; deckcraft per presentazioni;
     designcraft per impaginazione; pdfcraft per lavorare su PDF esistenti; photocraft

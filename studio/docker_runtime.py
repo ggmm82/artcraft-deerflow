@@ -152,7 +152,7 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace, tool_call_id=None):
+def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
     settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
@@ -163,12 +163,15 @@ def delegate(agent_id, task, workspace, tool_call_id=None):
     workspace.mkdir(parents=True, exist_ok=True)
     name = 'artcraft-job-' + uuid.uuid4().hex[:12]
     progress = create_job(workspace, name, agent_id, engine, settings['model'], tool_call_id)
+    output_dir = '/mnt/user-data/outputs/' + agent_id + '/' + name
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
     if not EXECUTION_LOCK.acquire(timeout=120):
         update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
         raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
     try:
         update(progress, 'starting')
+        if on_started:
+            on_started(output_dir)
         jobs = STATE / 'jobs'
         jobs.mkdir(exist_ok=True)
         job = jobs / (name + '.json')
@@ -192,8 +195,19 @@ def delegate(agent_id, task, workspace, tool_call_id=None):
                                    timeout=1560)
         response = completed.stdout
         if completed.returncode:
-            raise RuntimeError('Lo specialista ha fallito: ' +
-                               (response or completed.stderr)[-3000:])
+            status = read_status(progress)
+            if status['phase'] not in ('failed', 'timed_out'):
+                update(progress, 'failed')
+            try:
+                failure = json.loads(response)
+            except (ValueError, TypeError):
+                failure = {}
+            if not isinstance(failure, dict):
+                failure = {}
+            return json.dumps({'ok': False, 'agent': agent_id, 'output_dir': output_dir,
+                               'error': clean_summary(failure.get('error') or completed.stderr or 'Specialista non completato'),
+                               'partial': True, 'resume': 'Ispeziona i file salvati e work/checkpoint.json, '
+                               'poi assegna una continuazione mirata. I file non sono ancora una consegna verificata.'}, ensure_ascii=False)
         try:
             result = json.loads(response)
         except (ValueError, TypeError):
@@ -204,7 +218,10 @@ def delegate(agent_id, task, workspace, tool_call_id=None):
         return json.dumps(result, ensure_ascii=False)
     except subprocess.TimeoutExpired:
         update(progress, 'timed_out')
-        raise RuntimeError('Timeout dello specialista; il container viene rimosso') from None
+        return json.dumps({'ok': False, 'agent': agent_id, 'output_dir': output_dir,
+                           'partial': True, 'error': 'Limite della singola fase raggiunto (25 minuti più chiusura).',
+                           'resume': 'Il container viene rimosso, i file persistono. Ispeziona work/checkpoint.json '
+                           'e continua questa fase in una nuova delega; non consegnare i file provvisori come verificati.'}, ensure_ascii=False)
     except Exception:
         # Retain a more specific worker timeout or failed-delivery explanation.
         try:

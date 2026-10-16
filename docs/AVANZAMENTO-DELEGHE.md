@@ -23,3 +23,5 @@ Le deleghe avviate prima dell'aggiornamento non possono ricevere retroattivament
 I test coprono stato persistito, heartbeat distinto dall'attività, file e link simbolici, riepiloghi privi di trascrizioni e credenziali, protocollo Codex/Antigravity, progressi DeepSeek e timeout. Un sottoprocesso reale resta in attesa che il suo evento sia stato osservato, verificando che la lettura avvenga prima dell'uscita. Nella vera immagine Gateway si verificano autenticazione e isolamento fra utenti.
 
 `scripts/check_delegate_progress_ui.py` esegue il componente React effettivo in Chromium con risposte API di test dichiarate: incarico di 18 minuti, aggiornamento, attesa prolungata, perdita heartbeat, errore di rete/riprova, ricaricamento, conclusione e cambio conversazione. Non richiede account o generazioni LLM. La build Next.js e l'avvio delle immagini complete rimangono parte della CI della PR.
+
+Il pannello include ora anche il piano persistente della squadra, con dipendenze e stato delle fasi. Per budget, continuazioni e limiti del recupero vedi [Squadre e progetti lunghi](SQUADRE-E-PROGETTI-LUNGHI.md).

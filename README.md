@@ -66,6 +66,8 @@ Il [collaudo utente documentato](docs/COLLAUDO-UTENTE-DEEPSEEK.md) verifica con 
 
 La chiave resta nel volume privato `studio-state`, separata dalla configurazione dei modelli e dalle risposte pubbliche. Il worker DeepSeek riceve la cartella credenziali in sola lettura; come gli altri motori è destinato a un proprietario fidato. Le richieste del coordinatore e degli specialisti consumano la quota API DeepSeek. Un incarico ha timeout e limite di turni; errori, file mancanti o manifest non validi non vengono presentati come successo.
 
+La [guida a squadre e progetti lunghi](docs/SQUADRE-E-PROGETTI-LUNGHI.md) descrive piano persistente, passaggi verificati fra tutti i 13 ruoli e ripresa oltre il budget della singola delega.
+
 ## Prova di collaborazione
 
 Carica un XLSX e scrivi:

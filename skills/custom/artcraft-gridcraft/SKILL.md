@@ -71,3 +71,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/gridcraft/tree/v0.7.0
 - https://github.com/storytold/gridcraft/releases
+
+## Ruolo nella squadra
+
+Prepara dati, formule e misure verificabili con unità e provenienza, poi passa XLSX e tabelle effettive a WordCraft, DeckCraft o DesignCraft. Non ricostruire testi o grafica specialistica per evitare il passaggio.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

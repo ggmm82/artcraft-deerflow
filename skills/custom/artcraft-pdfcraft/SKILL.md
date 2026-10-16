@@ -69,3 +69,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/pdfcraft/tree/v0.8.0
 - https://github.com/storytold/pdfcraft/releases
+
+## Ruolo nella squadra
+
+Ispeziona il PDF effettivamente esportato da WordCraft, DesignCraft o DeckCraft: pagine, testo, font, link e difetti di stampa/accessibilità pertinenti. Correggi il PDF senza dichiararlo sorgente dell’impaginazione originale.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

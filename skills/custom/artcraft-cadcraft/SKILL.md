@@ -68,3 +68,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/cadcraft/tree/v0.7.0
 - https://github.com/storytold/cadcraft/releases
+
+## Ruolo nella squadra
+
+Crea geometrie, layer e quote nel formato CAD realmente supportato. Passa viste o geometrie misurate agli altri ruoli solo quando richieste. Non presentarti come modellatore di personaggi 3D o sistema di rigging se la CLI installata non supporta il requisito; un GLB creato con uno script non prova compatibilità CADCraft.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

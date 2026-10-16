@@ -68,3 +68,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/photocraft/tree/v0.8.2
 - https://github.com/storytold/photocraft/releases
+
+## Ruolo nella squadra
+
+Prepara identità visiva, immagini, texture, sfondi e parti separate a livelli. Concorda dimensioni, alpha e palette con VectorCraft/EffectCraft/FilmCraft. Non sostituire animazione, suono e montaggio con un solo export immagine.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

@@ -117,6 +117,25 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(old['instructions'], 'Stile sobrio')
             self.assertIn('newcraft', yaml.safe_load((Path(directory) / 'config.yaml').read_text())['subagents']['custom_agents'])
 
+    def test_upgrade_adds_project_tool_and_team_instructions_without_changing_model(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, {
+            'STUDIO_STATE': directory, 'STUDIO_PASSWORD': 'test-install-password-long-enough'}):
+            from studio import state, bootstrap
+            importlib.reload(state)
+            importlib.reload(bootstrap)
+            bootstrap.initialize()
+            path = Path(directory) / 'config.yaml'
+            old = yaml.safe_load(path.read_text())
+            old['tools'] = [t for t in old['tools'] if t['name'] != 'studio_plan']
+            old['lead_prompt_overlay']['append'] = 'Sei la Squadra ArtCraft. Vecchia regia.'
+            old['models'][0]['model'] = 'user-selected-model'
+            path.write_text(yaml.safe_dump(old))
+            bootstrap.initialize()
+            upgraded = yaml.safe_load(path.read_text())
+            self.assertIn('studio_plan', [t['name'] for t in upgraded['tools']])
+            self.assertIn('animated_video', upgraded['lead_prompt_overlay']['append'])
+            self.assertEqual(upgraded['models'][0]['model'], 'user-selected-model')
+
 
 if __name__ == '__main__':
     unittest.main()
