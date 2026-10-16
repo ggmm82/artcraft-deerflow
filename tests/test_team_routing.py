@@ -5,6 +5,23 @@ from studio.team_routing import TeamRoutingMiddleware
 
 
 class TeamRoutingTests(unittest.TestCase):
+    def test_workflow_modes_survive_shared_model_routing(self):
+        app = FastAPI()
+
+        @app.post('/api/threads/{thread}/runs/stream')
+        async def run(thread: str, request: Request):
+            return await request.json()
+
+        app.add_middleware(TeamRoutingMiddleware)
+        with TestClient(app) as client:
+            for mode in ('flash', 'pro', 'ultra'):
+                with self.subTest(mode=mode):
+                    context = {'mode': mode, 'model_name': 'old-profile',
+                               'is_plan_mode': mode in ('pro', 'ultra'),
+                               'subagent_enabled': mode == 'ultra'}
+                    result = client.post('/api/threads/test/runs/stream', json={'context': context}).json()
+                    self.assertEqual(result['context'], {**context, 'model_name': 'studio-codex'})
+
     def test_saved_legacy_selection_cannot_split_coordinator_and_workers(self):
         app = FastAPI()
         @app.post('/api/threads/{thread}/runs/stream')
