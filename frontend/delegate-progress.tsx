@@ -100,7 +100,10 @@ export function DelegateProgress({ threadId, active, pending }: { threadId: stri
         {project.steps.map((step) => <li key={step.id}>
           <div><strong>{step.agent.charAt(0).toUpperCase() + step.agent.slice(1)}</strong> · {stepLabels[step.status] ?? step.status}</div>
           <p>{step.goal}</p>
-          {step.depends_on.length > 0 && <p className="text-muted-foreground text-xs">Riceve da: {step.depends_on.join(", ")}</p>}
+          {step.depends_on.length > 0 && <p className="text-muted-foreground text-xs">Riceve da: {step.depends_on.map((id) => {
+            const agent = project.steps.find((candidate) => candidate.id === id)?.agent;
+            return agent ? agent.charAt(0).toUpperCase() + agent.slice(1) : "Fase precedente";
+          }).join(", ")}</p>}
         </li>)}
       </ol>
       <p className="text-muted-foreground text-xs">Il limite di 25 minuti vale per ogni incarico, non per tutto il progetto. Se una fase si interrompe, i file salvati restano disponibili per una continuazione; i risultati incompleti richiedono verifica.</p>

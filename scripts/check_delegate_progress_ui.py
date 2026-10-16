@@ -93,7 +93,7 @@ window.showThread();
                 expect(plan.get_by_text('1 di 4 fasi verificate', exact=False)).to_be_visible()
                 for name in ('Photocraft', 'Effectcraft', 'Soundcraft', 'Filmcraft'):
                     expect(plan.get_by_text(name, exact=True)).to_be_visible()
-                expect(plan.get_by_text('Riceve da: motion, audio')).to_be_visible()
+                expect(plan.get_by_text('Riceve da: Effectcraft, Soundcraft')).to_be_visible()
                 expect(plan.get_by_text('Il limite di 25 minuti', exact=False)).to_be_visible()
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
                 expect(card.get_by_text('Nessun nuovo avanzamento', exact=False)).to_be_visible()
