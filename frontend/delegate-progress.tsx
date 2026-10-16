@@ -6,6 +6,10 @@ import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
+type Project = { id: string; brief: string; steps: { id: string; agent: string; goal: string;
+  status: string; depends_on: string[]; attempts: { output_files?: string[] }[] }[] };
+const stepLabels: Record<string, string> = { pending: "Da fare", running: "In corso",
+  completed: "Verificata", needs_revision: "Da riprendere o correggere" };
 
 function JobCard({ job, now }: { job: JobProgress; now: number }) {
   const terminal = terminalJob(job);
@@ -48,10 +52,11 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
 }
 
 export function DelegateProgress({ threadId, active, pending }: { threadId: string; active: boolean; pending: boolean }) {
-  const [snapshot, setSnapshot] = useState<{ threadId: string; jobs: JobProgress[] } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ threadId: string; jobs: JobProgress[]; project: Project | null } | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [now, setNow] = useState(Date.now);
   const jobs = snapshot?.threadId === threadId ? snapshot.jobs : [];
+  const project = snapshot?.threadId === threadId ? snapshot.project : null;
   const working = jobs.some((job) => !terminalJob(job));
   useEffect(() => {
     const controller = new AbortController();
@@ -62,12 +67,12 @@ export function DelegateProgress({ threadId, active, pending }: { threadId: stri
         const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-jobs`,
           { signal: controller.signal, cache: "no-store" });
         if (!response.ok) throw new Error("Progress unavailable");
-        const data = await response.json() as { jobs: JobProgress[] };
+        const data = await response.json() as { jobs: JobProgress[]; project?: Project | null };
         if (!Array.isArray(data.jobs)) throw new Error("Invalid progress");
         if (controller.signal.aborted) return;
-        setSnapshot({ threadId, jobs: data.jobs });
+        setSnapshot({ threadId, jobs: data.jobs, project: data.project ?? null });
         setUnavailable(false);
-        running = data.jobs.some((job) => !terminalJob(job));
+        running = data.jobs.some((job) => !terminalJob(job)) || !!data.project?.steps.some((step) => step.status === "running");
       } catch {
         if (controller.signal.aborted) return;
         setUnavailable(true);
@@ -84,12 +89,24 @@ export function DelegateProgress({ threadId, active, pending }: { threadId: stri
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [working, pending]);
-  if (!jobs.length && !pending) return null;
+  if (!jobs.length && !pending && !project) return null;
   const visible = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 3)];
   return <section className="w-full space-y-3" aria-label="Avanzamento specialisti" data-testid="delegate-progress">
     <h3 className="text-sm font-medium">Lavoro della squadra</h3>
+    {project && <article className="bg-background space-y-2 rounded-lg border p-4" data-testid="team-plan">
+      <p className="text-sm font-medium">{project.brief}</p>
+      <p className="text-muted-foreground text-xs">{project.steps.filter((step) => step.status === "completed").length} di {project.steps.length} fasi verificate · Gli specialisti lavorano in sequenza e si passano i file.</p>
+      <ol className="space-y-2 text-sm">
+        {project.steps.map((step) => <li key={step.id}>
+          <div><strong>{step.agent.charAt(0).toUpperCase() + step.agent.slice(1)}</strong> · {stepLabels[step.status] ?? step.status}</div>
+          <p>{step.goal}</p>
+          {step.depends_on.length > 0 && <p className="text-muted-foreground text-xs">Riceve da: {step.depends_on.join(", ")}</p>}
+        </li>)}
+      </ol>
+      <p className="text-muted-foreground text-xs">Il limite di 25 minuti vale per ogni incarico, non per tutto il progetto. Se una fase si interrompe, i file salvati restano disponibili per una continuazione; i risultati incompleti richiedono verifica.</p>
+    </article>}
     {unavailable && <p className="text-sm" role="status">Aggiornamenti non disponibili: l’ultimo stato visibile potrebbe non essere attuale. Riprovo automaticamente.</p>}
-    {!jobs.length && <p className="text-muted-foreground text-sm">Delega avviata. In attesa dello stato del worker; le esecuzioni precedenti a questo aggiornamento non hanno una cronologia operativa.</p>}
+    {!jobs.length && pending && <p className="text-muted-foreground text-sm">Delega avviata. In attesa dello stato del worker; le esecuzioni precedenti a questo aggiornamento non hanno una cronologia operativa.</p>}
     {visible.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}
   </section>;
 }

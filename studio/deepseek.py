@@ -90,7 +90,10 @@ def run(model, prompt, output_dir, timeout, progress=None):
         'Usa submit_handoff quando la consegna minima è pronta, senza attendere il limite dei turni.'}]
     tools = [{'type': 'function', 'function': {'name': 'run_command',
         'description': 'Esegue un comando shell nella sandbox ArtCraft. Salva i risultati nella cartella assegnata.',
-        'parameters': {'type': 'object', 'properties': {'command': {'type': 'string'}}, 'required': ['command']}}}]
+        'parameters': {'type': 'object', 'properties': {'command': {'type': 'string'},
+            'timeout_seconds': {'type': 'integer', 'minimum': 1, 'maximum': 1200,
+                'description': 'Budget del comando, default 90s. Per render/export lunghi scegli un valore maggiore; resta entro il budget della fase.'}},
+            'required': ['command']}}}]
     deadline = time.monotonic() + timeout
     usage = []
     finalization_notice = False
@@ -154,9 +157,13 @@ def run(model, prompt, output_dir, timeout, progress=None):
                     raise ValueError('La produzione è conclusa: usa submit_handoff per i file già esistenti')
                 if call['function']['name'] != 'run_command':
                     raise ValueError('Tool sconosciuto')
-                command = json.loads(call['function']['arguments'])['command']
+                arguments = json.loads(call['function']['arguments'])
+                command = arguments['command']
                 if not isinstance(command, str):
                     raise ValueError('command deve essere una stringa')
+                command_timeout = arguments.get('timeout_seconds', 90)
+                if type(command_timeout) is not int or not 1 <= command_timeout <= 1200:
+                    raise ValueError('timeout_seconds deve essere un intero fra 1 e 1200')
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError('Timeout dello specialista DeepSeek')
@@ -167,7 +174,7 @@ def run(model, prompt, output_dir, timeout, progress=None):
                         from progress import tool_label
                     progress.emit('running_tool', tool_label(command))
                 completed = subprocess.run(['bash', '-lc', command], cwd=output_dir,
-                    capture_output=True, text=True, errors='replace', timeout=min(90, remaining))
+                    capture_output=True, text=True, errors='replace', timeout=min(command_timeout, remaining))
                 if progress:
                     progress.emit('waiting_model', 'Comando concluso (uscita ' + str(completed.returncode) + ')')
                 response = {'returncode': completed.returncode,

@@ -88,6 +88,11 @@ def initialize():
                 item['use'] = 'studio.codex_provider:StudioCodexChatModel'
                 changed = True
         template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
+        for tool in template.get('tools', []):
+            if tool.get('name') == 'studio_plan' and not any(
+                    t.get('name') == 'studio_plan' for t in content.get('tools', [])):
+                content.setdefault('tools', []).append(tool)
+                changed = True
         definitions = content.setdefault('subagents', {}).setdefault('custom_agents', {})
         for identifier, definition in template['subagents']['custom_agents'].items():
             if identifier not in definitions:

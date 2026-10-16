@@ -90,3 +90,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/wordcraft/tree/v0.7.0
 - https://github.com/storytold/wordcraft/releases
+
+## Ruolo nella squadra
+
+Redigi testi strutturati usando i dati verificati di GridCraft e le immagini dei colleghi; consegna DOCX con stili, tabelle e risorse, più l’export. Passa il contenuto a DesignCraft se serve impaginazione editoriale e a PdfCraft per controlli PDF.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

@@ -95,7 +95,7 @@ jobs:
       - name: Validate DeerFlow schema and injected tool
         if: matrix.component == 'gateway'
         run: |
-          docker run --rm --entrypoint python -e STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 artcraft-deerflow-gateway:0.1.0 -c 'from studio.bootstrap import initialize; initialize(); from deerflow.config.app_config import AppConfig; AppConfig.from_file("/studio-state/config.yaml"); from studio.tools import studio_delegate; from langchain_core.utils.function_calling import convert_to_openai_tool; schema=convert_to_openai_tool(studio_delegate); assert "runtime" not in schema["function"]["parameters"]["properties"]; print(schema); from studio.app import app; print(len(app.routes))'
+          docker run --rm --entrypoint python -e STUDIO_PASSWORD=ci-only-not-a-real-credential-123456 artcraft-deerflow-gateway:0.1.0 -c 'from studio.bootstrap import initialize; initialize(); from deerflow.config.app_config import AppConfig; AppConfig.from_file("/studio-state/config.yaml"); from studio.tools import studio_delegate, studio_plan; from langchain_core.utils.function_calling import convert_to_openai_tool; schemas=[convert_to_openai_tool(t) for t in (studio_delegate, studio_plan)]; assert all("runtime" not in s["function"]["parameters"]["properties"] for s in schemas); print(schemas); from studio.app import app; print(len(app.routes))'
       - name: Verify CLI registries and all native MCP servers
         if: matrix.component == 'sandbox'
         run: |
@@ -121,6 +121,9 @@ jobs:
       - name: Run representative native file workflows for all specialists
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
+      - name: Check real multidisciplinary asset, animation, audio and editing handoffs
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |

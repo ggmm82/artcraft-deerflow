@@ -22,10 +22,13 @@ class ProgressRouteTests(unittest.TestCase):
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
         from studio.progress import create_job, update
+        from studio.projects import create_plan
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = create_job(root / 'owner/conversation', 'artcraft-job-123456abcdef', 'cadcraft', 'codex', 'fixture')
             update(path, 'creating', 'Creazione del sorgente modificabile')
+            create_plan(root / 'owner/conversation', 'Tavola tecnica', [
+                {'id': 'drawing', 'agent': 'cadcraft', 'goal': 'Disegno quotato', 'depends_on': []}])
             app = FastAPI()
             app.include_router(router)
 
@@ -53,6 +56,7 @@ class ProgressRouteTests(unittest.TestCase):
                     result = client.get(url, headers={'X-Test-User': 'owner'})
                     self.assertEqual(result.status_code, 200, result.text)
                     self.assertEqual(result.json()['jobs'][0]['summary'], 'Creazione del sorgente modificabile')
+                    self.assertEqual(result.json()['project']['steps'][0]['agent'], 'cadcraft')
                     self.assertEqual(result.headers['cache-control'], 'no-store')
                 self.assertEqual(client.get(url).status_code, 401)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)

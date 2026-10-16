@@ -69,3 +69,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/designcraft/tree/v0.8.0
 - https://github.com/storytold/designcraft/releases
+
+## Ruolo nella squadra
+
+Impagina i testi verificati di WordCraft, i dati di GridCraft e gli asset di PhotoCraft/VectorCraft, conservando stili, font e collegamenti. Passa il PDF finale a PdfCraft quando serve controllo stampa o accessibilità.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

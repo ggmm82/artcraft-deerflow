@@ -71,3 +71,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/vectorcraft/tree/v0.11.0
 - https://github.com/storytold/vectorcraft/releases
+
+## Ruolo nella squadra
+
+Prepara loghi, icone e illustrazioni SVG con gruppi e tracciati modificabili; passa asset con dimensioni/viewBox e font esplicitati a PhotoCraft, DesignCraft, DeckCraft, FigCraft o EffectCraft.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

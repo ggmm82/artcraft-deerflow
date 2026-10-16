@@ -69,3 +69,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/filmcraft/tree/v0.7.2
 - https://github.com/storytold/filmcraft/releases
+
+## Ruolo nella squadra
+
+Integra realmente i video di EffectCraft, gli asset visivi di PhotoCraft/VectorCraft e il mix di SoundCraft quando previsti. Verifica in timeline sincronizzazione, ritmo, durata, aspect ratio, media online e traccia audio udibile/non silenziosa; ffprobe non dimostra da solo qualità visiva o ascolto. Consegna .fcproj con media e il video finale.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

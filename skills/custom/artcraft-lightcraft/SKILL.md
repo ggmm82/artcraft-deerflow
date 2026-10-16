@@ -67,3 +67,9 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 - https://github.com/storytold/lightcraft/tree/v0.8.0
 - https://github.com/storytold/lightcraft/releases
+
+## Ruolo nella squadra
+
+Sviluppa gli input RAW e passa immagini con profilo colore, orientamento, esposizione e dimensioni dichiarati a PhotoCraft o DesignCraft. Non richiedere RAW se il brief non ne usa.
+
+Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.

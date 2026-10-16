@@ -154,6 +154,16 @@ def main():
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.',
+        'Il budget di questa fase è 25 minuti, non quello dell’intero progetto. '
+        'Salva il sorgente presto e dopo ogni traguardo significativo. Aggiorna '
+        'work/checkpoint.json con completed (azioni concluse), files (percorsi salvati), '
+        'remaining (azioni mancanti) e next_action (prossimo comando o verifica). '
+        'Non aspettare la scadenza per salvare. Se riprendi file precedenti, ispezionali '
+        'e riusa quanto valido nella nuova cartella, senza sovrascrivere gli input. '
+        'Un risultato incompleto va dichiarato con checks e warnings, non presentato come definitivo.',
+        'Per render o export lunghi con DeepSeek, run_command supporta timeout_seconds '
+        'fino a 1200 secondi, sempre entro il budget residuo della fase; il default è 90. '
+        'Non ridurre la qualità solo per aggirare il default: stima il carico e salva prima il progetto.',
         'Aggiornamenti per l’utente: registra un breve piano operativo e poi i cambi di fase '
         '(creazione, export, verifica). Riporta azioni e decisioni pratiche, non ragionamenti interni, '
         'prompt, credenziali o trascrizioni. Usa report_progress se disponibile; con le CLI usa '

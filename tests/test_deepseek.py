@@ -84,15 +84,18 @@ class DeepSeekTests(unittest.TestCase):
                 'tool_calls': [{'id': '0', 'type': 'function', 'function': {
                     'name': 'report_progress', 'arguments': json.dumps({'phase': 'planning', 'summary': 'Creo il report e controllo il contenuto'})}},
                     {'id': '1', 'type': 'function', 'function': {
-                    'name': 'run_command', 'arguments': json.dumps({'command': command})}}]}}]},
+                    'name': 'run_command', 'arguments': json.dumps({'command': command, 'timeout_seconds': 600})}}]}}]},
             {'choices': [{'message': {'role': 'assistant', 'content': 'Completed'}}]},
         ]
         events = []
         from types import SimpleNamespace
         progress = SimpleNamespace(emit=lambda *args, **kwargs: events.append(args))
+        import subprocess
         with patch.object(deepseek, 'Path', side_effect=path), \
-             patch.object(deepseek, 'request', side_effect=responses) as request:
-            self.assertEqual(deepseek.run('deepseek-flash', 'Make report', output, 30, progress=progress), 'Completed')
+             patch.object(deepseek, 'request', side_effect=responses) as request, \
+             patch.object(deepseek.subprocess, 'run', wraps=subprocess.run) as execute:
+            self.assertEqual(deepseek.run('deepseek-flash', 'Make report', output, 900, progress=progress), 'Completed')
+        self.assertEqual(execute.call_args.kwargs['timeout'], 600)
         self.assertIn(('planning', 'Creo il report e controllo il contenuto'), events)
         self.assertTrue(any(event[0] == 'running_tool' for event in events))
         self.assertEqual((output / 'report.txt').read_text().strip(), 'verified')
