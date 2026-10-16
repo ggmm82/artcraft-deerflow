@@ -26,6 +26,7 @@ COPY --from=deerflow /frontend ./frontend
 COPY frontend/studio-page.tsx ./frontend/src/app/workspace/studio/page.tsx
 COPY frontend/team-onboarding.tsx ./frontend/src/components/workspace/team-onboarding.tsx
 COPY frontend/model-settings-page.tsx ./frontend/src/components/workspace/settings/model-settings-page.tsx
+COPY frontend/run-start-time.ts ./frontend/src/core/messages/run-start-time.ts
 COPY scripts/integrate_frontend.mjs /tmp/integrate_frontend.mjs
 COPY scripts/check_chat_modes.mjs /tmp/check_chat_modes.mjs
 RUN node /tmp/integrate_frontend.mjs
