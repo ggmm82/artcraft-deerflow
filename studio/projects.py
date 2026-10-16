@@ -15,6 +15,7 @@ from .progress import clean_summary, utcnow, workspace_key
 from .state import applications, atomic_json
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
+PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
 VIDEO_TEAM = {'photocraft', 'effectcraft', 'soundcraft', 'filmcraft'}
 MAX_ATTEMPTS = 3
 GATEWAY_SESSION = uuid.uuid4().hex
@@ -43,10 +44,24 @@ def load(folder, workspace):
     if path.is_symlink() or path.stat().st_size > 300000:
         raise ValueError('Stato progetto non valido')
     value = json.loads(path.read_text())
+    if not isinstance(value, dict) or not isinstance(value.get('id'), str) or not PROJECT_ID.fullmatch(value['id']):
+        raise ValueError('Identificatore progetto non valido')
+    steps = value.get('steps')
+    if not isinstance(steps, list) or not 1 <= len(steps) <= 16:
+        raise ValueError('Fasi del progetto non valide')
+    for step in steps:
+        if (not isinstance(step, dict) or not isinstance(step.get('id'), str)
+                or not STEP_ID.fullmatch(step['id']) or not isinstance(step.get('agent'), str)
+                or not isinstance(step.get('goal'), str) or not isinstance(step.get('depends_on'), list)
+                or not isinstance(step.get('attempts'), list) or len(step['attempts']) > MAX_ATTEMPTS
+                or any(not isinstance(a, dict) for a in step['attempts'])
+                or step.get('status') not in ('pending', 'running', 'completed', 'needs_revision')
+                or (step['status'] in ('running', 'completed') and not step['attempts'])):
+            raise ValueError('Stato della fase non valido')
     if value.get('workspace_key') != workspace_key(workspace):
         return None
     changed = False
-    for step in value['steps']:
+    for step in steps:
         if step['status'] == 'running' and step['attempts'][-1].get('gateway_session') != GATEWAY_SESSION:
             step['status'] = 'needs_revision'
             step['attempts'][-1].update(status='needs_revision', finished_at=utcnow(),

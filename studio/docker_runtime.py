@@ -164,14 +164,14 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None):
     name = 'artcraft-job-' + uuid.uuid4().hex[:12]
     progress = create_job(workspace, name, agent_id, engine, settings['model'], tool_call_id)
     output_dir = '/mnt/user-data/outputs/' + agent_id + '/' + name
-    if on_started:
-        on_started(output_dir)
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
     if not EXECUTION_LOCK.acquire(timeout=120):
         update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
         raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
     try:
         update(progress, 'starting')
+        if on_started:
+            on_started(output_dir)
         jobs = STATE / 'jobs'
         jobs.mkdir(exist_ok=True)
         job = jobs / (name + '.json')

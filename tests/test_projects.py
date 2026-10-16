@@ -178,6 +178,16 @@ class ProjectTests(unittest.TestCase):
         self.assertTrue(saved['steps'][0]['attempts'][0]['output_files'])
         self.plan()
 
+    def test_untrusted_project_metadata_cannot_choose_an_external_archive_path(self):
+        self.plan()
+        path = self.root / '.studio-project/project.json'
+        value = json.loads(path.read_text())
+        value['id'] = '../../outside'
+        path.write_text(json.dumps(value))
+        with self.assertRaisesRegex(ValueError, 'Identificatore'):
+            projects.archive_plan(self.root, 'Archive')
+        self.assertFalse((self.root.parent / 'outside.json').exists())
+
 
 if __name__ == '__main__':
     unittest.main()
