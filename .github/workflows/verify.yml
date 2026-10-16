@@ -50,7 +50,7 @@ jobs:
           node-version: '22'
       - name: Browser acceptance for specialist progress
         run: |
-          npm install --prefix /tmp/studio-ui-tests --no-audit --no-fund react@19.2.4 react-dom@19.2.4 esbuild@0.25.12
+          npm install --prefix /tmp/studio-ui-tests --no-audit --no-fund react@19.2.4 react-dom@19.2.4 esbuild@0.25.12 @tailwindcss/cli@4.1.18
           pip install playwright==1.62.0
           python -m playwright install --with-deps chromium
           python scripts/check_delegate_progress_ui.py --node-modules /tmp/studio-ui-tests/node_modules
@@ -112,6 +112,9 @@ jobs:
       - name: Check persisted progress authorization and user isolation
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_progress_routes.py -v
+      - name: Check adaptive orchestration tools, compact memory and explicit recovery
+        if: matrix.component == 'gateway'
+        run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_adaptive_tools.py -v
       - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py
@@ -123,7 +126,7 @@ jobs:
         run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
       - name: Check real multidisciplinary asset, animation, audio and editing handoffs
         if: matrix.component == 'sandbox'
-        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance
+        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance --simulate-audio-interruption
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |

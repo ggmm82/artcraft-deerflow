@@ -26,7 +26,7 @@ LABELS = {
     'planning': 'Definizione del piano operativo', 'waiting_model': 'In attesa della risposta del modello',
     'running_tool': 'Esecuzione di uno strumento', 'creating': 'Creazione dei file',
     'exporting': 'Esportazione dei risultati', 'checking': 'Verifica dei file e dei sorgenti',
-    'finalizing': 'Preparazione della consegna', 'completed': 'Consegna verificata',
+    'finalizing': 'Preparazione della consegna', 'completed': 'Incarico concluso; risultati disponibili',
     'failed': 'Incarico non completato', 'timed_out': 'Tempo massimo raggiunto',
 }
 SECRET = re.compile(r'(?i)\b(?:sk-[a-z0-9_-]{8,}|ya29\.[a-z0-9_.-]+|4/0[a-z0-9_-]+)|'
@@ -124,9 +124,24 @@ def tool_label(command):
     if not isinstance(command, str):
         return LABELS['running_tool']
     names = '|'.join(sorted(APPS))
-    match = re.search(r'(?:\bcraft\s+|(?:^|[;&|])\s*(?:/usr/local/bin/)?)(' + names + r')(?=\s|$)', command.lower())
+    command = command.lower()
+    match = re.search(r'\bcraft\s+(?:(?:batch|run|help|commands|tools)\s+)?(' + names + r')\b|'
+                      r'(?:^|[;&|\n])\s*(?:/usr/local/bin/)?(' + names + r')(?:-cli)?(?=\s|$)', command)
     if match:
-        return 'Comando ' + match.group(1).capitalize() + ' in esecuzione'
+        app = next(g for g in match.groups() if g).capitalize()
+        if re.search(r'\b(?:render-frame|preview)\b', command):
+            return 'Controllo un’anteprima con ' + app
+        if re.search(r'\b(?:render|export|bounce|bounce_mix)\b', command):
+            return 'Esporto il risultato con ' + app
+        if re.search(r'\b(?:info|inspect)\b', command):
+            return 'Verifico il progetto con ' + app
+        if re.search(r'\b(?:help|commands|tools)\b', command):
+            return 'Consulto i comandi di ' + app
+        return 'Comando ' + app + ' in esecuzione'
+    if re.search(r'\bffprobe\b', command):
+        return 'Verifico formato, durata e tracce del file'
+    if re.search(r'\bffmpeg\b', command) and 'volumedetect' in command:
+        return 'Misuro il segnale audio del risultato'
     if re.search(r'\b(?:craft)\s+(?:help|commands|tools)\b', command):
         return 'Consultazione dei comandi dello strumento'
     return LABELS['running_tool']
@@ -256,7 +271,7 @@ def public_status(value):
     """Allowlist every returned field even if a worker modified its own file."""
     result = {key: clean_summary(value.get(key)) for key in (
         'job_id', 'agent', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
-        'started_at', 'finished_at', 'deadline_at', 'last_activity_at', 'heartbeat_at', 'updated_at')}
+        'started_at', 'finished_at', 'deadline_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}

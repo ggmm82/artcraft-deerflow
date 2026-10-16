@@ -1,3 +1,5 @@
+> Nota: la regia e l’interfaccia descritte qui sono state aggiornate. Per il comportamento corrente vedi [Regia adattabile](REGIA-ADATTABILE.md); la pipeline obbligatoria e il limite permanente di tre tentativi sono superati.
+
 # Squadre e progetti lunghi
 
 Il coordinatore sceglie fra tutti i **13 specialisti** del catalogo. Un lavoro semplice può richiedere un solo ruolo; un prodotto multidisciplinare usa un piano persistente con obiettivi, responsabili, dipendenze e una fase finale che integra tutti i rami. Il pannello «Lavoro della squadra» mostra piano e stati anche dopo aver riaperto la chat. La configurazione del modello rimane unica.

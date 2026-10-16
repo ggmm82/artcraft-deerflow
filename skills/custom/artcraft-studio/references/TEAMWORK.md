@@ -1,23 +1,22 @@
-# Regia di una squadra di specialisti
+# Regia adattabile
 
-Il catalogo attuale comprende 13 strumenti. Non attivarli tutti senza motivo, e non trattare lo specialista del formato finale come una squadra universale. Il piano `custom` accetta qualunque specialista del catalogo dinamico, inclusi nuovi strumenti integrati tramite `versions.lock.json` e skill verificata.
+Il catalogo ha 13 strumenti. Scegli quelli necessari e torna ai ruoli quando il prodotto lo richiede. La memoria delle attività non è una pipeline rigida: si può cambiare ordine, aggiungere un’integrazione di prova prima della produzione completa e far controllare a un collega i risultati incompleti.
 
-## Robot che balla: esempio di prodotto audiovisivo
+## Esempio: robot che balla
 
-Usa `project_type: animated_video`. Concorda una specifica condivisa (per esempio 1080x1080, 30 fps, durata/BPM compatibili con la coreografia, alpha dove necessario), un aspetto riconoscibile e controlli sul movimento. Non promettere il brano Macarena originale senza un file disponibile: spiega l’eventuale base originale.
+Concorda stile, durata e ritmo; poi crea una breve prova coerente del soggetto, del movimento e della base musicale. PhotoCraft può preparare asset e texture, EffectCraft il movimento, SoundCraft un breve loop e FilmCraft una prima versione audiovisiva. Non attendere che ogni componente sia perfetto per controllare il risultato completo. Verifica inquadratura, proporzioni, pose riconoscibili, luce, ritmo e presenza di audio prima di estendere il render.
 
-```json
-[
-  {"id":"visual","agent":"photocraft","goal":"Robot: asset separati, texture e sfondo coerenti; progetto a livelli riaperto ed export con alpha","depends_on":[]},
-  {"id":"motion","agent":"effectcraft","goal":"Importa gli asset visual, costruisci e verifica il rig 3D supportato, anima le pose e renderizza; conserva .ecproj e risorse","depends_on":["visual"]},
-  {"id":"audio","agent":"soundcraft","goal":"Base ritmica e accenti con BPM, cue e durata dell’animazione; mix WAV, sessione multitraccia e media verificati","depends_on":["motion"]},
-  {"id":"final","agent":"filmcraft","goal":"Integra animazione e mix in timeline; verifica sincro, movimento, immagini, audio e media online; progetto autosufficiente e MP4 finale","depends_on":["motion","audio"]}
-]
-```
+Un ordine utile può essere concept → breve prova di movimento → ritmo di prova → primo montaggio → revisione di camera/materiali → musica definitiva → montaggio finale. Se gli asset esistono già, parti dall’integrazione. Se il mix richiede una piccola attenuazione, falla correggere senza bloccare il video per una sessione non chiusa o uno ZIP mancante. Non promettere che una mesh procedurale sia fotorealistica soltanto perché è tecnicamente 3D.
 
-Non basta chiamare quattro specialisti: gli asset devono passare davvero nelle lavorazioni successive e l’audio deve essere presente nel filmato finale. Il runtime blocca le fasi con dipendenze incomplete, controlli falliti o passaggi senza input collegati. I controlli dichiarati non dimostrano da soli qualità artistica: esamina anteprime, pose e transizioni; effettua ascolto/visione se disponibili, altrimenti dichiara il limite.
+Mantieni `summary` e `next_action` brevi e aggiornati tramite `studio_plan`. L’utente deve riconoscere dove guardare: il pannello è sopra la casella di scrittura. «Vedi risultato» apre una bozza o il prodotto finale, «Squadra» descrive le attività, «File e sorgenti» mantiene i download e «Attività» raccoglie dettagli e cronologia. Evita resoconti di cartelle e letture CLI nella conversazione.
 
-L’utente può chiedere un video muto o fornire asset già pronti: registra il requisito esplicito in `omissions_json` e costruisci le dipendenze corrispondenti. Non inventare omissioni per risparmiare lavoro. CADCraft è utile se serve geometria tecnica supportata; LightCraft se ci sono RAW da sviluppare; non sono obbligatori in questa animazione.
+## Recupero
+
+- Un WAV già esportato può essere verificato e importato in FilmCraft anche se SoundCraft ha esaurito i turni prima del manifesto.
+- Una revisione dell’animazione non cancella il mix pronto. Controlla se tempi e cue cambiano; aggiorna solo le parti coinvolte.
+- Una quota esaurita richiede pausa e azione sul servizio condiviso. Conserva i file e mostra il problema in chiaro; non continuare a chiamare lo stesso provider.
+- Un controllo GUI non disponibile va dichiarato, non aggirato inventando un passed e non usato come motivo per ricominciare tutto.
+- Un risultato utile ma provvisorio può diventare input di una verifica. Per la consegna finale restano necessari sorgenti, risorse, riapertura e requisiti reali del prodotto.
 
 ## Comporre altre squadre
 

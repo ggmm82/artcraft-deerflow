@@ -18,69 +18,108 @@ def workspace_for(runtime):
     return paths.sandbox_user_data_dir(thread, user_id=user)
 
 
+def interaction_id(runtime):
+    messages = (getattr(runtime, 'state', None) or {}).get('messages', [])
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        kind = message.get('type', message.get('role')) if isinstance(message, dict) else getattr(message, 'type', '')
+        if kind in ('human', 'user'):
+            identifier = message.get('id') if isinstance(message, dict) else getattr(message, 'id', None)
+            return str(identifier or ('human-' + str(index)))[:150]
+    return ''
+
+
 @tool('studio_plan', parse_docstring=True)
 def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
-                project_type: str = 'custom', omissions_json: str = '{}', revise_step_id: str = '',
-                archive: bool = False) -> str:
-    """Create or read the persistent team plan before multidisciplinary production.
+                project_type: str = '', omissions_json: str = '{}', revise_step_id: str = '',
+                archive: bool = False, summary: str = '', next_action: str = '', status: str = '',
+                product_path: str = '', requirements_json: str = '') -> str:
+    """Maintain a concise, adaptive production workspace and visible user status.
 
-    Without steps_json, read the current plan and resume its unfinished steps.
-    All 13 catalog specialists are available. Choose the useful disciplines.
-    For an animated audiovisual product use animated_video: PhotoCraft assets,
-    EffectCraft animation, SoundCraft audio, FilmCraft final assembly. Only explicit
-    user requirements can omit one of these roles, recorded in omissions_json.
-    Steps must be topologically ordered; the last one integrates every branch.
-    Workers run sequentially on the 4 GB VPS, with separate 25-minute budgets.
-    To fix an already completed phase, set revise_step_id and explain the failed
-    requirement in brief. Its dependent phases will also require a new validation.
-    Archive only when the user abandons the project or requests unrelated new work;
-    explain why in brief. Never archive to bypass dependencies or the retry limit.
+    Read without arguments. Update the brief, activity board or current status as
+    the work evolves; existing attempts and files are preserved. Activities may
+    be reordered, added, reassigned or skipped. depends_on is an input hint, not
+    a blocking pipeline. All 13 catalog specialists are available as needed.
+    Prefer a complete early preview, then improve it with focused specialist work.
+    Avoid long plans and technical recaps: summary and next_action appear beside
+    the chat input. Use purpose=delivery on the final integration to check media.
 
     Args:
         runtime: Injected DeerFlow runtime.
-        brief: Requested result and acceptance criteria.
-        steps_json: JSON list of objects with id, agent, goal and depends_on (step IDs).
-        project_type: custom for any team from the 13 tools, animated_video for animation with sound.
-        omissions_json: JSON object mapping omitted video roles to explicit user requirements.
-        revise_step_id: Reopen this phase and invalidate downstream deliveries for a targeted revision.
-        archive: Archive an inactive abandoned plan, preserving all files and attempts.
+        brief: Desired product and key acceptance criteria.
+        steps_json: Optional JSON list of id, agent, goal, depends_on and optional status pending/review/skipped; updates existing activities by ID.
+        project_type: custom or animated_video; the latter defaults to video with audio, without forcing a fixed team.
+        omissions_json: Compatibility field for explicit user exclusions, such as soundcraft for a silent video.
+        revise_step_id: Reopen only this activity; keep other results usable.
+        archive: Archive an inactive abandoned project, preserving files.
+        summary: One short sentence explaining the current practical work to the user.
+        next_action: One short sentence describing the next useful result or action.
+        status: working, review, ready, blocked or idle.
+        product_path: Existing verified final product to show prominently; ready requires it.
+        requirements_json: Media acceptance requirements such as {"audio":true,"video":true}; follow the user's brief.
     """
     workspace = workspace_for(runtime)
     if archive:
         value = archive_plan(workspace, brief)
     elif revise_step_id:
         value = revise_step(workspace, revise_step_id, brief)
+    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type)):
+        value = create_plan(workspace, brief, json.loads(steps_json or '[]'), project_type,
+            json.loads(omissions_json), summary=summary, next_action=next_action, status=status,
+            product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None)
     else:
-        value = create_plan(workspace, brief, json.loads(steps_json), project_type,
-                            json.loads(omissions_json)) if steps_json else read_project(workspace)
+        value = read_project(workspace)
     return json.dumps({'project': value}, ensure_ascii=False)
 
 
 @tool('studio_delegate', parse_docstring=True)
-def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '') -> str:
-    """Delegate an ArtCraft task to a configured Codex, Antigravity or DeepSeek specialist in Docker.
+def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', purpose: str = 'work') -> str:
+    """Assign focused work to any useful ArtCraft specialist, reusing available files.
 
-    Use the exact specialist ID from the configured operational catalog in the
-    lead instructions. Give input paths, required outputs and acceptance checks.
-    Request editable sources and dependencies as downloadable outputs, not only exports.
-    Require delivery metadata: format, actual opening app, editability, reopening evidence
-    and limitations. A GLB/viewer is not evidence of CADCraft compatibility.
-    Specialists share files in this conversation; pass result paths to the next one.
-    The runtime assigns a separate output directory per task: request filenames,
-    not fixed absolute output locations. Use the paths returned by the specialist.
-    Only one specialist runs at a time on the 4 GB profile.
-    Create studio_plan for multidisciplinary work and supply its step_id.
-    Dependency files are injected automatically and must be used as actual inputs.
-    After a partial failure, repeat the same step_id with a targeted continuation:
-    the previous output directory is supplied automatically. Maximum three attempts.
+    Activities are flexible. step_id is optional and an activity is created when
+    needed. A failed colleague, optional check or missing handoff must not block
+    useful review or integration of existing files. Inspect partial work rather
+    than rebuilding it. Provider quota/auth failures pause work and require the
+    shared provider to become available; never retry the same outage in a loop.
+    Use purpose=preview for a small complete prototype before expensive renders;
+    purpose=integration assembles available parts; purpose=delivery validates the
+    final media requirements in the worker. Deliver editable sources and genuine
+    opening evidence. Only one worker runs at a time on the 4 GB VPS.
 
     Args:
-        agent: Exact specialist ID.
-        task: Self-contained instructions, input paths and required deliverables.
+        agent: Exact specialist ID from the catalog.
+        task: Concrete result, pertinent input paths and acceptance checks; avoid broad rediscovery.
         runtime: Injected DeerFlow runtime.
-        step_id: Assigned phase in studio_plan; empty only for simple single-discipline work.
+        step_id: Optional activity identifier, reusable for targeted revisions.
+        purpose: work, preview, review, integration or delivery.
     """
     workspace = workspace_for(runtime)
-    return execute_step(workspace, agent, task, step_id,
+    from .state import team
+    profile = team()
+    request_id = interaction_id(runtime)
+    project = read_project(workspace) or {}
+    requirements = project.get('requirements', {}) if purpose == 'delivery' else {}
+    result = json.loads(execute_step(workspace, agent, task, step_id,
         lambda instructions, started=None: delegate(agent, instructions, workspace,
-            tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started))
+            tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
+            requirements=requirements), provider={'engine': profile['engine'], 'model': profile['model']},
+        purpose=purpose, request_id=request_id))
+    handoff = result.get('handoff') or {}
+    from .progress import clean_summary
+    compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked',
+        'product_verified', 'verified_products', 'available_results') if k in result}
+    compact.update(error=clean_summary(result.get('error', '')),
+        available_files=result.get('available_files', [])[:20],
+        source_status=handoff.get('delivery', {}).get('source_status'),
+        outputs=[{**{k: clean_summary(f.get(k, '')) for k in ('path', 'role', 'format', 'open_with', 'editability')},
+                  'reopen': {'status': f.get('reopen', {}).get('status', 'not_run'),
+                             'evidence': clean_summary(f.get('reopen', {}).get('evidence', ''))},
+                  'limitations': [clean_summary(s) for s in f.get('limitations', [])[:3]]}
+                 for f in handoff.get('delivery', {}).get('files', [])[:20]],
+        checks=[{'name': clean_summary(c.get('name')), 'status': c.get('status'),
+                 'evidence': clean_summary(c.get('evidence'))} for c in handoff.get('checks', [])[-10:]],
+        warnings=[clean_summary(w) for w in handoff.get('warnings', [])[:5]],
+        review_notes=result.get('review_notes', [])[:8])
+    if result.get('output_dir') and handoff:
+        compact['handoff_path'] = result['output_dir'] + '/handoff.json'
+    return json.dumps(compact, ensure_ascii=False)

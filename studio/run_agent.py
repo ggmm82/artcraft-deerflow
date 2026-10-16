@@ -10,10 +10,12 @@ try:
     from .handoff import validate_handoff
     from .progress import Reporter
     from .cli_runner import run_cli
+    from .work_results import validate_media
 except ImportError:  # Direct invocation inside the worker image.
     from handoff import validate_handoff
     from progress import Reporter
     from cli_runner import run_cli
+    from work_results import validate_media
 
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
@@ -154,6 +156,13 @@ def main():
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.',
+        'Lavora per risultati visibili presto: se l’incarico è una prova, produci una piccola '
+        'versione completa, non tutta la produzione definitiva. Prima di un render lungo '
+        'verifica una breve sequenza con gli asset reali. Riusa anche file di colleghi '
+        'il cui processo si è interrotto: ispezionali e controllali, senza scartarli '
+        'per una chiusura formale mancante. Non ripetere discovery già salvate. '
+        'Distingui controlli essenziali e limiti facoltativi: non inventare ascolti '
+        'o verifiche GUI e non rifare un intero prodotto solo per marcarli passed.',
         'Il budget di questa fase è 25 minuti, non quello dell’intero progetto. '
         'Salva il sorgente presto e dopo ogni traguardo significativo. Aggiorna '
         'work/checkpoint.json con completed (azioni concluse), files (percorsi salvati), '
@@ -216,9 +225,27 @@ def main():
                               'output_dir': str(output_dir),
                               'error': handoff_error(output_dir, exc)}, ensure_ascii=False))
             return 1
+        verified_products = []
+        if job.get('requirements'):
+            candidates = [f for f in handoff['output_files'] if Path(f).suffix.lower() in
+                          ('.mp4', '.mov', '.webm', '.mkv', '.wav', '.mp3', '.m4a')]
+            if not candidates:
+                raise ValueError('Manca il prodotto media finale da verificare')
+            checked = False
+            for candidate in candidates:
+                checks = validate_media(candidate, job['requirements'])
+                if checks and all(c['status'] == 'passed' for c in checks):
+                    checked = True
+                    verified_products.append(candidate)
+                    handoff['checks'].extend(checks)
+                    break
+            if not checked:
+                raise ValueError('Il prodotto finale non soddisfa i requisiti audio/video reali: '
+                                 'non consegnare come definitivo un render muto o un file audio silenzioso')
         reporter.emit('completed')
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
                           'output_dir': str(output_dir), 'handoff': handoff,
+                          'product_verified': bool(verified_products), 'verified_products': verified_products,
                           'response': message}, ensure_ascii=False))
         return 0
     except (TimeoutError, subprocess.TimeoutExpired):
