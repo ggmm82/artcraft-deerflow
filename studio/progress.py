@@ -7,6 +7,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -36,6 +37,10 @@ APPS = {'photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft', 'eff
 
 def utcnow():
     return datetime.now(timezone.utc).isoformat()
+
+
+def workspace_key(workspace):
+    return hashlib.sha256(os.fsencode(Path(workspace).resolve())).hexdigest()
 
 
 def clean_summary(value):
@@ -108,6 +113,7 @@ def update(path, phase=None, summary=None, **fields):
 def create_job(workspace, job_id, agent, engine, model, tool_call_id=None):
     path = job_path(workspace, job_id)
     update(path, 'queued', job_id=job_id, agent=agent, engine=engine, model=clean_summary(model),
+           workspace_key=workspace_key(workspace),
            tool_call_id=tool_call_id, created_at=utcnow(), heartbeat_at=None,
            started_at=None, deadline_at=None, files=[], files_count=0)
     return path
@@ -138,7 +144,9 @@ def output_snapshot(output_dir):
                 continue
             try:
                 if path.resolve().is_relative_to(root) and path.is_file():
-                    files.append({'name': clean_summary(path.relative_to(root).as_posix()), 'size': path.stat().st_size})
+                    stat = path.stat()
+                    files.append({'name': clean_summary(path.relative_to(root).as_posix()),
+                                  'size': stat.st_size, 'mtime_ns': stat.st_mtime_ns})
             except OSError:
                 continue
             if len(files) >= 100:
@@ -270,7 +278,11 @@ def list_jobs(workspace):
             continue
         try:
             path = job_path(root, directory.name)
-            values.append(public_status(read_status(path)))
+            value = read_status(path)
+            # DeerFlow copies user-data when branching a conversation. A copied
+            # progress file must not masquerade as a worker on the new thread.
+            if value.get('workspace_key') == workspace_key(root):
+                values.append(public_status(value))
         except (OSError, ValueError, TypeError, KeyError):
             continue
     return sorted(values, key=lambda v: (v['phase'] not in TERMINAL, v['created_at']), reverse=True)[:20]

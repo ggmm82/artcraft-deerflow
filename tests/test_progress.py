@@ -36,6 +36,10 @@ class ProgressTests(unittest.TestCase):
         public = progress.list_jobs(self.root)[0]
         self.assertEqual(public['files'], [{'name': 'report.xlsx', 'size': 7}])
         self.assertNotEqual(public['last_activity_at'], before)
+        (self.output / 'report.xlsx').write_bytes(b'updated')  # Same size, new modification time.
+        with patch.object(progress, 'utcnow', return_value='2099-01-01T00:00:00+00:00'):
+            self.reporter.pulse()
+        self.assertEqual(progress.list_jobs(self.root)[0]['last_activity_at'], '2099-01-01T00:00:00+00:00')
 
     def test_durable_history_is_bounded_and_contains_no_cli_secrets(self):
         for index in range(75):
@@ -70,7 +74,11 @@ class ProgressTests(unittest.TestCase):
             self.assertNotIn(secret, public)
 
     def test_other_workspaces_and_symlinked_metadata_are_not_followed(self):
+        import shutil
         self.assertEqual(progress.list_jobs(self.root / 'another-user'), [])
+        branch = self.root / 'branched-conversation'
+        shutil.copytree(self.root / '.studio-jobs', branch / '.studio-jobs')
+        self.assertEqual(progress.list_jobs(branch), [])
         outside = self.root / 'other'; outside.mkdir()
         (outside / '.studio-jobs').symlink_to(self.root / '.studio-jobs', target_is_directory=True)
         self.assertEqual(progress.list_jobs(outside), [])
