@@ -198,6 +198,18 @@ class Reporter:
         if not isinstance(event, dict):
             return
         kind = event.get('type') if engine == 'codex' else event.get('event')
+        if engine == 'codex' and kind not in ('item.started', 'item.completed', 'turn.started', 'turn.completed'):
+            return
+        if engine == 'gemini':
+            if kind != 'step_update':
+                return
+            step = event.get('step_update') or {}
+            identity = (step.get('step_index'), step.get('state'), step.get('step_type'))
+            # Repeated duration/status frames are a signal of life, not new work.
+            # New generated text counts as activity, but its contents stay private.
+            if identity == self.last_cli_event and not step.get('text_delta'):
+                return
+            self.last_cli_event = identity
         if time.monotonic() - self.last_signal > 2:
             self.last_signal = time.monotonic()
             try:
@@ -219,10 +231,6 @@ class Reporter:
                 self.emit('waiting_model')
         elif kind == 'step_update':
             step = event.get('step_update') or {}
-            identity = (step.get('step_index'), step.get('state'), step.get('step_type'))
-            if identity == self.last_cli_event:
-                return
-            self.last_cli_event = identity
             if step.get('step_type') == 'tool':
                 if step.get('state') == 'DONE':
                     self.emit('waiting_model', 'Strumento concluso; elaborazione del risultato')

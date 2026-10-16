@@ -57,6 +57,11 @@ class ProgressTests(unittest.TestCase):
             'step_index': 4, 'state': 'ACTIVE', 'step_type': 'tool',
             'tool_info': {'parameters': {'command': 'craft gridcraft help'}, 'output': 'private transcript'}}})
         self.assertIn('Gridcraft', progress.read_status(self.reporter.path)['summary'])
+        activity = progress.read_status(self.reporter.path)['last_activity_at']
+        with patch.object(progress, 'utcnow', return_value='2099-01-01T00:00:00+00:00'):
+            self.reporter.cli_event('gemini', {'event': 'step_update', 'step_update': {
+                'step_index': 4, 'state': 'ACTIVE', 'step_type': 'tool', 'duration_seconds': 180}})
+        self.assertEqual(progress.read_status(self.reporter.path)['last_activity_at'], activity)
         self.reporter.cli_event('gemini', {'event': 'step_update', 'step_update': {
             'step_index': 5, 'state': 'ACTIVE', 'step_type': 'agent_response',
             'text_delta': 'private hidden reasoning'}})
