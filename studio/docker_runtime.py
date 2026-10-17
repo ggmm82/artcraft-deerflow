@@ -153,7 +153,7 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None):
+def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None, purpose='work'):
     settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
@@ -178,7 +178,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         job = jobs / (name + '.json')
         payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
-                   'run_id': name, 'timeout': 1500, 'requirements': requirements or {}}
+                   'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose}
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())

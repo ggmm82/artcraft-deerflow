@@ -88,6 +88,8 @@ def validate_handoff(output_dir, workspace, *, require_delivery=False):
         paths = value.get(field, [] if field == 'previews' else None)
         if not isinstance(paths, list) or (field == 'output_files' and not paths):
             raise ValueError(f'handoff.json: {field} deve essere una lista di file')
+        if field == 'output_files' and len(paths) > 40:
+            raise ValueError('handoff.json: raggruppa risorse e sorgenti in pacchetti; massimo 40 download per consegna')
         for filename in paths:
             if not isinstance(filename, str):
                 raise ValueError(f'handoff.json: percorso non valido in {field}')

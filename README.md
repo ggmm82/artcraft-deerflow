@@ -159,3 +159,5 @@ Esegui backup dei volumi `studio-state` e `deerflow-data` a servizi fermi. Non u
 La chat mostra anche gli [avanzamenti degli specialisti](docs/AVANZAMENTO-DELEGHE.md): riepilogo operativo, fase, ultima attività, file provvisori e limite di esecuzione, conservati quando si riapre la conversazione.
 
 Il codice dell'integrazione è in `studio/`; il frontend upstream riceve onboarding, configurazione della squadra, avanzamenti e le correzioni condivise di modalità e timer tramite integrazioni verificate in build. Dockerfile Gateway e frontend sono adattati dai corrispondenti file DeerFlow: la licenza originale è in `docs/DEERFLOW-LICENSE`.
+
+Per il collaudo delle consegne, il confezionamento dei sorgenti e i limiti della revisione qualitativa, vedi [Consegne affidabili](docs/CONSEGNE-AFFIDABILI.md).

@@ -14,6 +14,7 @@ import uuid
 from .progress import JOB_ID, clean_summary, job_path, read_status, update, utcnow, workspace_key
 from .work_results import failure_info, partial_files
 from .state import applications, atomic_json
+from .source_packages import digest
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
 PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
@@ -122,6 +123,23 @@ def available_paths(workspace, attempt):
     return partial_files(folder)
 
 
+def media_accepted(record, value):
+    required = {k for k, v in value.get('requirements', {}).items() if v}
+    return not required or (value.get('product_path') in record.get('verified_products', [])
+        and all(record.get('requirements', {}).get(k) is True for k in required))
+
+
+def delivery_summary(record):
+    if not record:
+        return None
+    return {**{k: record.get(k) for k in ('id', 'title', 'purpose', 'technical_status', 'requirements', 'verified_products', 'source_status')},
+        'issues': [clean_summary(s) for s in record.get('issues', [])[:8]],
+        'files': [{**{k: f.get(k) for k in ('path', 'sha256', 'role')},
+                   **{k: clean_summary(f.get(k, '')) for k in ('open_with', 'editability')},
+                   'limitations': [clean_summary(s) for s in f.get('limitations', [])[:3]]}
+                  for f in record.get('files', [])[:40]]}
+
+
 def read_project(workspace):
     """Compact operational memory: histories remain on disk, not in every LLM turn."""
     if not (Path(workspace) / '.studio-project').exists():
@@ -133,10 +151,12 @@ def read_project(workspace):
     result = {k: clean_summary(value.get(k, '')) for k in (
         'id', 'brief', 'summary', 'next_action', 'status', 'updated_at', 'product_path')}
     result['project_type'] = value.get('project_type', 'custom')
+    result['brief'] = clean_summary(value.get('brief', ''), 4000)
     result['requirements'] = {k: v for k, v in value.get('requirements', {}).items()
                               if k in ('audio', 'video') and type(v) is bool}
     result['product_path'] = public_artifact(workspace, value.get('product_path', '')) or ''
-    result['steps'], result['results'], candidates = [], [], []
+    result['steps'], result['results'], result['deliveries'], candidates = [], [], [], []
+    delivery_inputs, delivery_folders = {}, {}
     for step in value['steps']:
         attempts = step['attempts']
         last = attempts[-1] if attempts else {}
@@ -145,8 +165,37 @@ def read_project(workspace):
             'note': clean_summary(step.get('note', '')), 'error': clean_summary(last.get('error', ''))})
         # Retain previous usable versions when a newer revision failed or hit quota.
         for attempt in reversed(attempts):
+            record = attempt.get('delivery_record') or {}
+            did = record.get('id') or Path(attempt.get('output_dir', '')).name or step['id']
+            metadata = {f.get('path'): f for f in record.get('files', [])}
+            inputs = attempt.get('input_files', [])
+            if not metadata and workspace:
+                # Older deliveries remain grouped, with no retroactive claim of
+                # verification. Read metadata only from the scoped job folder.
+                directory = workspace_path(workspace, attempt.get('output_dir', ''))
+                manifest = artifact_path(workspace, directory / 'handoff.json') if directory else None
+                if manifest and manifest.stat().st_size < 100000:
+                    try:
+                        old = json.loads(manifest.read_text())
+                        metadata = {f.get('path'): f for f in old.get('delivery', {}).get('files', []) if isinstance(f, dict)}
+                        inputs = old.get('source_files', [])
+                    except (OSError, ValueError, AttributeError):
+                        pass
+            delivery_inputs[did] = [p for p in (workspace_path(workspace, f) for f in inputs) if p]
+            delivery_folders[did] = workspace_path(workspace, attempt.get('output_dir', ''))
+            result['deliveries'].append({'id': did, 'title': clean_summary(record.get('title') or step['goal']),
+                'agent': step['agent'], 'at': attempt.get('finished_at', ''),
+                'technical_status': record.get('technical_status', 'not_verified'),
+                'issues': [clean_summary(s) for s in record.get('issues', [])[:5]],
+                'current': value.get('product_path') in attempt.get('output_files', []),
+                'purpose': attempt.get('context', {}).get('purpose', 'work')})
             for filename in (available_paths(workspace, attempt) + attempt.get('previews', []))[:40]:
+                meta = metadata.get(filename, {})
                 candidates.append({'path': filename, 'agent': step['agent'], 'activity': step['id'],
+                        'delivery_id': did, 'role': clean_summary(meta.get('role', 'preview' if filename in attempt.get('previews', []) else 'file')),
+                        'open_with': clean_summary(meta.get('open_with', '')),
+                        'limitations': [clean_summary(s) for s in meta.get('limitations', [])[:3]],
+                        'editability': clean_summary(meta.get('editability', '')),
                         'label': clean_summary(Path(filename).name), 'validated': attempt.get('validated',
                         attempt.get('status') == 'completed'), 'at': attempt.get('finished_at', '')})
             if attempt.get('status') == 'completed':
@@ -158,8 +207,30 @@ def read_project(workspace):
         if path and path not in seen:
             seen.add(path)
             result['results'].append({**record, 'path': path})
-        if len(result['results']) >= 60:
+        if len(result['results']) >= 160:
             break
+    used = {d['id'] for d in result['deliveries'] if d['current']}
+    pending = list(used)
+    while pending:
+        did = pending.pop()
+        for parent, directory in delivery_folders.items():
+            if parent not in used and directory and any(p.is_relative_to(directory) for p in delivery_inputs.get(did, [])):
+                used.add(parent)
+                pending.append(parent)
+    for delivery in result['deliveries']:
+        delivery['contribution'] = delivery['id'] in used and not delivery['current']
+    result['deliveries'].sort(key=lambda d: (d['current'], d['contribution'], d['at']), reverse=True)
+    result['deliveries'] = result['deliveries'][:30]
+    result['quality_status'] = 'not_reviewed'
+    for step in value['steps']:
+        for attempt in reversed(step['attempts']):
+            review = attempt.get('quality_review') or {}
+            if public_artifact(workspace, review.get('product_path', '')) == result['product_path'] and review:
+                result['quality_status'] = review['status']
+                break
+    accepted = value.get('user_acceptance') or {}
+    if accepted.get('product_path') == value.get('product_path') and accepted.get('status') == 'passed':
+        result['quality_status'] = 'accepted_by_user'
     attention = value.get('attention')
     result['attention'] = {k: clean_summary(attention.get(k)) for k in ('code', 'message', 'action')} if isinstance(attention, dict) else None
     if not result['attention'] and value.get('schema_version') != 2:
@@ -208,10 +279,10 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
             if not brief.strip():
                 raise ValueError('Specifica il risultato richiesto')
             value = {'id': uuid.uuid4().hex, 'workspace_key': workspace_key(workspace),
-                'brief': clean_summary(brief), 'project_type': project_type or 'custom',
+                'brief': clean_summary(brief, 4000), 'project_type': project_type or 'custom',
                 'created_at': utcnow(), 'steps': [], 'requirements': {}}
         if brief:
-            value['brief'] = clean_summary(brief)
+            value['brief'] = clean_summary(brief, 4000)
         if project_type:
             value['project_type'] = project_type
         if value['project_type'] == 'animated_video' and not value.get('requirements'):
@@ -243,13 +314,55 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                     for s in value['steps'] for a in s['attempts']):
                 raise ValueError('Prima della consegna finale usa studio_delegate con purpose=delivery per controllare il file completo')
             value['product_path'] = product_path
-        if status == 'ready' and not value.get('product_path'):
-            raise ValueError('Indica il prodotto finale verificato, non un elenco di file intermedi')
+        if status == 'ready':
+            target = artifact_path(workspace, value.get('product_path', ''))
+            if not target:
+                raise ValueError('Indica il prodotto finale verificato, non un elenco di file intermedi')
+            target_hash = digest(target)
+            deliveries = [a.get('delivery_record') or {} for s in value['steps'] for a in s['attempts']
+                          if any(artifact_path(workspace, p) == target for p in a.get('output_files', []))]
+            if not any(d.get('technical_status') == 'passed' and media_accepted(d, value) and all(
+                    artifact_path(workspace, f.get('path', '')) and digest(artifact_path(workspace, f['path'])) == f.get('sha256')
+                    for f in d.get('files', [])) and any(
+                    artifact_path(workspace, f.get('path', '')) == target and f.get('sha256') == target_hash
+                    for f in d.get('files', [])) for d in deliveries):
+                raise ValueError('Consegna non collaudata o sorgenti incompleti: usa purpose=delivery e correggi delivery.issues. I file restano disponibili come bozza.')
+            reviews = [a.get('quality_review') or {} for s in value['steps'] for a in s['attempts']]
+            accepted = value.get('user_acceptance') or {}
+            if not (accepted.get('product_path') == value.get('product_path') and accepted.get('sha256') == target_hash) and not any(r.get('status') == 'passed' and r.get('sha256') == target_hash
+                       and artifact_path(workspace, r.get('product_path', '')) == target
+                       and (not value.get('requirements', {}).get('audio') or any(
+                           c.get('method') == 'listening' and c.get('status') == 'passed' for c in r.get('criteria', [])))
+                       for r in reviews):
+                raise ValueError('Manca una revisione separata del prodotto esatto rispetto al brief: usa purpose=review e quality-review.json. Se il modello non può valutare immagini/audio mantieni status=review; non rigenerare né fingere la verifica.')
         if status:
             value['status'] = status
             if status == 'ready':
                 value['attention'] = None
         value.update(schema_version=2, updated_at=utcnow())
+        atomic_json(folder / 'project.json', value)
+    return read_project(workspace)
+
+
+def accept_delivery(workspace, delivery_id):
+    """Explicit owner UI action; never callable by the coordinator as a tool."""
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value or any(s['status'] == 'running' for s in value['steps']):
+            raise ValueError('Attendi la conclusione del lavoro attivo')
+        product = artifact_path(workspace, value.get('product_path', ''))
+        records = [a.get('delivery_record') or {} for s in value['steps'] for a in s['attempts']]
+        delivery = next((r for r in records if r.get('id') == delivery_id), None)
+        if not product or not delivery or delivery.get('technical_status') != 'passed' or not media_accepted(delivery, value) or not any(
+                artifact_path(workspace, f.get('path', '')) == product for f in delivery.get('files', [])):
+            raise ValueError('Consegna selezionata cambiata o tecnicamente incompleta')
+        if not all(artifact_path(workspace, f.get('path', '')) and digest(artifact_path(workspace, f['path'])) == f.get('sha256')
+                   for f in delivery.get('files', [])):
+            raise ValueError('I file sono cambiati dopo il collaudo: verificare la nuova versione')
+        value.update(user_acceptance={'status': 'passed', 'product_path': value['product_path'],
+            'sha256': digest(product), 'delivery_id': delivery_id, 'at': utcnow()},
+            status='ready', attention=None, summary='Versione accettata da te; consegna completa disponibile.',
+            next_action='Scarica il prodotto e il pacchetto sorgenti della consegna selezionata.', updated_at=utcnow())
         atomic_json(folder / 'project.json', value)
     return read_project(workspace)
 
@@ -356,10 +469,12 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         attempt = step['attempts'][-1]
         step['status'] = 'completed' if result.get('ok') else 'paused'
         attempt.update(status=step['status'], finished_at=utcnow(), validated=bool(result.get('ok')),
+            delivery_record=delivery_summary(result.get('delivery_record')), quality_review=result.get('quality_review'),
             product_verified=bool(result.get('product_verified')),
             verified_products=result.get('verified_products', [])[:10],
             output_dir=result.get('output_dir') or attempt.get('output_dir', ''),
             output_files=(handoff.get('output_files') or result.get('available_files') or [])[:40],
+            input_files=handoff.get('source_files', [])[:40],
             previews=handoff.get('previews', [])[:8], error=clean_summary(result.get('error', '')))
         step['note'] = clean_summary('Controlli da valutare: ' + ', '.join(notes)) if notes else ''
         attention = failure_info(attempt['error']) if attempt['error'] else None
@@ -367,6 +482,19 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             summary='Risultati disponibili: posso integrarli e migliorare la versione.' if result.get('ok') else attention['message'],
             next_action='Prepara o aggiorna una versione completa del prodotto usando i risultati disponibili.'
                 if result.get('ok') else attention['action'], updated_at=utcnow())
+        if purpose == 'delivery' and result.get('ok'):
+            exports = result.get('verified_products') or [f['path'] for f in
+                (result.get('delivery_record') or {}).get('files', []) if f.get('role') == 'export']
+            if exports:
+                value['product_path'] = exports[0]
+            issues = (result.get('delivery_record') or {}).get('issues', [])
+            value.update(summary='Versione disponibile; sorgenti da correggere.' if issues else 'Versione completa disponibile per la revisione.',
+                next_action=clean_summary(issues[0]) if issues else 'Valutare il risultato rispetto al brief prima di dichiararlo pronto.')
+        if result.get('quality_review'):
+            review = result['quality_review']
+            value.update(summary='Revisione del risultato completata.' if review['status'] == 'passed' else 'Versione disponibile; qualità ancora da valutare o correggere.',
+                next_action='Confermare la consegna della versione revisionata.' if review['status'] == 'passed'
+                else 'Consulta il rapporto: correggi solo i difetti osservati. Se manca visione/ascolto, valuta la versione disponibile senza rigenerarla.')
         atomic_json(folder / 'project.json', value)
     result.update(activity={'id': sid, 'status': step['status']}, review_notes=notes)
     if attention:

@@ -33,3 +33,7 @@ Mantieni `summary` e `next_action` brevi e aggiornati tramite `studio_plan`. L�
 | Semplice ritocco o taglio audio | Un solo specialista pertinente, senza piano complesso |
 
 Adatta ruoli e controlli al brief; gli esempi non autorizzano sostituzioni silenziose, conteggi di tool decorativi o capacità inesistenti.
+
+## Accettazione della consegna
+
+`purpose=delivery` prepara una versione disponibile; leggi `delivery.issues` e completa i sorgenti prima di dichiararla pronta. `purpose=review` valuta separatamente il file esatto con `quality-review.json` e criteri specifici al brief; il runtime conserva il suo hash. Le verifiche automatiche non sono una recensione artistica. Per audiovisivi la revisione deve includere la modalità realmente necessaria (visione/ascolto), oppure restare da valutare. Il trasporto DeepSeek corrente è solo testuale. Non rigenerare un prodotto perché manca una capacità sensoriale e non cambiare servizio automaticamente.

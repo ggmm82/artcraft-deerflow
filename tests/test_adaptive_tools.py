@@ -40,9 +40,10 @@ class AdaptiveToolTests(unittest.TestCase):
                 self.assertNotIn('private verbose', compact)
                 self.assertTrue(json.loads(compact)['ok'])
                 self.assertEqual(worker.call_args.kwargs['requirements'], {'video': True, 'audio': True})
-                final = json.loads(studio_plan.func(runtime=runtime, status='ready',
-                    product_path='/mnt/user-data/outputs/filmcraft/fixture/final.mp4', summary='Video pronto'))
-                self.assertEqual(final['project']['status'], 'ready')
+                self.assertEqual(worker.call_args.kwargs['purpose'], 'delivery')
+                with self.assertRaisesRegex(ValueError, 'sorgenti incompleti'):
+                    studio_plan.func(runtime=runtime, status='ready',
+                        product_path='/mnt/user-data/outputs/filmcraft/fixture/final.mp4', summary='Video pronto')
 
     def test_one_user_turn_cannot_loop_on_quota_but_an_explicit_continue_can_retry(self):
         with tempfile.TemporaryDirectory() as directory:

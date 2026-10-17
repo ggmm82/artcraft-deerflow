@@ -79,3 +79,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 ## Prova completa e revisioni mirate
 
 Per una prima bozza produci presto un loop completo breve con ritmo, basso e accenti, usando una sessione modificabile. Raggruppa la costruzione di tracce e note in batch; non comporre centinaia di note una chiamata per volta prima di verificare il primo bounce. Un master già esportato e riapribile resta utilizzabile per un’integrazione anche se la chiusura LLM fallisce. Se serve solo una piccola correzione di loudness/true peak, limita il lavoro a quella.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.

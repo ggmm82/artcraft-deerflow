@@ -69,6 +69,11 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
             product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None)
     else:
         value = read_project(workspace)
+    if value and not value.get('archived'):
+        # The user board contains all versions. Repeating its entire inventory
+        # used to overflow tool context and hide the actual product/brief.
+        value = {**value, 'results': value.get('results', [])[:8],
+                 'deliveries': value.get('deliveries', [])[:5]}
     return json.dumps({'project': value}, ensure_ascii=False)
 
 
@@ -102,7 +107,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     result = json.loads(execute_step(workspace, agent, task, step_id,
         lambda instructions, started=None: delegate(agent, instructions, workspace,
             tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
-            requirements=requirements), provider={'engine': profile['engine'], 'model': profile['model']},
+            requirements=requirements, purpose=purpose), provider={'engine': profile['engine'], 'model': profile['model']},
         purpose=purpose, request_id=request_id))
     handoff = result.get('handoff') or {}
     from .progress import clean_summary
@@ -122,4 +127,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
         review_notes=result.get('review_notes', [])[:8])
     if result.get('output_dir') and handoff:
         compact['handoff_path'] = result['output_dir'] + '/handoff.json'
+    record = result.get('delivery_record') or {}
+    compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status')}
+    compact['quality_review'] = result.get('quality_review')
     return json.dumps(compact, ensure_ascii=False)

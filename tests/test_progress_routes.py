@@ -36,7 +36,7 @@ class ProgressRouteTests(unittest.TestCase):
             async def fixture_auth(request, call_next):
                 identity = request.headers.get('X-Test-User')
                 user = SimpleNamespace(id=identity, system_role='user') if identity else None
-                permissions = ['threads:read'] if identity != 'no-permission' else []
+                permissions = ['threads:read', 'threads:write'] if identity != 'no-permission' else []
                 request.state.auth = AuthContext(user, permissions)
                 token = set_current_user(user)
                 try:
@@ -62,3 +62,9 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'no-permission'}).status_code, 403)
                 self.assertEqual(client.get('/api/threads/missing/studio-jobs', headers={'X-Test-User': 'owner'}).status_code, 404)
+                accept_url = '/api/threads/conversation/studio-delivery/accept'
+                data = {'delivery_id': 'nonexistent'}
+                self.assertEqual(client.post(accept_url, json=data).status_code, 401)
+                self.assertEqual(client.post(accept_url, json=data, headers={'X-Test-User': 'other'}).status_code, 404)
+                self.assertEqual(client.post(accept_url, json=data, headers={'X-Test-User': 'no-permission'}).status_code, 403)
+                self.assertEqual(client.post(accept_url, json=data, headers={'X-Test-User': 'owner'}).status_code, 409)

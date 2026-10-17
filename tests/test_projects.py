@@ -192,8 +192,25 @@ class ProjectTests(unittest.TestCase):
             projects.create_plan(self.root, '', [], status='ready', product_path=product)
         r.update(product_verified=True, verified_products=[product])
         self.run_step('final', r, purpose='delivery')
+        with self.assertRaisesRegex(ValueError, 'sorgenti incompleti'):
+            projects.create_plan(self.root, '', [], status='ready', product_path=product)
+        r['delivery_record'] = {'id': 'final-delivery', 'technical_status': 'passed',
+            'requirements': {'video': True, 'audio': True}, 'verified_products': [product],
+            'files': [{'path': product, 'sha256': projects.digest(product), 'role': 'export'}]}
+        self.run_step('final', r, purpose='delivery')
+        with self.assertRaisesRegex(ValueError, 'revisione separata'):
+            projects.create_plan(self.root, '', [], status='ready', product_path=product)
+        review = self.result('filmcraft', extension='json')
+        review['quality_review'] = {'status': 'passed', 'product_path': product, 'sha256': projects.digest(product),
+                                   'criteria': [{'method': 'visual', 'status': 'passed'}, {'method': 'listening', 'status': 'passed'}]}
+        self.run_step('independent-review', review, agent='filmcraft', purpose='review')
         p = projects.create_plan(self.root, '', [], status='ready', product_path=product)
         self.assertEqual(p['status'], 'ready')
+        self.assertEqual(p['deliveries'][0]['id'], 'final-delivery')
+        self.assertTrue(p['deliveries'][0]['current'])
+        Path(product).write_text('changed after review')
+        with self.assertRaisesRegex(ValueError, 'sorgenti incompleti'):
+            projects.create_plan(self.root, '', [], status='ready', product_path=product)
         with self.assertRaises(ValueError):
             projects.create_plan(self.root, '', [], status='ready', product_path='/etc/passwd')
 
@@ -216,6 +233,37 @@ class ProjectTests(unittest.TestCase):
         v = json.loads(p.read_text()); v['id'] = '../../outside'; p.write_text(json.dumps(v))
         with self.assertRaises(ValueError):
             projects.archive_plan(self.root, 'Archive')
+
+    def test_explicit_owner_acceptance_is_bound_to_complete_delivery_and_current_bytes(self):
+        self.plan()
+        response = self.result('filmcraft')
+        product = response['handoff']['output_files'][0]
+        response.update(product_verified=True, verified_products=[product], delivery_record={
+            'id': 'version-two', 'technical_status': 'passed', 'requirements': {'audio': True, 'video': True},
+            'verified_products': [product], 'files': [{'path': product, 'sha256': projects.digest(product), 'role': 'export'}]})
+        self.run_step('final', response, purpose='delivery')
+        with self.assertRaisesRegex(ValueError, 'cambiata'):
+            projects.accept_delivery(self.root, 'old-version')
+        accepted = projects.accept_delivery(self.root, 'version-two')
+        self.assertEqual(accepted['quality_status'], 'accepted_by_user')
+        self.assertEqual(accepted['status'], 'ready')
+        Path(product).write_text('changed')
+        with self.assertRaisesRegex(ValueError, 'cambiati'):
+            projects.accept_delivery(self.root, 'version-two')
+
+    def test_final_delivery_tracks_transitive_contributions_and_excludes_unused_work(self):
+        self.plan()
+        visual, motion, unused, final = [self.result(agent) for agent in ('photocraft', 'effectcraft', 'soundcraft', 'filmcraft')]
+        motion['handoff']['source_files'] = visual['handoff']['output_files']
+        final['handoff']['source_files'] = motion['handoff']['output_files']
+        final['verified_products'] = final['handoff']['output_files']
+        for sid, reply in [('visual', visual), ('motion', motion), ('audio', unused), ('final', final)]:
+            self.run_step(sid, reply, purpose='delivery' if sid == 'final' else 'work')
+        deliveries = {d['agent']: d for d in projects.read_project(self.root)['deliveries']}
+        self.assertTrue(deliveries['filmcraft']['current'])
+        self.assertTrue(deliveries['effectcraft']['contribution'])
+        self.assertTrue(deliveries['photocraft']['contribution'])
+        self.assertFalse(deliveries['soundcraft']['contribution'])
 
     def test_simple_delegation_auto_tracks_activity_without_planning_ceremony(self):
         result = self.result('cadcraft', extension='dxf')

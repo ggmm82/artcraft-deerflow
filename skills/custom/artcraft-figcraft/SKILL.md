@@ -75,3 +75,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Progetta UI e prototipi con componenti, varianti e stili, usando gli asset di PhotoCraft/VectorCraft e i contenuti/dati dei colleghi. Verifica frame, collegamenti e risorse del progetto modificabile; non confondere un PNG con un prototipo funzionante.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.

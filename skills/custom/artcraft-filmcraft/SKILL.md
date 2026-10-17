@@ -79,3 +79,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 ## Prova completa e revisioni mirate
 
 Puoi integrare file recuperati da colleghi con processo interrotto, dopo averli verificati. Non aspettare perfezione o tutti i manifesti per produrre una bozza completa. Verifica nel video esportato traccia audio, durata e segnale non silenzioso; se serve musica un MP4 muto non è il prodotto definitivo. Preserva il mix pronto durante le revisioni visive; correggi soltanto sincronizzazione e punti effettivamente cambiati.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.

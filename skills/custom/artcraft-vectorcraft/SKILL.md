@@ -77,3 +77,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 Prepara loghi, icone e illustrazioni SVG con gruppi e tracciati modificabili; passa asset con dimensioni/viewBox e font esplicitati a PhotoCraft, DesignCraft, DeckCraft, FigCraft o EffectCraft.
 
 Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una dipendenza non si importa o manca, segnala il blocco e conserva quanto già salvato; non sostituirla con un segnaposto.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
