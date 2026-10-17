@@ -37,7 +37,18 @@ def main():
         'events': [{'at': iso(now - timedelta(minutes=18)), 'phase': 'planning', 'summary': 'Esporto il risultato con Effectcraft'}]}
     project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'status': 'working',
         'summary': 'Preparo una prima versione completa', 'next_action': 'Integro immagine, movimento e audio',
-        'results': [{'path': video_path, 'label': 'preview.mp4', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}],
+        'product_path': video_path, 'quality_status': 'not_reviewed',
+        'deliveries': [{'id': 'final', 'title': 'Robot con musica — versione 2', 'agent': 'filmcraft', 'at': iso(now),
+                       'current': True, 'technical_status': 'needs_revision', 'issues': ['Texture collegata mancante'], 'purpose': 'delivery'},
+                      {'id': 'old', 'title': 'Prima prova muta', 'agent': 'effectcraft', 'at': iso(now-timedelta(hours=1)),
+                       'current': False, 'technical_status': 'not_verified', 'issues': [], 'purpose': 'preview'}],
+        'results': [{'path': video_path, 'label': 'preview.mp4', 'agent': 'filmcraft', 'validated': True, 'at': iso(now),
+                     'delivery_id': 'final', 'role': 'export'},
+                    {'path': '/mnt/user-data/outputs/filmcraft/Sorgenti.zip', 'label': 'Sorgenti.zip', 'agent': 'filmcraft', 'validated': True, 'at': iso(now),
+                     'delivery_id': 'final', 'role': 'source_archive', 'open_with': 'Estrarre tutto, preparare i percorsi e aprire montaggio.locale.fcproj',
+                     'editability': 'Timeline e clip separate'},
+                    {'path': '/mnt/user-data/outputs/effectcraft/bozza.mp4', 'label': 'bozza.mp4', 'agent': 'effectcraft', 'validated': True, 'at': iso(now-timedelta(hours=1)),
+                     'delivery_id': 'old', 'role': 'export'}],
         'steps': [{'id': 'visual', 'agent': 'photocraft', 'goal': 'Preparo immagini e texture', 'status': 'completed'},
                   {'id': 'motion', 'agent': 'effectcraft', 'goal': 'Animo il robot', 'status': 'running'},
                   {'id': 'audio', 'agent': 'soundcraft', 'goal': 'Verifico il mix recuperato', 'status': 'paused'},
@@ -75,6 +86,15 @@ window.showThread();
         class Handler(SimpleHTTPRequestHandler):
             def log_message(self, *args):
                 pass
+
+            def do_POST(self):
+                data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                valid = self.path == '/api/threads/fixture/studio-delivery/accept' and data.get('delivery_id') == 'final'
+                if valid:
+                    state['project'] = {**state['project'], 'status': 'ready', 'quality_status': 'accepted_by_user'}
+                self.send_response(200 if valid else 409)
+                self.send_header('Content-Type', 'application/json'); self.end_headers()
+                self.wfile.write(json.dumps({'project': state['project']}).encode())
 
             def do_GET(self):
                 if self.path.endswith('/studio-jobs'):
@@ -124,6 +144,16 @@ window.showThread();
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 for name in ('Photocraft', 'Effectcraft', 'Soundcraft', 'Filmcraft'):
                     expect(page.get_by_test_id('team-plan').get_by_text(name, exact=True)).to_be_visible()
+                page.get_by_role('button', name='File e sorgenti', exact=False).click()
+                groups = page.get_by_test_id('delivery-group')
+                expect(groups).to_have_count(2)
+                expect(groups.first).to_contain_text('Consegna incompleta')
+                expect(groups.first.get_by_role('link', name='Sorgenti.zip')).to_be_visible()
+                expect(groups.first).to_contain_text('montaggio.locale.fcproj')
+                expect(groups.first.get_by_role('link', name='bozza.mp4')).to_have_count(0)
+                expect(groups.nth(1).get_by_role('link', name='bozza.mp4')).not_to_be_visible()
+                groups.nth(1).locator('summary').first.click()
+                expect(groups.nth(1).get_by_role('link', name='bozza.mp4')).to_be_visible()
                 page.get_by_role('button', name='Attività', exact=True).click()
                 card = page.get_by_test_id('delegate-job')
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
@@ -151,7 +181,8 @@ window.showThread();
                 expect(page.get_by_text('Aggiornamenti non disponibili:', exact=False)).to_be_visible(timeout=7000)
                 expect(page.get_by_role('button', name='Vedi risultato', exact=True)).to_be_enabled()
                 state['unavailable'] = False
-                state['project'] = {**project, 'status': 'ready', 'product_path': video_path}
+                state['project'] = {**project, 'status': 'ready', 'product_path': video_path, 'quality_status': 'passed',
+                    'deliveries': [{**d, 'technical_status': 'passed', 'issues': []} for d in project['deliveries']]}
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto', timeout=7000)
                 expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
@@ -161,6 +192,13 @@ window.showThread();
                 expect(dock).to_have_count(0)
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto')
+                state['project'] = {**state['project'], 'status': 'review', 'quality_status': 'needs_review'}
+                expect(page.get_by_test_id('studio-status')).to_have_text('Una versione è disponibile', timeout=7000)
+                expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
+                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name='Ho verificato: accetta questa versione').click()
+                expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto')
+                expect(page.get_by_text('Questa versione è stata accettata da te.')).to_be_visible()
                 assert not errors, errors
                 browser.close()
             print('Browser OK: real Tailwind dock visible beside composer on desktop/mobile during chat scrolling; playable preview; adaptive team; 18-minute clock; quota pause; continue action; network recovery; reload and conversation isolation.')

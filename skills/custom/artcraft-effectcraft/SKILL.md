@@ -78,3 +78,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 ## Prova completa e revisioni mirate
 
 Prima di un render lungo crea una breve sequenza con gli asset reali e pose campione: controlla soggetto grande e leggibile, proporzioni in rotazione, giunture, ritmo e continuità. Correggi su quella prova, poi estendi il render. Una revisione non richiede di riscrivere da zero un rig già valido.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.

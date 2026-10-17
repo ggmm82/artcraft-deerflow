@@ -28,6 +28,7 @@ def main():
         skill=ROOT/'skills/custom'/('artcraft-'+a['id'])/'SKILL.md'
         assert skill.is_file()
         assert (skill.parent/'references/CLI-RECIPE.md').is_file()
+        assert (skill.parent/'references/QUALITY.md').is_file(), f'Criteri professionali mancanti: {skill}'
         assert '## Consegna: sorgenti modificabili e compatibilità' in skill.read_text(), f'Contratto sorgenti mancante: {skill}'
         assert 'delivery' in (skill.parent/'references/CLI-RECIPE.md').read_text()
         front=yaml.safe_load(skill.read_text().split('---',2)[1])

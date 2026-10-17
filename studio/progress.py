@@ -43,8 +43,8 @@ def workspace_key(workspace):
     return hashlib.sha256(os.fsencode(Path(workspace).resolve())).hexdigest()
 
 
-def clean_summary(value):
-    return SECRET.sub('[omesso]', str(value or '')).replace('\x00', '')[:280]
+def clean_summary(value, limit=280):
+    return SECRET.sub('[omesso]', str(value or '')).replace('\x00', '')[:limit]
 
 
 def job_path(workspace, job_id):

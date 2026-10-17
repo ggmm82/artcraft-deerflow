@@ -81,3 +81,36 @@ Salva il sorgente presto e aggiorna `work/checkpoint.json` con azioni concluse, 
 Produci presto una prova piccola e completa quando richiesta. Raggruppa note, keyframe e operazioni ripetitive in script o batch: non consumare un turno LLM per ogni proprietà. Riusa schemi e discovery già salvati; consulta la CLI solo per il comando che serve. Distingui verifiche essenziali da limiti facoltativi; non dichiarare visione/ascolto o una GUI provata se non disponibili. I programmi di supporto non dimostrano l’uso della CLI né la qualità artistica.
 
 Per il prodotto completo preserva sorgenti intermedi e dipendenze utili, oltre agli export. La delega finale può includere requisiti media: il runtime controlla nel worker la presenza effettiva dei flussi audio/video e l’audio non silenzioso. Non consegnare un render muto come video musicale definitivo.
+
+## Pacchetti portabili e controlli indipendenti
+
+Il runtime ora costruisce `delivery-manifest.json`: identità della consegna, hash dei file, istruzioni e limiti. Non scriverlo tu. Distingue consegna completa, bozza e sorgenti da correggere; `ok` indica che l’incarico è terminato, non che il prodotto abbia qualità approvata.
+
+Per FilmCraft, EffectCraft e SoundCraft usa il raccoglitore verificato, senza inventare script di confezionamento:
+
+```bash
+/usr/bin/python3 /opt/studio/source_packages.py pack "$ARTCRAFT_OUTPUT_DIR/progetto.fcproj" "$ARTCRAFT_OUTPUT_DIR/Sorgenti.zip"
+/usr/bin/python3 /opt/studio/source_packages.py verify "$ARTCRAFT_OUTPUT_DIR/Sorgenti.zip" --native
+```
+
+Adatta l’estensione al progetto reale. Il comando raccoglie riferimenti esatti, riscrive solo i collegamenti, estrae altrove e riapre con la CLI. Se manca una dipendenza, correggi il progetto originale con il percorso reale e ripeti il solo confezionamento. Non cercare file omonimi a caso. Per FilmCraft il pacchetto include `PREPARA_SORGENTI.py`: dopo estrazione l’utente lo esegue con Python 3 e apre il `.locale.fcproj` generato, oppure usa File > Link Media. Spiega questo passaggio in `open_with`; i percorsi relativi della 0.7.2 da soli non garantiscono apertura da altre cartelle. Non promettere GUI o app web non provate.
+
+Per una consegna con più discipline includi i pacchetti completi dei colleghi o le loro cartelle già collaudate. Non copiare un `.ecproj` isolato dimenticando texture o sequenze di frame. Ogni ZIP annidato viene controllato; un sorgente rotto non è giustificato dalla presenza di un altro ZIP valido. Per altri formati restano obbligatorie le verifiche native specifiche della skill: il controllo generico dell’archivio non le sostituisce.
+
+## Revisione della qualità senza riscrivere il prodotto
+
+Quando `Scopo incarico: review` riguarda il prodotto conclusivo, valuta il file esistente rispetto al brief e ai criteri `references/QUALITY.md`. Usa immagini reali in un tool visivo, campioni delle transizioni e ascolto effettivo quando disponibili. Il collegamento DeepSeek corrente è testuale: non può attestare visione o ascolto. Non modificare il prodotto durante questa verifica; indica difetti e correzioni mirate. Non promuovere una bozza solo perché è decodificabile.
+
+Consegna nella tua cartella `quality-review.json`, ruolo `report`, elencato in `output_files`; il prodotto esaminato deve essere in `source_files`. Esempio di struttura (non di valutazione da copiare):
+
+```json
+{
+  "product_path": "/mnt/user-data/outputs/filmcraft/JOB/video.mp4",
+  "criteria": [
+    {"criterion": "Silhouette e articolazioni leggibili nel brief", "method": "visual", "status": "not_run", "evidence": "Sostituire con osservazioni sui frame reali e tool usato, oppure motivo della mancata visione"},
+    {"criterion": "Coreografia e ritmo coerenti con la musica", "method": "listening", "status": "not_run", "evidence": "Sostituire con ascolto e confronto reali, oppure limite della modalità disponibile"}
+  ]
+}
+```
+
+Metodi: `visual`, `listening`, `technical`, `content`. Criteri pertinenti e specifici al prodotto, non una lista generica di complimenti. Stati: `passed`, `failed`, `not_run`. Il runtime lega la valutazione all’hash del prodotto: una modifica richiede revisione della nuova versione. Un prodotto visivo richiede almeno un criterio visivo, un prodotto audio almeno un criterio d’ascolto. Se non puoi valutare, consegna il rapporto e mantieni lo stato da valutare; non avviare rigenerazioni inutili. Non usare sole misure tecniche per approvare contenuto creativo.

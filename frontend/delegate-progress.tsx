@@ -6,11 +6,13 @@ import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
-type Project = { summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; technical_status: string; issues: string[]; purpose: string };
+type Project = { deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; note?: string; error?: string; attempt_count?: number }[] };
-type Result = { path: string; agent: string; label: string; validated: boolean; at: string };
+type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
+const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
 const stepLabels: Record<string, string> = { pending: "Da fare", running: "In corso",
-  completed: "Verificata", needs_revision: "Da rivedere", review: "Da valutare", paused: "In pausa", skipped: "Non necessaria" };
+  completed: "Incarico concluso", needs_revision: "Da rivedere", review: "Da valutare", paused: "In pausa", skipped: "Non necessaria" };
 
 function JobCard({ job, now }: { job: JobProgress; now: number }) {
   const terminal = terminalJob(job);
@@ -67,6 +69,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const [panel, setPanel] = useState<{ threadId: string; tab: string } | null>(null);
   const [resumeRequested, setResumeRequested] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
+  const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const resumeOwner = useRef(threadId);
   const resumeSequence = useRef(0);
   resumeOwner.current = threadId;
@@ -77,11 +81,17 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const current = jobs.find((job) => !terminalJob(job));
   const working = !!current;
   const results = (project?.results ?? []).filter((r) => artifactURL(threadId, r.path));
+  const deliveries = project?.deliveries ?? [];
+  const selectedDelivery = deliveries.find((d) => d.current);
+  const currentResults = selectedDelivery ? results.filter((r) => r.delivery_id === selectedDelivery.id) : results;
   const media = [...results].sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
   const preview = media.find((r) => r.path === project?.product_path) ?? media.find((r) => kind(r.path) === "video") ?? media[0];
-  const audio = media.find((r) => kind(r.path) === "audio");
+  const audio = currentResults.find((r) => kind(r.path) === "audio");
   const attention = !working && !active ? project?.attention : null;
-  const ready = project?.status === "ready" && !!project.product_path && !coordinatorError && !working;
+  const ready = project?.status === "ready" && !!project.product_path && selectedDelivery?.technical_status === "passed"
+    && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
+  const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
+    && project.quality_status !== "passed" && !attention && !coordinatorError;
   const title = working ? `${person(current.agent)} sta lavorando` : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
@@ -89,7 +99,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const summary = working ? (specificAction ? current.summary : current.work_summary || current.summary) : attention?.message
     ?? (coordinatorError ? "Il coordinatore si è fermato. I file già salvati restano disponibili." : project?.summary || project?.brief);
   const toggle = (value: string) => setPanel(tab === value ? null : { threadId, tab: value });
-  useEffect(() => { setPanel(null); setResumeRequested(null); setResumeError(null); }, [threadId]);
+  useEffect(() => { setPanel(null); setResumeRequested(null); setResumeError(null); setAcceptError(null); setAccepting(false); }, [threadId]);
   useEffect(() => { if (active) { setResumeRequested(null); setResumeError(null); } }, [active]);
   useEffect(() => {
     if (resumeRequested !== threadId || active || working) return;
@@ -106,6 +116,21 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         setResumeRequested(null); setResumeError("Non riesco a inviare la richiesta di ripresa. I risultati restano disponibili: riprova.");
       }
     }
+  }
+  async function acceptVersion() {
+    if (!selectedDelivery || accepting) return;
+    const owner = threadId;
+    setAccepting(true); setAcceptError(null);
+    try {
+      const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-delivery/accept`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ delivery_id: selectedDelivery.id }),
+      });
+      if (!response.ok) throw new Error("Version unavailable");
+      const data = await response.json() as { project: Project };
+      if (resumeOwner.current === owner) setSnapshot((current) => current?.threadId === owner ? { ...current, project: data.project } : current);
+    } catch {
+      if (resumeOwner.current === owner) setAcceptError("Non posso accettare questa versione: potrebbe essere cambiata o avere sorgenti incompleti. Aggiorna e controlla la consegna.");
+    } finally { if (resumeOwner.current === owner) setAccepting(false); }
   }
   useEffect(() => {
     const controller = new AbortController();
@@ -150,6 +175,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       </div>
       {tab === "preview" && <div className="space-y-3">
         <p className="text-sm">{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</p>
+        {selectedDelivery && <p className="text-sm">{selectedDelivery.title}</p>}
+        {project?.quality_status && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: le misure tecniche non sostituiscono visione e ascolto."}</p>}
         {preview && <div>
           {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
           {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
@@ -161,6 +188,11 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <audio controls preload="metadata" aria-label="Traccia audio disponibile" src={artifactURL(threadId, audio.path)} />
         </div>}
         {!preview && <p className="text-sm">Nessuna anteprima disponibile. Puoi controllare attività e file salvati.</p>}
+        {!ready && !working && !active && selectedDelivery?.technical_status === "passed" && <div className="space-y-2 border-t pt-3">
+          <p className="text-sm">Se hai verificato il risultato e ti soddisfa, puoi accettare questa versione. I controlli dei sorgenti restano obbligatori.</p>
+          <button type="button" className="rounded border px-3 py-2 text-sm disabled:opacity-50" disabled={accepting} onClick={() => void acceptVersion()}>{accepting ? "Registro la scelta…" : "Ho verificato: accetta questa versione"}</button>
+        </div>}
+        {acceptError && <p className="text-sm" role="alert">{acceptError}</p>}
       </div>}
       {tab === "team" && <div data-testid="team-plan" className="space-y-3">
         <p className="text-sm">La squadra si adatta al risultato: può riprendere, cambiare ordine e integrare i file già disponibili.</p>
@@ -169,11 +201,18 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <p>{step.goal}</p>{step.note && <p className="text-muted-foreground">{step.note}</p>}
         </article>)}
       </div>}
-      {tab === "files" && <ul className="space-y-2 text-sm">
-        {results.map((r) => <li key={r.path}><a className="break-all underline" href={artifactURL(threadId, r.path, true)}>{r.label}</a>
-          <span className="text-muted-foreground"> · {person(r.agent)} · {r.validated ? "File consegnato" : "Da verificare"}</span></li>)}
-        {!results.length && <li>I file appariranno qui quando saranno disponibili.</li>}
-      </ul>}
+      {tab === "files" && <div className="space-y-3 text-sm" data-testid="delivery-list">
+        <p>Ogni pacchetto appartiene alla consegna indicata. Estrai tutto lo ZIP e segui le istruzioni di apertura; conserva le risorse accanto al progetto.</p>
+        {deliveries.map((d) => <details key={d.id} open={d.current} className="rounded border p-3" data-testid="delivery-group">
+          <summary className="cursor-pointer"><strong>{d.current ? "Consegna selezionata" : d.purpose === "preview" ? "Prova" : "Lavorazione precedente"}</strong> · {person(d.agent)} · {d.at ? new Date(d.at).toLocaleString("it-IT") : ""}<p>{d.title}</p></summary>
+          <p className="mt-2">{d.technical_status === "passed" ? "Controlli tecnici superati" : d.technical_status === "needs_revision" ? "Consegna incompleta: da correggere" : "Consegna precedente: nuovo collaudo non eseguito"}</p>
+          {d.issues.map((issue, i) => <p className="mt-1" key={i}>{issue}</p>)}
+          <ul className="mt-3 space-y-3">{results.filter((r) => r.delivery_id === d.id && r.role !== "preview" && r.role !== "dependency").map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>
+          <details className="mt-3"><summary className="cursor-pointer">Anteprime e risorse di questa consegna</summary><ul className="space-y-3">{results.filter((r) => r.delivery_id === d.id && (r.role === "preview" || r.role === "dependency")).map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul></details>
+        </details>)}
+        {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
+        {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
+      </div>}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
     </div>}
     <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">
@@ -183,6 +222,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {summary && <p className="line-clamp-2 text-sm" data-testid="studio-summary">{summary}</p>}
       {health && <p className="text-xs" data-testid="studio-health">{health}</p>}
       {!working && project?.next_action && !attention && <p className="text-muted-foreground line-clamp-2 text-xs">Prossimo passo: {project.next_action}</p>}
+      {waitingForReview && !active && <p className="text-xs">Guarda il risultato e indica nella chat cosa vuoi correggere. Una verifica non disponibile non richiede di rigenerare tutto.</p>}
       {(attention || coordinatorError) && !active && !working && <p className="text-xs">{attention?.action ?? "Verifica il servizio AI e riprendi il lavoro dai risultati disponibili."}
         {(!attention || attention.code.startsWith("provider_")) && <> <a className="underline" href="/workspace/studio">Apri La tua squadra</a></>}</p>}
       {unavailable && <p className="text-xs" role="alert">Aggiornamenti non disponibili: questo stato potrebbe non essere attuale. Riprovo automaticamente.</p>}
@@ -193,7 +233,15 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
-      {!active && !working && !ready && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : "Riprendi lavoro"}</button>}
+      {!active && !working && !ready && !waitingForReview && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : "Riprendi lavoro"}</button>}
     </nav>
   </section>;
+}
+
+function DeliveryFile({ file, threadId }: { file: Result; threadId: string }) {
+  return <li><span className="font-medium">{roles[file.role ?? "file"] ?? "File"}: </span><a className="break-all underline" href={artifactURL(threadId, file.path, true)}>{file.label}</a>
+    {file.open_with && <p className="mt-1">Come aprire: {file.open_with}</p>}
+    {file.editability && <p className="text-muted-foreground">Modificabile: {file.editability}</p>}
+    {file.limitations?.map((limit, i) => <p className="text-muted-foreground" key={i}>{limit}</p>)}
+  </li>;
 }

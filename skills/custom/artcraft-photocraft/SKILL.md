@@ -78,3 +78,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 ## Prova completa e revisioni mirate
 
 Prima di produrre tutti gli asset, prepara una prova riconoscibile del soggetto e della palette. Conserva separazione delle parti utili; verifica che il risultato sia leggibile nel prodotto, non soltanto che i PNG esistano.
+
+## Qualità del prodotto
+
+Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
