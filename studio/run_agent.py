@@ -247,7 +247,7 @@ def main():
             if not checked:
                 raise ValueError('Il prodotto finale non soddisfa i requisiti audio/video reali: '
                                  'non consegnare come definitivo un render muto o un file audio silenzioso')
-        delivery_record = build_delivery(handoff, output_dir, purpose=job.get('purpose', 'work'))
+        delivery_record = build_delivery(handoff, output_dir, purpose=job.get('purpose', 'work'), agent=job['agent'])
         delivery_record.update(requirements=job.get('requirements') or {}, verified_products=verified_products)
         (output_dir / 'delivery-manifest.json').write_text(json.dumps(delivery_record, ensure_ascii=False, indent=2))
         quality_review = read_review(handoff, output_dir, Path('/mnt/user-data'), engine) if job.get('purpose') == 'review' else None

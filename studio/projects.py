@@ -156,6 +156,7 @@ def read_project(workspace):
                               if k in ('audio', 'video') and type(v) is bool}
     result['product_path'] = public_artifact(workspace, value.get('product_path', '')) or ''
     result['steps'], result['results'], result['deliveries'], candidates = [], [], [], []
+    delivery_inputs, delivery_folders = {}, {}
     for step in value['steps']:
         attempts = step['attempts']
         last = attempts[-1] if attempts else {}
@@ -167,6 +168,7 @@ def read_project(workspace):
             record = attempt.get('delivery_record') or {}
             did = record.get('id') or Path(attempt.get('output_dir', '')).name or step['id']
             metadata = {f.get('path'): f for f in record.get('files', [])}
+            inputs = attempt.get('input_files', [])
             if not metadata and workspace:
                 # Older deliveries remain grouped, with no retroactive claim of
                 # verification. Read metadata only from the scoped job folder.
@@ -176,8 +178,11 @@ def read_project(workspace):
                     try:
                         old = json.loads(manifest.read_text())
                         metadata = {f.get('path'): f for f in old.get('delivery', {}).get('files', []) if isinstance(f, dict)}
+                        inputs = old.get('source_files', [])
                     except (OSError, ValueError, AttributeError):
                         pass
+            delivery_inputs[did] = [p for p in (workspace_path(workspace, f) for f in inputs) if p]
+            delivery_folders[did] = workspace_path(workspace, attempt.get('output_dir', ''))
             result['deliveries'].append({'id': did, 'title': clean_summary(record.get('title') or step['goal']),
                 'agent': step['agent'], 'at': attempt.get('finished_at', ''),
                 'technical_status': record.get('technical_status', 'not_verified'),
@@ -204,7 +209,17 @@ def read_project(workspace):
             result['results'].append({**record, 'path': path})
         if len(result['results']) >= 160:
             break
-    result['deliveries'].sort(key=lambda d: (d['current'], d['at']), reverse=True)
+    used = {d['id'] for d in result['deliveries'] if d['current']}
+    pending = list(used)
+    while pending:
+        did = pending.pop()
+        for parent, directory in delivery_folders.items():
+            if parent not in used and directory and any(p.is_relative_to(directory) for p in delivery_inputs.get(did, [])):
+                used.add(parent)
+                pending.append(parent)
+    for delivery in result['deliveries']:
+        delivery['contribution'] = delivery['id'] in used and not delivery['current']
+    result['deliveries'].sort(key=lambda d: (d['current'], d['contribution'], d['at']), reverse=True)
     result['deliveries'] = result['deliveries'][:30]
     result['quality_status'] = 'not_reviewed'
     for step in value['steps']:
@@ -459,6 +474,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             verified_products=result.get('verified_products', [])[:10],
             output_dir=result.get('output_dir') or attempt.get('output_dir', ''),
             output_files=(handoff.get('output_files') or result.get('available_files') or [])[:40],
+            input_files=handoff.get('source_files', [])[:40],
             previews=handoff.get('previews', [])[:8], error=clean_summary(result.get('error', '')))
         step['note'] = clean_summary('Controlli da valutare: ' + ', '.join(notes)) if notes else ''
         attention = failure_info(attempt['error']) if attempt['error'] else None

@@ -6,7 +6,7 @@ import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
-type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; technical_status: string; issues: string[]; purpose: string };
+type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type Project = { deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
@@ -204,7 +204,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {tab === "files" && <div className="space-y-3 text-sm" data-testid="delivery-list">
         <p>Ogni pacchetto appartiene alla consegna indicata. Estrai tutto lo ZIP e segui le istruzioni di apertura; conserva le risorse accanto al progetto.</p>
         {deliveries.map((d) => <details key={d.id} open={d.current} className="rounded border p-3" data-testid="delivery-group">
-          <summary className="cursor-pointer"><strong>{d.current ? "Consegna selezionata" : d.purpose === "preview" ? "Prova" : "Lavorazione precedente"}</strong> · {person(d.agent)} · {d.at ? new Date(d.at).toLocaleString("it-IT") : ""}<p>{d.title}</p></summary>
+          <summary className="cursor-pointer"><strong>{d.current ? "Consegna selezionata" : d.contribution ? "Contributo usato nella consegna" : d.purpose === "preview" ? "Prova" : "Lavorazione precedente"}</strong> · {person(d.agent)} · {d.at ? new Date(d.at).toLocaleString("it-IT") : ""}<p>{d.title}</p></summary>
           <p className="mt-2">{d.technical_status === "passed" ? "Controlli tecnici superati" : d.technical_status === "needs_revision" ? "Consegna incompleta: da correggere" : "Consegna precedente: nuovo collaudo non eseguito"}</p>
           {d.issues.map((issue, i) => <p className="mt-1" key={i}>{issue}</p>)}
           <ul className="mt-3 space-y-3">{results.filter((r) => r.delivery_id === d.id && r.role !== "preview" && r.role !== "dependency").map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>

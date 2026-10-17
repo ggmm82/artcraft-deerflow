@@ -76,6 +76,14 @@ class PackageTests(unittest.TestCase):
         self.assertIn('Dipendenza mancante', result['issues'][0])
         self.assertTrue((self.root / 'delivery-manifest.json').is_file())
 
+    def test_filmcraft_cannot_call_readme_only_archive_editable_source(self):
+        archive = self.archive({'README.txt': 'Pretend this is a complete editable project'})
+        item = {'path': str(archive), 'role': 'source_archive', 'reopen': {'status': 'passed'}}
+        handoff = {'task': 'Final', 'delivery': {'source_status': 'included', 'source_note': 'Complete', 'files': [item]}, 'checks': []}
+        record = build_delivery(handoff, self.root, purpose='delivery', agent='filmcraft', native=False)
+        self.assertEqual(record['technical_status'], 'needs_revision')
+        self.assertIn('.fcproj', record['issues'][0])
+
     def test_review_binds_real_product_and_text_model_cannot_claim_sensory_evaluation(self):
         product = self.root / 'video.mp4'; product.write_text('fixture')
         folder = self.root / 'review'; folder.mkdir()

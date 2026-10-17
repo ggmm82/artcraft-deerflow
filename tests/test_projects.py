@@ -251,6 +251,20 @@ class ProjectTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'cambiati'):
             projects.accept_delivery(self.root, 'version-two')
 
+    def test_final_delivery_tracks_transitive_contributions_and_excludes_unused_work(self):
+        self.plan()
+        visual, motion, unused, final = [self.result(agent) for agent in ('photocraft', 'effectcraft', 'soundcraft', 'filmcraft')]
+        motion['handoff']['source_files'] = visual['handoff']['output_files']
+        final['handoff']['source_files'] = motion['handoff']['output_files']
+        final['verified_products'] = final['handoff']['output_files']
+        for sid, reply in [('visual', visual), ('motion', motion), ('audio', unused), ('final', final)]:
+            self.run_step(sid, reply, purpose='delivery' if sid == 'final' else 'work')
+        deliveries = {d['agent']: d for d in projects.read_project(self.root)['deliveries']}
+        self.assertTrue(deliveries['filmcraft']['current'])
+        self.assertTrue(deliveries['effectcraft']['contribution'])
+        self.assertTrue(deliveries['photocraft']['contribution'])
+        self.assertFalse(deliveries['soundcraft']['contribution'])
+
     def test_simple_delegation_auto_tracks_activity_without_planning_ceremony(self):
         result = self.result('cadcraft', extension='dxf')
         response = self.run_step('', result, agent='cadcraft')

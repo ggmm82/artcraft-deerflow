@@ -8,7 +8,7 @@ La precedente integrazione confondeva tre proprietà: esecuzione terminata, file
 - **Dipendenze dei colleghi:** il pacchetto reale includeva progetti EffectCraft che richiamavano texture assenti. La presenza di un altro ZIP nella stessa consegna non ripara un progetto sciolto. Il controllo ora segue i riferimenti effettivi, anche negli archivi annidati.
 - **Controllo qualità:** DeepSeek nel trasporto attuale riceve soltanto testo. Creare PNG o misurare luminosità/RMS non significa vedere o ascoltare il risultato. Il runtime impedisce di registrare come superata una valutazione sensoriale con quel trasporto.
 - **Selezione degli strumenti:** tutte le 13 skill hanno criteri specifici della disciplina, caricati automaticamente nel worker. Le fixture minime verificano le CLI, non sono modelli estetici. Il coordinatore sceglie le competenze necessarie; non c’è un numero minimo di specialisti.
-- **Versioni:** il pannello raggruppa prodotto, sorgenti e istruzioni per consegna, distinguendo quella selezionata dalle prove precedenti. Non mostra più un unico elenco indistinto di MP4, texture e ZIP.
+- **Versioni:** il pannello raggruppa prodotto, sorgenti e istruzioni per consegna, distinguendo quella selezionata dalle prove precedenti. Segue inoltre gli input effettivi dei job per distinguere i contributi usati nella consegna dalle prove scartate. Non mostra più un unico elenco indistinto di MP4, texture e ZIP.
 - **Brief:** la memoria conserva fino a 4000 caratteri invece di troncare la specifica allo stesso limite di 280 caratteri delle notifiche.
 
 ## Controlli effettivi
