@@ -20,6 +20,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'calibre': 'Converti un documento fornito in EPUB e PDF, conserva sorgenti modificabili e risorse, verifica metadati, ordine di lettura, struttura e trasferimento.',
     'blender': 'Crea una scena 3D con materiale, animazione a keyframe e render; consegna .blend riaperto con texture incorporate e GLB verificato.',
     'photocraft': 'Ritocca un’immagine con maschera mantenendo livelli modificabili; esporta PNG trasparente.',
     'vectorcraft': 'Prepara un logo SVG scalabile con testo modificabile e anteprime su chiaro e scuro.',
@@ -36,6 +37,7 @@ CASES = {
     'figcraft': 'Progetta un flusso UI desktop/mobile con componenti, stati di errore e prototipo collegato.',
 }
 EXECUTION_CASES = {
+    'calibre': 'Crea XHTML con due sezioni in italiano e un marcatore. Produci EPUB e PDF, verifica metadati e check nativo; estrai, modifica e ricostruisci i sorgenti su una copia. Consegna prodotto, sorgenti completi e rapporto. Dichiara la resa visiva non provata.',
     'gridcraft': 'Crea dati di prova con tre importi numerici 10, 20, 30. Produci un XLSX con formula di somma, riaprilo e verifica totale 60 con un controllo indipendente. Consegna XLSX e rapporto dei controlli.',
     'wordcraft': 'Crea una relazione breve in italiano con titolo e due paragrafi. Produci DOCX modificabile e PDF, riaprili e verifica testo e pagine. Puoi creare un TXT di input nella cartella assegnata. Dichiara la visione come non eseguita.',
     'soundcraft': 'Crea un breve audio dimostrativo usando la CLI installata e consegna sessione modificabile con dipendenze, WAV e rapporto. Verifica con ffprobe durata, codec, canali e sample rate; misura picchi se disponibile. Dichiara l’ascolto come non eseguito.',
@@ -185,7 +187,8 @@ def main():
     parser.add_argument('--model', default=os.getenv('DEEPSEEK_MODEL', ''))
     parser.add_argument('--max-turns', type=int, default=16)
     parser.add_argument('--resume', type=Path, help='Con --execute riutilizza i file sotto questa cartella di report precedente')
-    parser.add_argument('--image', default='ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23')
+    parser.add_argument('--image', default=os.getenv('ARTCRAFT_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0'),
+                        help='Runtime dello stesso checkout; per una PR usare il digest sandbox del runtime-manifest')
     parser.add_argument('--output', type=Path, default=ROOT / 'reports' / ('skills-' + uuid.uuid4().hex[:8]))
     args = parser.parse_args()
     key = os.environ.get('DEEPSEEK_API_KEY', '')
@@ -193,7 +196,7 @@ def main():
         parser.error('Impostare DEEPSEEK_API_KEY nell’ambiente, senza salvarla nel repository')
     agents = args.agents or list(EXECUTION_CASES if args.execute else CASES)
     if args.execute and any(a not in EXECUTION_CASES for a in agents):
-        parser.error('--execute supporta gridcraft, wordcraft e soundcraft')
+        parser.error('--execute supporta: ' + ', '.join(EXECUTION_CASES))
     if args.resume:
         args.resume = args.resume.resolve()
         if not args.execute or not all((args.resume / agent).is_dir() for agent in agents):
