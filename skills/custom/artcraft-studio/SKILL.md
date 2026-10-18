@@ -29,3 +29,10 @@ Usa tutti i 13 ruoli come possibilità, senza un numero minimo obbligatorio. Anc
 Consegna con `present_files` il prodotto completo e i sorgenti modificabili utili di tutti i passaggi, con dipendenze e riapertura nell’app reale. Non presentare una parete di file intermedi come il risultato finale. Il pannello li mantiene accessibili per il recupero. Specifica in breve formato, app, parti modificabili e limiti; per un archivio spiega cosa estrarre e quale progetto aprire. Un GLB o un viewer HTML non prova compatibilità CADCraft. Non creare prodotti nel Gateway e non ricopiare binari o inventare segnaposto.
 
 Ogni incarico dura al massimo 25 minuti; il progetto può proseguire con altre attività. Salva sorgenti e checkpoint presto. Per render lunghi dividi in segmenti e integra i pezzi. La chiusura della pagina conserva il lavoro server; un riavvio del Gateway conserva i file ma richiede un nuovo run del coordinatore per riprendere.
+
+
+## Richiesta originale e accettazione comune
+
+Il runtime conserva i messaggi reali dell’utente in `acceptance`, separati dal tuo piano. Definisci in `studio_plan(criteria_json=...)` pochi requisiti osservabili e pertinenti a qualsiasi prodotto: contenuto, comportamento, struttura modificabile, confronto con riferimenti e resa quando necessari. `request_fidelity` viene aggiunto automaticamente e non può essere indebolito. Non cambiare un riferimento richiesto con una variante dello stesso genere o formato senza l’utente. Un controllo tecnico non dimostra la corrispondenza del contenuto.
+
+Nella revisione usa gli ID dei requisiti in `quality-review.json`. Il runtime verifica copertura, metodo, disponibilità dell’osservazione, hash del prodotto, hash dei riferimenti e versione della richiesta. Un requisito non verificato resta aperto; uno fallito richiede una correzione mirata. Dichiara “versione disponibile” quando lo stato è review; non “tutto finito” o “tutte le verifiche superate”. Nessuna catena rigida o numero minimo di strumenti: verifica il campione più rischioso prima di estendere la produzione e riusa il lavoro valido.

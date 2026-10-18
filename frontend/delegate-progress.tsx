@@ -7,7 +7,8 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
-type Project = { deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
+type Project = { acceptance?: { user_requests: string[]; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -85,7 +86,10 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const selectedDelivery = deliveries.find((d) => d.current);
   const currentResults = selectedDelivery ? results.filter((r) => r.delivery_id === selectedDelivery.id) : results;
   const media = [...results].sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
-  const preview = media.find((r) => r.path === project?.product_path) ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const selected = project?.product_path
+    ? results.find((r) => r.path === project.product_path) ?? { path: project.product_path, label: project.product_path.split("/").pop() ?? "Risultato", agent: "", validated: false, at: "" }
+    : undefined;
+  const preview = selected ?? media.find((r) => kind(r.path) === "video") ?? media[0];
   const audio = currentResults.find((r) => kind(r.path) === "audio");
   const attention = !working && !active ? project?.attention : null;
   const ready = project?.status === "ready" && !!project.product_path && selectedDelivery?.technical_status === "passed"
@@ -177,10 +181,20 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         <p className="text-sm">{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</p>
         {selectedDelivery && <p className="text-sm">{selectedDelivery.title}</p>}
         {project?.quality_status && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: le misure tecniche non sostituiscono visione e ascolto."}</p>}
+        {project?.acceptance && <details className="rounded border p-3 text-sm" data-testid="acceptance-criteria">
+          <summary className="cursor-pointer font-medium">Rispondenza alla tua richiesta</summary>
+          <p className="my-2 whitespace-pre-wrap">{project.acceptance.user_requests[0]}</p>
+          <ul className="space-y-2">{project.acceptance.criteria.map((rule) => {
+            const observed = project.review_criteria?.find((c) => c.requirement_id === rule.id);
+            return <li key={rule.id}><strong>{observed?.status === "passed" ? "Verificato" : observed?.status === "failed" ? "Da correggere" : "Da verificare"}</strong> · {rule.requirement}
+              {observed && <p className="text-muted-foreground">{observed.evidence}</p>}</li>;
+          })}</ul>
+        </details>}
         {preview && <div>
           {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
           {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
           {kind(preview.path) === "audio" && <audio controls aria-label="Anteprima audio" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "source" && <p className="text-sm">Risultato disponibile come documento o progetto: scaricalo e aprilo con l’app indicata nella consegna.</p>}
           <a className="text-sm underline" href={artifactURL(threadId, preview.path, true)}>{preview.label}</a>
         </div>}
         {audio && preview && kind(preview.path) === "video" && audio.path !== preview.path && <div>

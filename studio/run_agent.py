@@ -12,12 +12,14 @@ try:
     from .cli_runner import run_cli
     from .work_results import validate_media
     from .deliveries import build_delivery, read_review
+    from .acceptance import capabilities
 except ImportError:  # Direct invocation inside the worker image.
     from handoff import validate_handoff
     from progress import Reporter
     from cli_runner import run_cli
     from work_results import validate_media
     from deliveries import build_delivery, read_review
+    from acceptance import capabilities
 
 ALLOWED_AUTH = {
     'codex': ('auth.json',),
@@ -156,6 +158,9 @@ def main():
         'dichiara source_status unavailable, motivo e limiti senza fingere un sorgente.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
+        'Metodi di osservazione disponibili in questo collegamento: ' + json.dumps(capabilities(engine)) +
+        '. Un metodo disponibile non prova che tu lo abbia usato. Se non osservabile, usa not_run; '
+        'un confronto quantitativo con un riferimento non è un ascolto o una visione.',
         'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
         'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
@@ -250,7 +255,7 @@ def main():
         delivery_record = build_delivery(handoff, output_dir, purpose=job.get('purpose', 'work'), agent=job['agent'])
         delivery_record.update(requirements=job.get('requirements') or {}, verified_products=verified_products)
         (output_dir / 'delivery-manifest.json').write_text(json.dumps(delivery_record, ensure_ascii=False, indent=2))
-        quality_review = read_review(handoff, output_dir, Path('/mnt/user-data'), engine) if job.get('purpose') == 'review' else None
+        quality_review = read_review(handoff, output_dir, Path('/mnt/user-data'), engine, job.get('acceptance')) if job.get('purpose') == 'review' else None
         reporter.emit('completed')
         print(json.dumps({'ok': True, 'agent': job['agent'], 'engine': engine,
                           'output_dir': str(output_dir), 'handoff': handoff,

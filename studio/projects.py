@@ -15,6 +15,7 @@ from .progress import JOB_ID, clean_summary, job_path, read_status, update, utcn
 from .work_results import failure_info, partial_files
 from .state import applications, atomic_json
 from .source_packages import digest
+from .acceptance import contract
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
 PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
@@ -140,6 +141,42 @@ def delivery_summary(record):
                   for f in record.get('files', [])[:40]]}
 
 
+def visible_attempts(step, product_path):
+    """A review is another attempt, not a replacement for the product it checks."""
+    attempts = step['attempts']
+    visible = list(reversed(attempts[-5:]))
+    selected = next((a for a in reversed(attempts) if product_path and product_path in a.get('output_files', [])), None)
+    if selected is not None and selected not in visible:
+        visible.append(selected)
+    return visible
+
+
+def sync_acceptance(workspace, requests, criteria=None):
+    if not requests:
+        return
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value:
+            return
+        old = value.get('acceptance') or {}
+        previous = old.get('user_requests', [])
+        if previous and requests[0] != previous[0]:
+            requests = previous + [r for r in requests if r not in previous]
+        if criteria is None:
+            criteria = [c for c in old.get('criteria', []) if c['id'] != 'request_fidelity']
+        updated = contract(requests, criteria)
+        for rule in updated['criteria']:
+            if any(workspace_path(workspace, p) is None for p in rule['reference_paths']):
+                raise ValueError('I riferimenti devono appartenere alla conversazione')
+        if old.get('hash') == updated['hash']:
+            return
+        value['acceptance'] = updated
+        if value.get('status') == 'ready':
+            value['status'] = 'review'
+        value.pop('user_acceptance', None)
+        atomic_json(folder / 'project.json', value)
+
+
 def read_project(workspace):
     """Compact operational memory: histories remain on disk, not in every LLM turn."""
     if not (Path(workspace) / '.studio-project').exists():
@@ -151,6 +188,7 @@ def read_project(workspace):
     result = {k: clean_summary(value.get(k, '')) for k in (
         'id', 'brief', 'summary', 'next_action', 'status', 'updated_at', 'product_path')}
     result['project_type'] = value.get('project_type', 'custom')
+    result['acceptance'] = value.get('acceptance')
     result['brief'] = clean_summary(value.get('brief', ''), 4000)
     result['requirements'] = {k: v for k, v in value.get('requirements', {}).items()
                               if k in ('audio', 'video') and type(v) is bool}
@@ -164,7 +202,7 @@ def read_project(workspace):
             'status': step['status'], 'attempt_count': step.get('attempt_count', len(attempts)),
             'note': clean_summary(step.get('note', '')), 'error': clean_summary(last.get('error', ''))})
         # Retain previous usable versions when a newer revision failed or hit quota.
-        for attempt in reversed(attempts):
+        for attempt in visible_attempts(step, value.get('product_path', '')):
             record = attempt.get('delivery_record') or {}
             did = record.get('id') or Path(attempt.get('output_dir', '')).name or step['id']
             metadata = {f.get('path'): f for f in record.get('files', [])}
@@ -198,9 +236,8 @@ def read_project(workspace):
                         'editability': clean_summary(meta.get('editability', '')),
                         'label': clean_summary(Path(filename).name), 'validated': attempt.get('validated',
                         attempt.get('status') == 'completed'), 'at': attempt.get('finished_at', '')})
-            if attempt.get('status') == 'completed':
-                break
-    candidates.sort(key=lambda r: (r['path'] == value.get('product_path'), r['at']), reverse=True)
+    current_ids = {d['id'] for d in result['deliveries'] if d['current']}
+    candidates.sort(key=lambda r: (r['delivery_id'] in current_ids, r['path'] == value.get('product_path'), r['at']), reverse=True)
     seen = set()
     for record in candidates:
         path = public_artifact(workspace, record['path'])
@@ -222,12 +259,15 @@ def read_project(workspace):
     result['deliveries'].sort(key=lambda d: (d['current'], d['contribution'], d['at']), reverse=True)
     result['deliveries'] = result['deliveries'][:30]
     result['quality_status'] = 'not_reviewed'
-    for step in value['steps']:
-        for attempt in reversed(step['attempts']):
-            review = attempt.get('quality_review') or {}
-            if public_artifact(workspace, review.get('product_path', '')) == result['product_path'] and review:
-                result['quality_status'] = review['status']
-                break
+    reviewed = sorted((a for s in value['steps'] for a in s['attempts'] if a.get('quality_review')),
+                      key=lambda a: a.get('finished_at', ''), reverse=True)
+    for attempt in reviewed:
+        review = attempt['quality_review']
+        if public_artifact(workspace, review.get('product_path', '')) == result['product_path']:
+            matches = not value.get('acceptance') or review.get('contract_hash') == value['acceptance']['hash']
+            result['quality_status'] = review['status'] if matches else 'needs_review'
+            result['review_criteria'] = review.get('criteria', []) if matches else []
+            break
     accepted = value.get('user_acceptance') or {}
     if accepted.get('product_path') == value.get('product_path') and accepted.get('status') == 'passed':
         result['quality_status'] = 'accepted_by_user'
@@ -327,14 +367,20 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                     artifact_path(workspace, f.get('path', '')) == target and f.get('sha256') == target_hash
                     for f in d.get('files', [])) for d in deliveries):
                 raise ValueError('Consegna non collaudata o sorgenti incompleti: usa purpose=delivery e correggi delivery.issues. I file restano disponibili come bozza.')
-            reviews = [a.get('quality_review') or {} for s in value['steps'] for a in s['attempts']]
+            reviewed = sorted((a for s in value['steps'] for a in s['attempts'] if a.get('quality_review')),
+                              key=lambda a: a.get('finished_at', ''), reverse=True)
+            reviews = [a['quality_review'] for a in reviewed if artifact_path(workspace,
+                a['quality_review'].get('product_path', '')) == target][:1]
             accepted = value.get('user_acceptance') or {}
             if not (accepted.get('product_path') == value.get('product_path') and accepted.get('sha256') == target_hash) and not any(r.get('status') == 'passed' and r.get('sha256') == target_hash
+                       and (not value.get('acceptance') or r.get('contract_hash') == value['acceptance']['hash'])
+                       and all(artifact_path(workspace, p) and digest(artifact_path(workspace, p)) == sha
+                               for p, sha in r.get('reference_hashes', {}).items())
                        and artifact_path(workspace, r.get('product_path', '')) == target
-                       and (not value.get('requirements', {}).get('audio') or any(
+                       and (value.get('acceptance') or not value.get('requirements', {}).get('audio') or any(
                            c.get('method') == 'listening' and c.get('status') == 'passed' for c in r.get('criteria', [])))
                        for r in reviews):
-                raise ValueError('Manca una revisione separata del prodotto esatto rispetto al brief: usa purpose=review e quality-review.json. Se il modello non può valutare immagini/audio mantieni status=review; non rigenerare né fingere la verifica.')
+                raise ValueError('Manca una revisione separata valida del prodotto rispetto alla richiesta corrente: usa purpose=review e quality-review.json, coprendo requisiti e riferimenti. Se il metodo richiesto non è disponibile mantieni status=review; non rigenerare né fingere la verifica.')
         if status:
             value['status'] = status
             if status == 'ready':
@@ -428,18 +474,22 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'riduci l’incarico o integra i file recuperati. Le altre attività restano disponibili.',
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
-        contract = ('\n\nObiettivo del prodotto: ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
+        contract_text = ('\n\nPiano del coordinatore (non sostituisce la richiesta utente): ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
+                    '\nRichiesta originale e criteri di accettazione del prodotto:\n' + json.dumps(value.get('acceptance'), ensure_ascii=False) +
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
                     'rifare tutto per un controllo facoltativo o una chiusura formale mancante.')
         if previous:
-            contract += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
+            contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
         attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context}
-        history = step['attempts'][-(MAX_HISTORY - 2):]
+        history = step['attempts'][-(MAX_HISTORY - 3):]
         last_usable = next((a for a in reversed(step['attempts']) if a.get('status') == 'completed'), None)
         if last_usable and last_usable not in history:
             history.insert(0, last_usable)
+        selected = next((a for a in reversed(step['attempts']) if value.get('product_path') in a.get('output_files', [])), None)
+        if selected is not None and selected not in history:
+            history.insert(0, selected)
         step['attempts'] = [*history, attempt]
         step['attempt_count'] = step.get('attempt_count', len(step['attempts']) - 1) + 1
         step['status'] = 'running'
@@ -454,7 +504,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             atomic_json(folder / 'project.json', current)
 
     try:
-        result = json.loads(invoke(task + contract, started))
+        result = json.loads(invoke(task + contract_text, started))
         if not isinstance(result, dict):
             raise ValueError('Risposta dello specialista non valida')
     except Exception as exc:
@@ -507,13 +557,11 @@ def read_results(value, workspace=None):
     results = []
     for step in value['steps']:
         seen = set()
-        for attempt in reversed(step['attempts']):
+        for attempt in visible_attempts(step, value.get('product_path', '')):
             paths = [p for p in available_paths(workspace, attempt) if p not in seen][:12]
             if paths or attempt.get('output_dir'):
                 results.append({'activity': step['id'], 'agent': step['agent'], 'validated': attempt.get('validated',
                     attempt.get('status') == 'completed'), 'output_dir': attempt.get('output_dir'), 'files': paths,
                     'at': attempt.get('finished_at', '')})
             seen.update(paths)
-            if attempt.get('status') == 'completed':
-                break
-    return sorted(results, key=lambda r: r['at'], reverse=True)[:20]
+    return sorted(results, key=lambda r: (value.get('product_path') in r['files'], r['at']), reverse=True)[:20]
