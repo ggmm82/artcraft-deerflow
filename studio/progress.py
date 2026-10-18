@@ -32,7 +32,7 @@ LABELS = {
 SECRET = re.compile(r'(?i)\b(?:sk-[a-z0-9_-]{8,}|ya29\.[a-z0-9_.-]+|4/0[a-z0-9_-]+)|'
                     r'(?i:bearer\s+)[a-z0-9_.-]+|(?i:(?:api[_-]?key|token|password)\s*[:=]\s*)\S+')
 APPS = {'photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft', 'effectcraft',
-        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft'}
+        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender'}
 
 
 def utcnow():
@@ -204,7 +204,26 @@ class Reporter:
                 if value.get('files') != files:
                     value['last_activity_at'] = now
                 value.update(heartbeat_at=now, updated_at=now, files=files, files_count=len(files))
-        except (OSError, ValueError):
+                try:
+                    from .resource_usage import snapshot
+                    from .operations import identity
+                except ImportError:
+                    from resource_usage import snapshot
+                    from operations import identity
+                value['resources'] = snapshot()
+                operations = []
+                for record in sorted((self.output_dir / 'work/operations').glob('*/status.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:8]:
+                    if not record.is_symlink() and record.stat().st_size < 30000:
+                        operation = json.loads(record.read_text())
+                        if operation.get('state') == 'running' and operation.get('pid') and identity(operation['pid']) != operation.get('process_identity'):
+                            operation['state'] = 'interrupted'
+                        operations.append(operation)
+                previous = {o.get('id'): o for o in value.get('operations', []) if isinstance(o, dict)}
+                value['operations'] = operations
+                active = next((o for o in operations if o.get('state') == 'running'), None)
+                if active and active.get('progress') and active.get('progress') != previous.get(active.get('id'), {}).get('progress'):
+                    value['last_activity_at'] = now
+        except (OSError, ValueError, TypeError):
             pass
 
     def _watch(self):
@@ -279,6 +298,21 @@ def public_status(value):
                        and isinstance(f.get('size'), int) and f['size'] >= 0]
     result['files_count'] = len(result['files'])
     result['event_count'] = len(result['events'])
+    def numbers(source, keys):
+        import math
+        if not isinstance(source, dict):
+            return {}
+        return {k: source.get(k) for k in keys if type(source.get(k)) in (int, float) and math.isfinite(source[k]) and source[k] >= 0}
+    result['resources'] = numbers(value.get('resources') or {}, ('memory_bytes', 'memory_peak_bytes', 'memory_limit_bytes', 'oom_kills', 'cpu_seconds'))
+    result['limits'] = numbers(value.get('limits') or {}, ('cpus', 'memory_mib', 'tmp_mib'))
+    result['operations'] = []
+    for op in value.get('operations', [])[:8]:
+        if not isinstance(op, dict):
+            continue
+        item = {k: clean_summary(op.get(k), 100) for k in ('id', 'label', 'state')}
+        item.update(numbers(op, ('elapsed_seconds', 'oom_kills', 'estimate_seconds')))
+        item['progress'] = numbers(op.get('progress') or {}, ('done', 'total'))
+        result['operations'].append(item)
     return result
 
 

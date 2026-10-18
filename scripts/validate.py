@@ -24,7 +24,7 @@ def main():
     for a in lock['applications']:
         for asset in a['assets'].values():
             assert re.fullmatch('[a-f0-9]{64}',asset['sha256'])
-            assert asset['url'].startswith(a['repository']+'/releases/download/'+a['version']+'/')
+            assert asset['url'].startswith(a.get('download_base', a['repository']+'/releases/download/'+a['version']+'/'))
         skill=ROOT/'skills/custom'/('artcraft-'+a['id'])/'SKILL.md'
         assert skill.is_file()
         assert (skill.parent/'references/CLI-RECIPE.md').is_file()

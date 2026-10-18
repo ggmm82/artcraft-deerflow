@@ -63,11 +63,11 @@ class ProjectTests(unittest.TestCase):
 
     def test_any_catalog_team_and_input_order_are_allowed(self):
         roles = projects.applications()
-        self.assertEqual(len(roles), 13)
+        self.assertIn("blender", {a["id"] for a in roles})
         steps = [{'id': 'task' + str(i), 'agent': app['id'], 'goal': app['role'],
                   'depends_on': ['task12'] if i == 0 else []} for i, app in enumerate(roles)]
         p = self.plan(steps)
-        self.assertEqual(len(p['steps']), 13)
+        self.assertEqual(len(p['steps']), len(roles))
         # Even a video may start from existing source material and an integration role.
         p = self.plan([{'id': 'integrate', 'agent': 'filmcraft', 'goal': 'Monta gli input esistenti'}])
         self.assertTrue(any(s['id'] == 'integrate' for s in p['steps']))

@@ -543,6 +543,41 @@
         "figcraft-cli render input.figcraft -o preview.png --scale 2",
         "figcraft-cli export input.figcraft -o exports --format svg"
       ]
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "role": "Modellazione e animazione 3D",
+      "description": "Scene 3D, materiali, rigging, animazione, render e progetti .blend modificabili.",
+      "repository": "https://projects.blender.org/blender/blender",
+      "version": "4.5.14",
+      "executable": "blender-cli",
+      "binary": "blender",
+      "download_base": "https://download.blender.org/release/Blender4.5/",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "blender-4.5.14-linux-x64.tar.xz",
+          "url": "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz",
+          "sha256": "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3",
+          "size_bytes": 378045212
+        }
+      },
+      "checks": [
+        "Riapri il .blend in un processo separato con auto-esecuzione Python disabilitata.",
+        "Verifica texture e dipendenze dopo il trasferimento.",
+        "Controlla struttura modificabile e render campione."
+      ],
+      "examples": [
+        "blender-cli inspect scena.blend",
+        "blender-cli render scena.blend anteprima.png --frame 1",
+        "blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python lavoro.py"
+      ]
     }
   ],
   "cli_runtimes": {

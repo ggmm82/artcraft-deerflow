@@ -4,10 +4,10 @@ from pathlib import Path
 import subprocess
 
 try:
-    from .source_packages import digest, verify_archive, sample, NATIVE
+    from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend
     from .acceptance import METHODS, evaluate
 except ImportError:
-    from source_packages import digest, verify_archive, sample, NATIVE
+    from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend
     from acceptance import METHODS, evaluate
 
 
@@ -62,6 +62,14 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
     for item in delivery['files']:
         path = Path(item['path'])
         record = {**item, 'sha256': digest(path), 'size': path.stat().st_size}
+        if path.suffix.lower() == '.blend' and item['role'] == 'editable_source':
+            try:
+                record['verification'] = inspect_blend(path, root, native=native)
+                if record['verification']['status'] != 'passed':
+                    issues.append(path.name + ': verifica Blender non eseguita')
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                record['verification'] = {'status': 'failed', 'error': str(error)[:1000]}
+                issues.append(path.name + ': ' + str(error)[:1000])
         if item['role'] == 'source_archive':
             try:
                 if path.suffix.lower() != '.zip':
@@ -85,6 +93,12 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
     renders = [c for p in packages for c in p['verification']['checks'] if c.get('check') == 'filmcraft_render']
     if purpose == 'delivery' and agent == 'filmcraft' and delivery['source_status'] == 'included' and not renders:
         issues.append('Consegna FilmCraft senza progetto .fcproj collaudato nel pacchetto: README o soli video non sono il sorgente di montaggio')
+    if purpose == 'delivery' and agent == 'blender' and not any(
+            (f['role'] == 'editable_source' and Path(f['path']).suffix.lower() == '.blend'
+             and f.get('verification', {}).get('status') == 'passed') or
+            (f['role'] == 'source_archive' and any(c.get('check') == 'blender_reopen' and c.get('status') == 'passed'
+                for c in f.get('verification', {}).get('checks', []))) for f in files):
+        issues.append('Consegna Blender senza .blend modificabile riaperto e verificato: GLB, script o video da soli non sono il progetto nativo')
     if purpose == 'delivery' and renders:
         for item in files:
             if item['role'] != 'export' or Path(item['path']).suffix.lower() not in ('.mp4', '.mov', '.webm', '.mkv'):

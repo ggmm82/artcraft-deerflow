@@ -58,6 +58,7 @@ jobs:
           pip install playwright==1.62.0
           python -m playwright install --with-deps chromium
           python scripts/check_delegate_progress_ui.py --node-modules /tmp/studio-ui-tests/node_modules
+          python scripts/check_runtime_ui.py
       - name: Compose configuration
         env:
           STUDIO_PASSWORD: ci-only-not-a-real-credential-123456
@@ -119,6 +120,9 @@ jobs:
       - name: Check adaptive orchestration tools, compact memory and explicit recovery
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_adaptive_tools.py -v
+      - name: Check memory exhaustion using genuine cgroup counters
+        if: matrix.component == 'sandbox'
+        run: docker run --rm --network=none --memory=256m --memory-swap=256m --pids-limit=64 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_resource_supervision.py
       - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py

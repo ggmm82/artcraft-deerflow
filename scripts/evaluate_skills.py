@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Opt-in DeepSeek skill evaluation. API key stays in the host environment.
 
-Default: inspect plans for all 13 skills. --execute runs actual CLI tasks in
+Default: inspect plans for all catalog skills. --execute runs actual CLI tasks in
 disposable offline Docker containers, without Codex/Gemini credentials.
 This does not test DeerFlow authentication or the production CLI engines.
 """
@@ -20,6 +20,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'blender': 'Crea una scena 3D con materiale, animazione a keyframe e render; consegna .blend riaperto con texture incorporate e GLB verificato.',
     'photocraft': 'Ritocca un’immagine con maschera mantenendo livelli modificabili; esporta PNG trasparente.',
     'vectorcraft': 'Prepara un logo SVG scalabile con testo modificabile e anteprime su chiaro e scuro.',
     'filmcraft': 'Monta due clip in un video 1920x1080, 25 fps, con audio sincronizzato e progetto editabile.',

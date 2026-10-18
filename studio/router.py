@@ -210,3 +210,25 @@ def connect_deepseek(value: DeepSeekConfig, request: Request):
     same_origin(request)
     result = save_team(TeamConfig(engine='deepseek', model=value.model, api_key=value.api_key), request)
     return {'ok': True, 'model': result['team']['model'], 'models': result['models']}
+
+
+class RuntimeConfig(BaseModel):
+    mode: str = Field(default='auto', pattern='^(auto|manual)$')
+    cpus: float = Field(default=1.5, ge=.5, le=32)
+    memory_mib: int = Field(default=1536, ge=512, le=65536)
+
+
+@router.get('/api/runtime')
+def runtime_settings():
+    from .runtime_settings import read
+    return read()
+
+
+@router.put('/api/runtime')
+def save_runtime(value: RuntimeConfig, request: Request):
+    same_origin(request)
+    from .runtime_settings import save
+    try:
+        return save(value.model_dump())
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None

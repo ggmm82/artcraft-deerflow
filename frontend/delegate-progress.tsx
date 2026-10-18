@@ -16,6 +16,7 @@ const stepLabels: Record<string, string> = { pending: "Da fare", running: "In co
   completed: "Incarico concluso", needs_revision: "Da rivedere", review: "Da valutare", paused: "In pausa", skipped: "Non necessaria" };
 
 function JobCard({ job, now }: { job: JobProgress; now: number }) {
+  const operation = job.operations?.find(o => o.state === "running") ?? job.operations?.[0];
   const terminal = terminalJob(job);
   const end = terminal ? (Date.parse(job.finished_at) || now) : now;
   const elapsed = secondsSince(job.started_at || job.created_at, end);
@@ -30,6 +31,14 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
       <strong>{job.agent.charAt(0).toUpperCase() + job.agent.slice(1)} · {providers[job.engine] ?? job.engine}</strong>
       <span className="text-muted-foreground text-xs">{duration(elapsed)} trascorsi</span>
     </div>
+    {operation && <div className="rounded-md border p-2 text-sm" data-testid="operation-progress">
+      <p>{operation.label} · {operation.state === "running" && !terminal ? "in esecuzione" : operation.state === "completed" ? "conclusa" : operation.state === "out_of_memory" ? "memoria esaurita" : "interrotta"}</p>
+      {operation.progress?.total && <p>{operation.progress.done ?? 0}/{operation.progress.total} campioni osservati</p>}
+      {operation.estimate_seconds !== undefined && <p>Stima iniziale dal campione: circa {duration(Math.round(operation.estimate_seconds))}. Può variare.</p>}
+      {operation.elapsed_seconds !== undefined && <p>{duration(Math.floor(operation.elapsed_seconds))} di elaborazione</p>}
+    </div>}
+    {job.resources?.memory_bytes !== undefined && <p className="text-muted-foreground text-xs">RAM worker: {Math.round(job.resources.memory_bytes / 1048576)} MiB{job.resources.memory_limit_bytes ? ` / ${Math.round(job.resources.memory_limit_bytes / 1048576)} MiB` : ""}{job.limits?.cpus ? ` · ${job.limits.cpus} CPU` : ""}</p>}
+    {!!job.resources?.oom_kills && <p role="status" className="text-sm">Il sistema ha terminato un processo per memoria esaurita. Conserva i file e verifica il budget della squadra prima di riprovare.</p>}
     {job.model && <p className="text-muted-foreground text-xs">Modello: {job.model}</p>}
     {job.work_summary && job.work_summary !== job.summary && <p className="text-sm">{job.work_summary}</p>}
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
@@ -100,7 +109,9 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
-  const summary = working ? (specificAction ? current.summary : current.work_summary || current.summary) : attention?.message
+  const nativeOperation = current?.operations?.find(o => o.state === "running");
+  const nativeSummary = nativeOperation ? nativeOperation.label + (nativeOperation.progress?.total ? ` · ${nativeOperation.progress.done ?? 0}/${nativeOperation.progress.total} campioni` : "") : null;
+  const summary = working ? (nativeSummary ?? (specificAction ? current.summary : current.work_summary || current.summary)) : attention?.message
     ?? (coordinatorError ? "Il coordinatore si è fermato. I file già salvati restano disponibili." : project?.summary || project?.brief);
   const toggle = (value: string) => setPanel(tab === value ? null : { threadId, tab: value });
   useEffect(() => { setPanel(null); setResumeRequested(null); setResumeError(null); setAcceptError(null); setAccepting(false); }, [threadId]);

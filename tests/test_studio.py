@@ -15,6 +15,10 @@ class StudioTests(unittest.TestCase):
         self.state = importlib.reload(state)
         from studio import docker_runtime, login, router
         self.runtime = importlib.reload(docker_runtime)
+        from studio import runtime_settings
+        host = patch.object(runtime_settings, 'capacity', return_value={'cpus': 4, 'memory_mib': 8192, 'detected': True})
+        host.start()
+        self.addCleanup(host.stop)
         importlib.reload(login)
         self.router = importlib.reload(router)
         (self.state.STATE / 'installation-id').write_text('test-installation')
@@ -81,6 +85,8 @@ class StudioTests(unittest.TestCase):
         credentials = self.state.credential_dir('codex')
         (credentials / 'auth.json').write_text('{}')
         workspace = Path(self.temp.name) / 'workspace'
+        from studio import runtime_settings
+        limits = {'cpus': 2, 'memory_mib': 3072, 'tmp_mib': 768, 'threads': 2}
         captured = []
         class Result:
             returncode = 0
@@ -90,11 +96,14 @@ class StudioTests(unittest.TestCase):
             captured.append(argv)
             return Result()
         with patch.object(self.runtime, 'host_path', side_effect=lambda p: '/host/' + Path(p).name), \
-             patch.object(self.runtime.subprocess, 'run', side_effect=execute):
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute), \
+             patch.object(runtime_settings, 'effective', return_value=limits):
             result = self.runtime.delegate('gridcraft', 'Analizza il foglio', workspace)
         self.assertIn('true', result)
-        argv = captured[0]
-        self.assertIn('--memory=1536m', argv)
+        argv = next(a for a in captured if a[:2] == ['docker', 'run'])
+        self.assertIn('--memory=3072m', argv)
+        self.assertIn('--cpus=2', argv)
+        self.assertIn('ARTCRAFT_CPU_THREADS=2', argv)
         self.assertIn('--cap-drop=ALL', argv)
         self.assertFalse(any('docker.sock' in arg for arg in argv))
         self.assertTrue(any('dst=/mnt/user-data' in arg for arg in argv))

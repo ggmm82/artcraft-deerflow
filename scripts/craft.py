@@ -137,7 +137,7 @@ def main():
         p = subs.add_parser(name)
         p.add_argument('app')
     p = subs.add_parser('tools'); p.add_argument('app'); p.add_argument('--out')
-    p = subs.add_parser('batch'); p.add_argument('app'); p.add_argument('file'); p.add_argument('--out'); p.add_argument('--timeout', type=int, default=300)
+    p = subs.add_parser('batch'); p.add_argument('app'); p.add_argument('file'); p.add_argument('--out'); p.add_argument('--timeout', type=int, default=None)
     p = subs.add_parser('run'); p.add_argument('app'); p.add_argument('args', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     apps = {a['id']: a for a in json.loads((ROOT / 'versions.lock.json').read_text())['applications']}
@@ -159,7 +159,8 @@ def main():
         if argv and argv[0] == '--':
             argv = argv[1:]
         return subprocess.run([app['executable'], *argv]).returncode
-    session = McpSession([app['executable'], *app['mcp_args']], getattr(args, 'timeout', 180))
+    session_timeout = getattr(args, 'timeout', None) or min(1200, max(1, int(float(os.environ.get('ARTCRAFT_JOB_DEADLINE', str(time.time() + 300))) - time.time() - 10)))
+    session = McpSession([app['executable'], *app['mcp_args']], session_timeout)
     try:
         session.initialize()
         if args.action == 'tools':

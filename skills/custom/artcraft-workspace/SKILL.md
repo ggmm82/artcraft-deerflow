@@ -17,6 +17,7 @@ Il runtime applica il modello della squadra configurato una sola volta in Studio
 - `craft tools APP --out percorso.json` elenca tutti gli schemi MCP della CLI senza eseguire modifiche.
 - `craft batch APP sequenza.json` esegue una lista di `{"name":"nome_tool_reale","arguments":{...}}` nella stessa sessione. Gli ID restituiti possono essere ripresi con `{"$result":"0.structuredContent.document_id"}`: il percorso deve corrispondere al risultato reale, non a un esempio inventato. Per un intero risultato usare `{"$result":"0"}`. Il batch si ferma su errori JSON-RPC o `isError`.
 - Alcune CLI restituiscono il JSON dentro `content[0].text`, senza `structuredContent`. Usa il passaggio esplicito `$json`: `{"$result":"1.content.0.text.$json.id"}` legge l’ID come numero; lo stesso percorso può recuperare una lista. È verificato con FilmCraft e FigCraft. Non inventare ID e non usare il nome di un livello dove il tool richiede un ID.
+- Blender è senza stato anche dentro il batch: ogni tool apre un processo distinto, quindi salva un .blend e passalo esplicitamente alla chiamata successiva. Gli altri MCP possono mantenere documenti in memoria nella sessione.
 - Il processo MCP si chiude alla fine del batch: includi i comandi di salvataggio. Non presumere che lo stato in memoria sopravviva tra due invocazioni.
 - Le CLI e i loro MCP sono locali alla sandbox. Non registrare questi eseguibili come MCP stdio nel Gateway: lì non sono installati.
 - Le skills vengono scoperte dinamicamente; i tool nativi si scoprono dalla release reale. Non installare altre versioni durante un incarico.
@@ -133,3 +134,19 @@ Esempio di voce (da adattare e osservare realmente):
 Metodi comuni: `content` per significato/contenuto, `structural` per struttura modificabile, `functional` per comportamento/calcoli, `reference` per confronto con risorse effettive, `visual` per immagini osservate, `listening` per ascolto effettivo, `technical` per formato/decodifica. Usa il metodo previsto dal requisito, senza rinominare una misura tecnica come giudizio percettivo. Per `reference` devi avere letto i `reference_paths` in `source_files`; il runtime ne conserva gli hash. Se il collegamento non offre il metodo necessario, registra `not_run`. L’ascolto non è attualmente collegato nei trasporti supportati; DeepSeek non offre neppure visione. Un confronto numerico appropriato al requisito può essere descritto come tale, non come ascolto o visione inventati.
 
 Le revisioni possono riusare lo stesso step_id della produzione: il software mantiene il prodotto selezionato, i sorgenti e le revisioni recenti come consegne distinte. Non rigenerare un risultato perché il suo rapporto è diventato il file più recente. Comunica “versione disponibile / requisiti da verificare” finché il contratto non è soddisfatto, senza dichiarare tutto concluso.
+
+## Lavori pesanti: un processo, checkpoint e risorse reali
+
+Il budget CPU/RAM è unico in La tua squadra; il Gateway lo passa al worker. Non presumere GPU o risorse illimitate. Per render, conversioni o export lunghi usa il supervisore comune:
+
+```bash
+python3 /opt/studio/operations.py --key "export-versione-1" --label "Esportazione finale" --timeout 1200 -- programma argomento1 argomento2
+```
+
+Usa una chiave stabile per lo stesso lavoro e i suoi input; cambia versione solo quando cambiano davvero. Il supervisore registra stato e log in `work/operations`, impedisce processi pesanti contemporanei e termina l'intero gruppo di processi al timeout. Se dice che un processo è ancora attivo, osservane lo stato e attendi: non cambiare chiave e non avviare un altro render o wrapper in background. Non usare `nohup`, shell disaccoppiate o cicli LLM di polling. Il pannello riceve avanzamento e RAM senza chiamate al modello. I percorsi dei log sono diagnostica, non consegne.
+
+Prima di una produzione costosa misura un campione rappresentativo senza alterare il risultato finale richiesto. Distingui stima da misura; salva il sorgente e un checkpoint prima di partire. Blender `render` esegue automaticamente un campione con `blender.profile`, riutilizzato se progetto e budget sono invariati. La stima indicativa comprende il costo di avvio e può variare molto; non è una promessa né una ragione per abbassare in silenzio la qualità. Se il costo eccede il budget residuo, conserva il progetto e pianifica una continuazione mirata o un'ottimizzazione fedele al brief.
+
+`oom_kills` positivo conferma memoria esaurita nel worker; codice 137 da solo indica arresto forzato con causa da verificare. Dopo memoria esaurita non ripetere identico il lavoro negli stessi limiti: salva il checkpoint e segnala il budget da correggere. I lavori già attivi non cambiano risorse quando si salva il pannello. Un timeout interrompe la singola operazione, non autorizza a dichiarare il prodotto completato.
+
+Usa `ARTCRAFT_CPU_THREADS` per i parametri di threading delle CLI (per esempio FFmpeg `-threads`), senza assumere il numero di CPU fisiche. Il budget è un limite del worker, non una prenotazione di RAM né una garanzia di prestazioni del VPS.

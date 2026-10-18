@@ -305,8 +305,79 @@ def figcraft(c):
     c.check('Viewport richiesto', stream['width'] == 320 and stream['height'] == 180, stream)
 
 
+
+def blender(c):
+    script = c.root / 'create.py'
+    native, packed, preview, glb = [c.root / n for n in ('scene.blend', 'delivery.blend', 'preview.png', 'scene.glb')]
+    texture = c.root / 'texture.png'; png(texture)
+    script.write_text("""import bpy, math
+from mathutils import Vector
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.mesh.primitive_cube_add()
+body=bpy.context.object; body.name='EditableBody';body.scale=(.5,.4,1)
+mat=bpy.data.materials.new('PBR');mat.use_nodes=True
+tex=mat.node_tree.nodes.new('ShaderNodeTexImage')
+tex.image=bpy.data.images.load(TEXTURE);tex.image.pack()
+mat.node_tree.links.new(tex.outputs['Color'],mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
+body.data.materials.append(mat)
+body.location=(0,0,1);body.keyframe_insert(data_path='location',frame=1)
+body.location=(.5,0,1);body.keyframe_insert(data_path='location',frame=12)
+bpy.ops.object.camera_add(location=(4,-6,3))
+cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,1))-cam.location).to_track_quat('-Z','Y').to_euler()
+bpy.context.scene.camera=cam
+bpy.ops.object.light_add(type='AREA',location=(2,-3,5))
+bpy.context.object.data.energy=500;bpy.context.object.data.shape='DISK';bpy.context.object.data.size=4
+scene=bpy.context.scene;scene.frame_start=1;scene.frame_end=12;scene.render.fps=24
+scene.render.resolution_x=64;scene.render.resolution_y=64;scene.render.resolution_percentage=100
+scene.render.engine='CYCLES';scene.cycles.device='CPU';scene.cycles.samples=4
+scene.frame_set(1)
+bpy.ops.wm.save_as_mainfile(filepath=NATIVE)
+""".replace('TEXTURE', repr(str(texture))).replace('NATIVE', repr(str(native))))
+    c.run('blender-cli', 'execute', script)
+    c.batch([step('blender.inspect', project=str(native)),
+             step('blender.pack', project=str(native), output=str(packed))], name='native-mcp')
+    info = json.loads(c.run('blender-cli', 'inspect', packed))
+    c.check('Mesh, keyframe e materiale riaperti', any(o['name'] == 'EditableBody' and o['vertices'] == 8 and o['animated']
+            for o in info['objects']) and info['materials'] > 0 and info['frame_end'] == 12, info)
+    c.check('Texture incorporata, nessun collegamento esterno', info['images'] > 0 and not info['dependencies'], info)
+    original_hash = hashlib.sha256(packed.read_bytes()).hexdigest()
+    measured = json.loads(c.run('blender-cli', 'profile', packed, '--frame', 6))
+    c.check('Profilazione preventiva senza modifiche al sorgente', measured['profile']['measured_pixels'] > 0
+            and original_hash == hashlib.sha256(packed.read_bytes()).hexdigest(), measured['profile'])
+    c.run('blender-cli', 'render', packed, preview, '--frame', 6)
+    pixels = c.pixels(preview)
+    c.check('Render CPU reale non uniforme', len(pixels) == 64 * 64 * 4 and len(set(pixels[::4])) > 10, len(pixels))
+    c.run('blender-cli', 'export_glb', packed, glb)
+    verify = c.root / 'reopen.py'
+    verify.write_text("""import bpy
+bpy.ops.wm.open_mainfile(filepath=NATIVE, use_scripts=False)
+body=bpy.data.objects['EditableBody']
+bpy.context.scene.frame_set(1); start=body.location.x
+bpy.context.scene.frame_set(12); assert abs(body.location.x-start)>.4
+bpy.ops.wm.read_factory_settings(use_empty=True)
+bpy.ops.import_scene.gltf(filepath=GLB)
+assert any(o.type=='MESH' for o in bpy.data.objects)
+assert any(o.animation_data for o in bpy.data.objects)
+""".replace('NATIVE', repr(str(packed))).replace('GLB', repr(str(glb))))
+    c.run('blender-cli', 'execute', verify)
+    c.check('Animazione valutata e GLB reimportato', glb.read_bytes()[:4] == b'glTF', glb.stat().st_size)
+    archive = c.root / 'sources.zip'
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.write(packed, 'Sources/scene.blend')
+    helper = Path(__file__).resolve().parents[1] / 'studio/source_packages.py'
+    if not helper.exists():
+        helper = Path('/opt/studio/source_packages.py')
+    report = json.loads(c.run('python3', helper, 'verify', archive, '--native'))
+    c.check('Sorgenti riaperti dopo trasferimento ZIP', any(x.get('check') == 'blender_reopen' and x['status'] == 'passed'
+            for x in report['checks']), report)
+    corrupt = c.root / 'work' / 'corrupt.blend'; corrupt.parent.mkdir(exist_ok=True)
+    corrupt.write_bytes(b'This is not a Blender project')
+    rejected = subprocess.run(['blender-cli', 'inspect', str(corrupt)], capture_output=True, text=True, timeout=60)
+    c.check('File corrotto non accettato come progetto', rejected.returncode != 0, rejected.stderr[-400:])
+
+
 CASES = {name: globals()[name] for name in ('photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft',
-            'effectcraft', 'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft')}
+            'effectcraft', 'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender')}
 
 
 def main():
