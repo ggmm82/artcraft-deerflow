@@ -4,7 +4,7 @@ from deerflow.tools.types import Runtime
 from deerflow.config.paths import get_paths
 from deerflow.runtime.user_context import resolve_runtime_user_id
 from .docker_runtime import delegate
-from .projects import archive_plan, create_plan, execute_step, read_project, revise_step, sync_acceptance
+from .projects import archive_plan, create_plan, execute_step, read_project, revise_step, sync_acceptance, sync_project_context
 import json
 
 
@@ -30,7 +30,7 @@ def interaction_id(runtime):
 
 
 def user_requests(runtime):
-    from .progress import clean_summary
+    from .project_skills import request_text
     captured = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('artcraft_user_messages')
     context = getattr(runtime, 'context', None) or {}
     is_subagent = context.get('is_subagent', False) if isinstance(context, dict) else getattr(context, 'is_subagent', False)
@@ -39,7 +39,7 @@ def user_requests(runtime):
         # Inherit only the gateway's actual user input, never relabel those tasks.
         if not isinstance(captured, list):
             return []
-        return [clean_summary(s, 4000) for s in captured if isinstance(s, str) and s.strip()]
+        return [request_text(s) for s in captured if isinstance(s, str) and s.strip()]
     result = []
     for message in (getattr(runtime, 'state', None) or {}).get('messages', []):
         kind = message.get('type', message.get('role')) if isinstance(message, dict) else getattr(message, 'type', '')
@@ -49,10 +49,10 @@ def user_requests(runtime):
         if isinstance(content, list):
             content = '\n'.join(b.get('text', '') for b in content if isinstance(b, dict) and b.get('type') == 'text')
         if isinstance(content, str) and content.strip():
-            result.append(clean_summary(content, 4000))
+            result.append(request_text(content))
     for text in captured if isinstance(captured, list) else []:
-        if isinstance(text, str) and text.strip() and clean_summary(text, 4000) not in result:
-            result.append(clean_summary(text, 4000))
+        if isinstance(text, str) and text.strip() and request_text(text) not in result:
+            result.append(request_text(text))
     return result
 
 
@@ -60,13 +60,13 @@ def user_requests(runtime):
 def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
                 project_type: str = '', omissions_json: str = '{}', revise_step_id: str = '',
                 archive: bool = False, summary: str = '', next_action: str = '', status: str = '',
-                product_path: str = '', requirements_json: str = '', criteria_json: str = '') -> str:
+                product_path: str = '', requirements_json: str = '', criteria_json: str = '', roles_json: str = '', memory_json: str = '') -> str:
     """Maintain a concise, adaptive production workspace and visible user status.
 
     Read without arguments. Update the brief, activity board or current status as
     the work evolves; existing attempts and files are preserved. Activities may
     be reordered, added, reassigned or skipped. depends_on is an input hint, not
-    a blocking pipeline. All 13 catalog specialists are available as needed.
+    a blocking pipeline. Compile project-specific professional roles from the actual brief; installed tools are capabilities, not a list of professions.
     Prefer a complete early preview, then improve it with focused specialist work.
     Avoid long plans and technical recaps: summary and next_action appear beside
     the chat input. Use purpose=delivery on the final integration to check media.
@@ -84,6 +84,8 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         status: working, review, ready, blocked or idle.
         product_path: Existing verified final product to show prominently; ready requires it.
         requirements_json: Media acceptance requirements such as {"audio":true,"video":true}; follow the user's brief.
+        roles_json: JSON roles compiled for this project: id, title, mission, expertise, procedure, checks, deliverables, tools (installed IDs, optional), inputs and risks. No fixed profession list.
+        memory_json: JSON object with project-specific decisions, facts, questions and asset references; merge top-level keys, keep evidence and uncertainty explicit.
         criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Preserve requested references; no invented substitutions.
     """
     workspace = workspace_for(runtime)
@@ -96,7 +98,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = archive_plan(workspace, brief)
     elif revise_step_id:
         value = revise_step(workspace, revise_step_id, brief or summary or next_action)
-    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json)):
+    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json, roles_json, memory_json)):
         value = create_plan(workspace, brief, json.loads(steps_json or '[]'), project_type,
             json.loads(omissions_json), summary=summary, next_action=next_action, status=status,
             product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None)
@@ -104,6 +106,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = read_project(workspace)
     if value and not value.get('archived'):
         sync_acceptance(workspace, requests, json.loads(criteria_json) if criteria_json else None)
+        sync_project_context(workspace, json.loads(roles_json) if roles_json else None, json.loads(memory_json) if memory_json else None)
         value = read_project(workspace)
     if value and not value.get('archived'):
         # The user board contains all versions. Repeating its entire inventory
@@ -114,7 +117,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
 
 
 @tool('studio_delegate', parse_docstring=True)
-def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', purpose: str = 'work') -> str:
+def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', purpose: str = 'work', role_id: str = '') -> str:
     """Assign focused work to any useful ArtCraft specialist, reusing available files.
 
     Activities are flexible. step_id is optional and an activity is created when
@@ -128,7 +131,8 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     opening evidence. Only one worker runs at a time on the 4 GB VPS.
 
     Args:
-        agent: Exact specialist ID from the catalog.
+        agent: Installed tool specialist ID, or workspace for a compiled project role using the shared model.
+        role_id: ID of a project-specific compiled role created with studio_plan roles_json. Required for workspace; uses its procedure and tool skills.
         task: Concrete result, pertinent input paths and acceptance checks; avoid broad rediscovery.
         runtime: Injected DeerFlow runtime.
         step_id: Optional activity identifier, reusable for targeted revisions.
@@ -142,13 +146,19 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     from .state import team
     profile = team()
     request_id = interaction_id(runtime)
+    sync_project_context(workspace)
     project = read_project(workspace) or {}
+    if not role_id and step_id:
+        role_id = next((s.get('role_id', '') for s in project.get('steps', []) if s['id'] == step_id), '')
+    role = next((r for r in project.get('roles', []) if r['id'] == role_id), None) if role_id else None
+    if (role_id and not role) or (agent == 'workspace' and not role):
+        raise ValueError('Definisci prima il ruolo concreto con studio_plan roles_json')
     requirements = project.get('requirements', {}) if purpose == 'delivery' else {}
     result = json.loads(execute_step(workspace, agent, task, step_id,
         lambda instructions, started=None: delegate(agent, instructions, workspace,
             tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
-            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance')), provider={'engine': profile['engine'], 'model': profile['model']},
-        purpose=purpose, request_id=request_id))
+            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role), provider={'engine': profile['engine'], 'model': profile['model']},
+        purpose=purpose, request_id=request_id, role=role))
     handoff = result.get('handoff') or {}
     from .progress import clean_summary
     compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked',

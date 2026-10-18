@@ -14,6 +14,12 @@ class TeamRoutingTests(unittest.TestCase):
         self.assertEqual(result['input']['messages'], original)
         self.assertEqual(result['config']['configurable']['artcraft_user_messages'], ['Use my reference'])
         self.assertEqual(result['config']['configurable']['thread_id'], 'owned-thread')
+    def test_long_brief_keeps_ending_constraints_in_gateway_capture(self):
+        from studio.team_routing import shared_run
+        original = 'Inizio ' + 'requisito ' * 1200 + ' FINE: prima solo una bozza'
+        result = shared_run({'input': {'messages': [{'role': 'user', 'content': original}]}})
+        self.assertEqual(result['config']['configurable']['artcraft_user_messages'], [original])
+
     def test_submission_disconnect_defaults_and_explicit_stop_are_distinct(self):
         app = FastAPI()
 

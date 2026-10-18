@@ -81,3 +81,8 @@ Non serve un'altra configurazione di modelli. Il nuovo ruolo eredita automaticam
 ## Esempio reale: Blender
 
 [Blender](BLENDER.md) aggiunge un programma esterno alla famiglia Craft tramite distribuzione ufficiale fissata, adattatore CLI/MCP locale, skill specialistica e prove native. L’installer supporta archivi gzip/xz e distingue il binario installato dall’adattatore. La configurazione dei modelli resta unica. Non inventare un endpoint MCP per un programma che ne è privo: va fornito e collaudato un adattatore, oppure dichiarato esplicitamente il solo uso CLI.
+
+
+## Competenze di progetto e strumenti sono distinti
+
+Non aggiungere una CLI o una cartella globale per ogni professione. Il coordinatore compila [skill dinamiche](SKILL-DINAMICHE.md) dal brief e associa soltanto gli strumenti necessari. Un nuovo strumento nativo segue la procedura di installazione e collaudo sopra; poi è selezionabile nelle skill di qualsiasi progetto senza nuove liste di mestieri e senza nuovi modelli. Una nuova competenza di contenuto o organizzazione può invece essere compilata usando il workspace esistente. Una capacità che richiede software o dati assenti resta un limite esplicito.

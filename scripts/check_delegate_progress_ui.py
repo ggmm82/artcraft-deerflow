@@ -40,7 +40,9 @@ def main():
     project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'status': 'working',
         'summary': 'Preparo una prima versione completa', 'next_action': 'Integro immagine, movimento e audio',
         'product_path': video_path, 'quality_status': 'not_reviewed',
-        'acceptance': {'user_requests': ['Conserva il contenuto del riferimento fornito'], 'criteria': [
+        'acceptance': {'user_requests': ['Conserva il contenuto del riferimento fornito'],
+            'request_documents': [{'path': '/mnt/user-data/.studio-project/requests/original.txt'}],
+            'request_manifest': {'path': '/mnt/user-data/.studio-project/requests/index.json'}, 'request_count': 12, 'criteria': [
             {'id': 'request_fidelity', 'requirement': 'Contenuto conforme alla richiesta originale', 'critical': True}]},
         'review_criteria': [{'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
             'status': 'failed', 'evidence': 'Il contenuto è stato sostituito con una variante non richiesta.'}],
@@ -151,6 +153,20 @@ window.showThread();
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
                 expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                # A professional role is compiled from the project, independently of CLI names.
+                state['job'] = {**job, 'role_id': 'coherence', 'role_title': 'Responsabile della coerenza', 'role_version': 'abcdef0123456789'}
+                state['project'] = {**project, 'roles': [{'id': 'coherence', 'title': 'Responsabile della coerenza',
+                    'mission': 'Confrontare risultati e vincoli', 'expertise': ['Analisi delle dipendenze'],
+                    'checks': ['Confrontare il risultato con il brief integrale'], 'tools': [], 'version': 'abcdef0123456789'}]}
+                page.reload()
+                expect(page.get_by_test_id('studio-status')).to_have_text('Responsabile della coerenza sta lavorando')
+                page.get_by_role('button', name='Squadra', exact=True).click()
+                compiled = page.get_by_test_id('compiled-role')
+                compiled.locator('summary').click()
+                expect(compiled).to_contain_text('workspace e strumenti di base')
+                expect(compiled).to_contain_text('Confrontare il risultato con il brief integrale')
+                expect(compiled).to_contain_text('Versione abcdef012345')
+                state['job'] = job
                 # A report-only inventory must never replace the selected artifact.
                 state['project'] = {**project, 'results': [{'path': '/mnt/user-data/outputs/review/report.json',
                     'label': 'report.json', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}]}
@@ -160,6 +176,8 @@ window.showThread();
                 page.get_by_test_id('acceptance-criteria').locator('summary').click()
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Conserva il contenuto del riferimento fornito')
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Da correggere')
+                expect(page.get_by_role('link', name='Leggi la richiesta originale completa')).to_have_attribute('href',
+                    '/api/threads/fixture/artifacts/mnt/user-data/.studio-project/requests/original.txt?download=true')
                 # Document/project outputs use the same result control, not a video-only flow.
                 state['project'] = {**state['project'], 'product_path': '/mnt/user-data/outputs/report/final.docx'}
                 page.reload()

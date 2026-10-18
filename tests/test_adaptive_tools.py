@@ -26,6 +26,42 @@ class AdaptiveToolTests(unittest.TestCase):
                 studio_plan.func(runtime=runtime, brief='Coordinator interpretation')
                 self.assertEqual(read_project(Path(directory))['acceptance']['user_requests'], ['Actual user reference'])
 
+    def test_dynamic_role_reaches_worker_with_original_brief_and_shared_profile(self):
+        from studio.project_skills import load_compiled, read_document
+        from studio.projects import read_project
+        from test_project_skills import role
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            original = 'Problema nuovo: ' + 'vincolo specifico ' * 600 + ' Fine: iniziare solo con una proposta.'
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request', content=original)]})
+            with patch('studio.tools.workspace_for', return_value=root), \
+                 patch('studio.state.team', return_value={'engine': 'deepseek', 'model': 'shared-fixture'}), \
+                 patch('studio.tools.delegate', return_value=json.dumps({'ok': True, 'handoff': {'checks': []}})) as worker:
+                studio_plan.func(runtime=runtime, brief='Proposta iniziale', roles_json=json.dumps([role()]),
+                    memory_json=json.dumps({'decisione': 'Prima la proposta'}),
+                    steps_json=json.dumps([{'id': 'prepare', 'agent': 'workspace', 'role_id': 'design', 'goal': 'Proposta verificabile'}]))
+                studio_delegate.func(agent='workspace', task='Preparare la proposta', step_id='prepare', runtime=runtime)
+                args = worker.call_args
+                compiled = args.kwargs['role']
+                self.assertEqual(compiled['id'], 'design')
+                self.assertIn('Confrontare alternative', load_compiled(root, compiled))
+                self.assertEqual(read_document(root, args.kwargs['acceptance']['request_documents'][0]), original)
+                self.assertEqual(compiled['request_hash'], args.kwargs['acceptance']['hash'])
+                self.assertEqual(read_project(root)['steps'][0]['role_title'], compiled['title'])
+                # Changing a real requirement compiles a new version, preserving the old file.
+                runtime.state['messages'].append(SimpleNamespace(type='human', id='clarification', content='Confronta due alternative'))
+                studio_delegate.func(agent='workspace', task='Aggiornare la proposta', step_id='prepare', runtime=runtime)
+                updated = worker.call_args.kwargs['role']
+                self.assertNotEqual(updated['version'], compiled['version'])
+                self.assertIn('Missione', load_compiled(root, compiled))
+                self.assertEqual(worker.call_count, 2)
+                other = role(); other.update(id='verify', title='Responsabile delle verifiche')
+                studio_plan.func(runtime=runtime, roles_json=json.dumps([role(), other]),
+                    steps_json=json.dumps([{'id': 'prepare', 'agent': 'workspace', 'role_id': 'verify', 'goal': 'Verificare alternative'}]))
+                studio_delegate.func(agent='workspace', task='Controllare la proposta', step_id='prepare', runtime=runtime)
+                self.assertEqual(worker.call_args.kwargs['role']['id'], 'verify')
+                self.assertEqual(read_project(root)['steps'][0]['role_title'], other['title'])
+
     def test_tool_memory_is_compact_and_delivery_requirements_reach_the_worker(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

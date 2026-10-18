@@ -1,6 +1,6 @@
 # Regia adattabile
 
-Il catalogo ha 13 strumenti. Scegli quelli necessari e torna ai ruoli quando il prodotto lo richiede. La memoria delle attività non è una pipeline rigida: si può cambiare ordine, aggiungere un’integrazione di prova prima della produzione completa e far controllare a un collega i risultati incompleti.
+Compila i ruoli professionali dal brief con `studio_plan(roles_json=...)`, senza un elenco di professioni. Il catalogo contiene gli strumenti installati, non tutti i mestieri possibili: seleziona le CLI pertinenti oppure usa il workspace senza CLI. Esegui i ruoli compilati con `studio_delegate(agent="workspace", role_id=...)` e torna ai ruoli quando il prodotto lo richiede. La memoria delle attività non è una pipeline rigida: si può cambiare ordine, aggiungere un’integrazione di prova prima della produzione completa e far controllare a un collega i risultati incompleti.
 
 ## Esempio: robot che balla
 

@@ -15,7 +15,8 @@ from .progress import JOB_ID, clean_summary, job_path, read_status, update, utcn
 from .work_results import failure_info, partial_files
 from .state import applications, atomic_json
 from .source_packages import digest
-from .acceptance import contract
+from .acceptance import contract, fingerprint
+from .project_skills import compact_acceptance, save_requests, read_document, scoped_file, validate_roles, compile_role, ROLE_ID, redact_memory
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
 PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
@@ -160,11 +161,20 @@ def sync_acceptance(workspace, requests, criteria=None):
             return
         old = value.get('acceptance') or {}
         previous = old.get('user_requests', [])
-        if previous and requests[0] != previous[0]:
+        documents = json.loads(read_document(workspace, old['request_manifest'])) if old.get('request_manifest') else []
+        if not documents and previous:
+            # Recover the original from complete human history after upgrading the 4000-char copy.
+            if requests[0].startswith(previous[0]) and len(requests[0]) > len(previous[0]):
+                previous[0] = requests[0]
             requests = previous + [r for r in requests if r not in previous]
+        documents, manifest = save_requests(workspace, requests, documents)
+        selected = documents[:1] + documents[-8:] if len(documents) > 9 else documents
+        texts = [read_document(workspace, d) for d in selected]
         if criteria is None:
             criteria = [c for c in old.get('criteria', []) if c['id'] != 'request_fidelity']
-        updated = contract(requests, criteria)
+        updated = compact_acceptance(contract(texts, criteria))
+        updated['hash'] = fingerprint({'contract': updated['hash'], 'history': [d['sha256'] for d in documents]})
+        updated.update(request_documents=selected, request_manifest=manifest, request_count=len(documents))
         for rule in updated['criteria']:
             if any(workspace_path(workspace, p) is None for p in rule['reference_paths']):
                 raise ValueError('I riferimenti devono appartenere alla conversazione')
@@ -188,7 +198,9 @@ def read_project(workspace):
     result = {k: clean_summary(value.get(k, '')) for k in (
         'id', 'brief', 'summary', 'next_action', 'status', 'updated_at', 'product_path')}
     result['project_type'] = value.get('project_type', 'custom')
-    result['acceptance'] = value.get('acceptance')
+    result['acceptance'] = compact_acceptance(value.get('acceptance'))
+    result['roles'] = value.get('roles', [])
+    result['memory'] = value.get('memory')
     result['brief'] = clean_summary(value.get('brief', ''), 4000)
     result['requirements'] = {k: v for k, v in value.get('requirements', {}).items()
                               if k in ('audio', 'video') and type(v) is bool}
@@ -198,8 +210,11 @@ def read_project(workspace):
     for step in value['steps']:
         attempts = step['attempts']
         last = attempts[-1] if attempts else {}
+        role_id = step.get('role_id') or last.get('role_id', '')
+        role_title = next((r['title'] for r in value.get('roles', []) if r['id'] == role_id), '')
         result['steps'].append({'id': step['id'], 'agent': step['agent'], 'goal': clean_summary(step['goal']),
             'status': step['status'], 'attempt_count': step.get('attempt_count', len(attempts)),
+            'role_id': role_id, 'role_title': role_title or last.get('role_title', ''),
             'note': clean_summary(step.get('note', '')), 'error': clean_summary(last.get('error', ''))})
         # Retain previous usable versions when a newer revision failed or hit quota.
         for attempt in visible_attempts(step, value.get('product_path', '')):
@@ -298,7 +313,7 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
     if requirements is not None and (not isinstance(requirements, dict) or any(
             k not in ('audio', 'video') or type(v) is not bool for k, v in requirements.items())):
         raise ValueError('I requisiti media accettano audio e video come booleani')
-    known, incoming = {a['id'] for a in applications()}, []
+    known, incoming = {a['id'] for a in applications()} | {'workspace'}, []
     for step in steps:
         if not isinstance(step, dict):
             raise ValueError('Attività non valida')
@@ -307,6 +322,8 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
             raise ValueError('ID attività non valido o duplicato')
         if agent not in known or not isinstance(goal, str) or not goal.strip() or len(goal) > 4000:
             raise ValueError('Ogni attività richiede uno specialista del catalogo e un obiettivo concreto')
+        if 'role_id' in step and (not isinstance(step['role_id'], str) or not ROLE_ID.fullmatch(step['role_id'])):
+            raise ValueError('ID ruolo non valido')
         deps = step.get('depends_on', [])
         if not isinstance(deps, list) or any(not isinstance(d, str) or not STEP_ID.fullmatch(d) for d in deps):
             raise ValueError('Riferimenti degli input non validi')
@@ -335,6 +352,8 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 if previous['status'] == 'running':
                     raise ValueError('Non modificare un’attività in esecuzione')
                 previous.update(agent=item['agent'], goal=item['goal'], depends_on=item['depends_on'])
+                if 'role_id' in item:
+                    previous['role_id'] = item['role_id']
                 if 'status' in item:
                     previous['status'] = item['status']
             else:
@@ -355,6 +374,10 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 raise ValueError('Prima della consegna finale usa studio_delegate con purpose=delivery per controllare il file completo')
             value['product_path'] = product_path
         if status == 'ready':
+            acceptance = value.get('acceptance') or {}
+            if acceptance.get('request_manifest'):
+                for document in json.loads(read_document(workspace, acceptance['request_manifest'])):
+                    read_document(workspace, document)
             target = artifact_path(workspace, value.get('product_path', ''))
             if not target:
                 raise ValueError('Indica il prodotto finale verificato, non un elenco di file intermedi')
@@ -443,7 +466,7 @@ def archive_plan(workspace, reason):
     return {'id': value['id'], 'archived': True, 'files_preserved': True}
 
 
-def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purpose='work', request_id=''):
+def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purpose='work', request_id='', role=None):
     if purpose not in ('work', 'preview', 'review', 'integration', 'delivery'):
         raise ValueError('Scopo incarico non valido')
     if not read_project(workspace):
@@ -453,15 +476,17 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         step = next((s for s in value['steps'] if s['id'] == step_id), None) if step_id else None
         if not step:
             sid = step_id or agent + '-' + uuid.uuid4().hex[:8]
-            if not STEP_ID.fullmatch(sid) or agent not in {a['id'] for a in applications()} or len(value['steps']) >= 64:
+            if not STEP_ID.fullmatch(sid) or agent not in ({a['id'] for a in applications()} | {'workspace'}) or len(value['steps']) >= 64:
                 raise ValueError('Attività o specialista non valido')
             step = {'id': sid, 'agent': agent, 'goal': clean_summary(task), 'depends_on': [], 'attempts': [], 'status': 'pending'}
             value['steps'].append(step)
         if step['status'] == 'running':
             raise ValueError('Questa attività è già in esecuzione')
         step.update(agent=agent, purpose=purpose)
+        if role:
+            step['role_id'] = role['id']
         previous = step['attempts'][-1] if step['attempts'] else {}
-        context = {'provider': provider, 'revision': step.get('revision_id', ''), 'purpose': purpose, 'request': request_id}
+        context = {'provider': provider, 'revision': step.get('revision_id', ''), 'purpose': purpose, 'request': request_id, 'role': role.get('version') if role else None}
         if previous.get('context') == context and previous.get('error'):
             failure = failure_info(previous['error'])
             if not failure['retryable']:
@@ -475,14 +500,14 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
         contract_text = ('\n\nPiano del coordinatore (non sostituisce la richiesta utente): ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
-                    '\nRichiesta originale e criteri di accettazione del prodotto:\n' + json.dumps(value.get('acceptance'), ensure_ascii=False) +
+                    '\nRichiesta originale e criteri di accettazione del prodotto:\n' + json.dumps(compact_acceptance(value.get('acceptance')), ensure_ascii=False) +
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
                     'rifare tutto per un controllo facoltativo o una chiusura formale mancante.')
         if previous:
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
-        attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context}
+        attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
         history = step['attempts'][-(MAX_HISTORY - 3):]
         last_usable = next((a for a in reversed(step['attempts']) if a.get('status') == 'completed'), None)
         if last_usable and last_usable not in history:
@@ -565,3 +590,28 @@ def read_results(value, workspace=None):
                     'at': attempt.get('finished_at', '')})
             seen.update(paths)
     return sorted(results, key=lambda r: (value.get('product_path') in r['files'], r['at']), reverse=True)[:20]
+
+
+def sync_project_context(workspace, roles=None, memory=None):
+    """Persist project memory and compile only the skills needed by its live roles."""
+    apps = applications()
+    specs = validate_roles(roles, apps) if roles is not None else None
+    if memory is not None and (not isinstance(memory, dict) or len(json.dumps(memory).encode()) > 40000):
+        raise ValueError('La memoria richiede un oggetto JSON entro 40 KiB; usa file referenziati per contenuti lunghi')
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value:
+            return
+        current = json.loads(read_document(workspace, value['memory'])) if value.get('memory') else {}
+        if memory is not None:
+            current.update(redact_memory(memory))
+        serialized = json.dumps(current, ensure_ascii=False, sort_keys=True, indent=2)
+        if len(serialized.encode()) > 40000:
+            raise ValueError('Memoria troppo grande: conserva testi e asset nei file e indica i riferimenti')
+        memo = scoped_file(workspace, 'memory/' + fingerprint(current) + '.json', serialized)
+        specs = specs if specs is not None else value.get('role_specs', [])
+        compiled = [compile_role(workspace, spec, value.get('acceptance'), memo, apps) for spec in specs]
+        if value.get('roles') == compiled and value.get('memory') == memo:
+            return
+        value.update(role_specs=specs, roles=compiled, memory=memo)
+        atomic_json(folder / 'project.json', value)

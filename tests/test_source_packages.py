@@ -83,6 +83,9 @@ class PackageTests(unittest.TestCase):
         record = build_delivery(handoff, self.root, purpose='delivery', agent='filmcraft', native=False)
         self.assertEqual(record['technical_status'], 'needs_revision')
         self.assertIn('.fcproj', record['issues'][0])
+        record = build_delivery(handoff, self.root, purpose='delivery', agent='workspace', tools=['filmcraft'], native=False)
+        self.assertEqual(record['technical_status'], 'needs_revision')
+        self.assertIn('.fcproj', record['issues'][0])
 
     def test_review_binds_real_product_and_text_model_cannot_claim_sensory_evaluation(self):
         product = self.root / 'video.mp4'; product.write_text('fixture')

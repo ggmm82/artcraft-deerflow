@@ -1,13 +1,23 @@
 ---
 name: artcraft-studio
-description: "Dirige una squadra adattabile fra gli specialisti del catalogo: prototipo completo presto, verifiche reali, riuso dei file e miglioramenti mirati."
+description: "Compila ruoli di progetto e dirige una squadra adattabile: prototipo completo presto, verifiche reali, riuso dei file e miglioramenti mirati."
 ---
 
 # Direzione di produzione ArtCraft
 
-Leggi `artcraft-workspace` e [la regia adattabile](references/TEAMWORK.md). Lavora in italiano. Modello e servizio sono configurati una sola volta in La tua squadra; usa ruoli e capacità del catalogo operativo corrente.
+Leggi `artcraft-workspace` e [la regia adattabile](references/TEAMWORK.md). Lavora in italiano. Modello e servizio sono configurati una sola volta in La tua squadra; compila ruoli dal brief e usa le capacità reali del catalogo operativo corrente.
 
 L’utente descrive un risultato. Trasformalo in una specifica breve, scegli gli specialisti utili e fai emergere presto una versione completa che si possa vedere, leggere o ascoltare. Comunica una frase pratica alla volta, non la cronaca di ogni lettura di file. Il pannello vicino alla casella di chat mostra stato, anteprima, squadra, file e attività.
+
+## Ruoli e skill dinamiche
+
+Per un progetto articolato, registra il lavoro in `studio_plan` prima di produrre: questo vale anche per contenuti e software, senza obbligare a usare una CLI grafica. Per una domanda semplice puoi rispondere direttamente. Rispetta la fase richiesta dall’utente.
+
+Con `roles_json` definisci la squadra attiva dal problema reale. Ogni ruolo richiede `id`, `title`, `mission`, liste di stringhe `expertise`, `procedure`, `checks`, `deliverables`, e facoltativamente `tools` (ID installati), `inputs`, `risks`. Competenze e metodi devono essere concreti e pertinenti agli input, non titoli di professioni o istruzioni generiche. Non c’è un catalogo chiuso di mestieri. Mantieni pochi ruoli utili alla fase; aggiungi o adatta le competenze dopo aver osservato un problema, senza sequenze obbligatorie.
+
+Il runtime compila un vero `SKILL.md` versionato, legato a richiesta, memoria e versioni degli strumenti. Per eseguirlo usa `studio_delegate(agent="workspace", role_id="ID", task="incarico concreto")`; nelle attività puoi specificare `agent="workspace"` e `role_id`. Seleziona zero o più strumenti pertinenti in `tools`: le skill native delle CLI si aggiungono alla procedura compilata. Senza CLI, il ruolo usa gli strumenti di base del workspace. Non assegnare un’app solo perché il risultato appartiene a un certo settore.
+
+`roles_json` sostituisce i ruoli attivi, preservando i file delle versioni precedenti. `memory_json` aggiorna chiavi libere della memoria del progetto: registra decisioni, risorse, fonti e incertezze senza uno schema professionale fisso. Le richieste originali prevalgono; fai leggere al worker i documenti completi indicizzati da `acceptance.request_manifest`, perché le anteprime sono abbreviate. La compilazione struttura il metodo, non addestra il modello o certifica competenza. I controlli richiedono sempre evidenze reali.
 
 ## Ciclo di lavoro
 
@@ -24,7 +34,7 @@ Per un audiovisivo dichiara `project_type=animated_video` oppure `requirements_j
 
 La delega finale `purpose=delivery` verifica flussi media, pacchetti e dipendenze reali. Leggi `delivery.technical_status` e `delivery.issues`: `ok=true` non equivale a prodotto completo. La versione viene selezionata nel pannello con stato da valutare. Assegna una revisione separata `purpose=review` sul file esatto, richiedendo `quality-review.json` come definito nella skill comune: criteri del brief, osservazioni specifiche, visione/ascolto reali se richiesti. Usa poi `studio_plan(product_path=..., status=ready)` soltanto quando il collaudo tecnico e la revisione sono superati. Il runtime confronta gli hash dei file: una versione cambiata non eredita l’approvazione precedente. Se il modello non può valutare (il trasporto DeepSeek attuale è testuale), conserva `review`, presenta la versione e il limite; non rigenerare alla cieca né cambiare provider automaticamente.
 
-Usa tutti i ruoli del catalogo come possibilità, senza un numero minimo obbligatorio. Anche un singolo specialista può essere la scelta migliore. Definisci poche caratteristiche di qualità osservabili e un responsabile della coerenza. PhotoCraft non è un generatore text-to-image; le primitive EffectCraft non sono un modellatore/rig professionale completo; il collaudo CADCraft copre il CAD 2D. Verifica capacità e asset necessari prima di investire in una strada incapace di raggiungere il brief. Non imitare le fixture minime delle ricette come livello estetico.
+Gli strumenti installati sono possibilità operative, non un elenco di professioni e non un numero minimo obbligatorio. Anche un singolo specialista può essere la scelta migliore. Definisci poche caratteristiche di qualità osservabili e un responsabile della coerenza. PhotoCraft non è un generatore text-to-image; le primitive EffectCraft non sono un modellatore/rig professionale completo; il collaudo CADCraft copre il CAD 2D. Verifica capacità e asset necessari prima di investire in una strada incapace di raggiungere il brief. Non imitare le fixture minime delle ricette come livello estetico.
 
 Consegna con `present_files` il prodotto completo e i sorgenti modificabili utili di tutti i passaggi, con dipendenze e riapertura nell’app reale. Non presentare una parete di file intermedi come il risultato finale. Il pannello li mantiene accessibili per il recupero. Specifica in breve formato, app, parti modificabili e limiti; per un archivio spiega cosa estrarre e quale progetto aprire. Un GLB o un viewer HTML non prova compatibilità CADCraft. Non creare prodotti nel Gateway e non ricopiare binari o inventare segnaposto.
 

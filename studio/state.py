@@ -113,6 +113,9 @@ def team():
 
 
 def effective_agent(identifier):
+    if identifier == 'workspace':
+        profile = team()
+        return {'engine': profile['engine'], 'model': profile['model'], 'enabled': True, 'instructions': '', 'skills': ['artcraft-workspace']}
     with LOCK:
         settings = catalog().get(identifier)
         if settings is None:

@@ -32,7 +32,7 @@ LABELS = {
 SECRET = re.compile(r'(?i)\b(?:sk-[a-z0-9_-]{8,}|ya29\.[a-z0-9_.-]+|4/0[a-z0-9_-]+)|'
                     r'(?i:bearer\s+)[a-z0-9_.-]+|(?i:(?:api[_-]?key|token|password)\s*[:=]\s*)\S+')
 APPS = {'photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft', 'effectcraft',
-        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender'}
+        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender', 'workspace'}
 
 
 def utcnow():
@@ -289,7 +289,7 @@ class Reporter:
 def public_status(value):
     """Allowlist every returned field even if a worker modified its own file."""
     result = {key: clean_summary(value.get(key)) for key in (
-        'job_id', 'agent', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
+        'job_id', 'agent', 'role_id', 'role_title', 'role_version', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
         'started_at', 'finished_at', 'deadline_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]

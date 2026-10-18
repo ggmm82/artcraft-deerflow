@@ -86,6 +86,8 @@ class BlenderTests(unittest.TestCase):
                         'files': [item(export, 'export')]}}
             result = build_delivery(handoff, root, purpose='delivery', agent='blender')
             self.assertEqual(result['technical_status'], 'needs_revision')
+            result = build_delivery(handoff, root, purpose='delivery', agent='workspace', tools=['blender'])
+            self.assertEqual(result['technical_status'], 'needs_revision')
             native = root / 'source.blend';native.write_bytes(b'not a blend')
             handoff['delivery']['files'].append(item(native, 'editable_source'))
             with patch('studio.deliveries.inspect_blend', side_effect=ValueError('corrupt native file')):
