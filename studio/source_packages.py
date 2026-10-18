@@ -162,12 +162,32 @@ def inspect_blend(path, boundary, *, native=True):
             'note': 'CLI nativa, geometria e risorse; qualità artistica e GUI non certificate'}
 
 
+def inspect_ebook(path, boundary, *, native=True):
+    """Native content-container checks, independent of a project's domain or role."""
+    if not native:
+        return {'file': Path(path).name, 'status': 'not_run', 'check': 'calibre_structure'}
+    boundary = Path(boundary).resolve()
+    result = subprocess.run(['calibre-cli', 'check', str(path)], cwd=boundary,
+        env={**os.environ, 'ARTCRAFT_WORKSPACE_ROOT': str(boundary), 'ARTCRAFT_OUTPUT_DIR': str(boundary)},
+        capture_output=True, text=True, timeout=180)
+    if result.returncode:
+        raise ValueError('Calibre: controllo fallito: ' + (result.stderr or result.stdout)[-1200:])
+    info = json.loads(result.stdout)
+    if info.get('status') != 'passed' or not info.get('spine') or any(i.get('severity') == 'error' for i in info.get('issues', [])):
+        raise ValueError('Calibre: struttura o risorse non valide')
+    return {'file': Path(path).relative_to(boundary).as_posix(), 'status': 'passed',
+            'check': 'calibre_structure', 'reading_order': len(info['spine']), 'resources': info.get('resources'),
+            'warnings': info.get('issues', []), 'note': info.get('note', 'Controllo nativo; GUI e resa non provate')}
+
+
 def inspect_tree(folder, *, native=False, budget=None, depth=0):
     folder = Path(folder).resolve()
     projects, checks = [], []
     for path in sorted(folder.rglob('*.blend')):
         checks.append(inspect_blend(path, folder, native=native))
     for path in sorted(folder.rglob('*')):
+        if path.suffix.lower() in ('.epub', '.azw3'):
+            checks.append(inspect_ebook(path, folder, native=native))
         if path.suffix in NATIVE:
             value = document(path)
             scope = value.get('project', {}).get('items', {}) if path.suffix == '.fcproj' else value
@@ -223,15 +243,17 @@ def verify_archive(archive, *, native=False):
         budget = {'bytes': 0, 'files': 0}
         extract(archive, folder, budget)
         checks = inspect_tree(folder, native=native, budget=budget)
+        status = 'passed' if all(c['status'] == 'passed' for c in checks) else 'not_run'
         if any(c['file'].endswith('.fcproj') for c in checks):
             helper = folder / 'PREPARA_SORGENTI.py'
             # Do not execute an untrusted generated helper, even if named alike.
             if not helper.is_file() or digest(helper) != digest(__file__):
                 raise ValueError('FilmCraft richiede il pacchetto preparato con source_packages.py pack: '
                                  'percorsi relativi da soli non sono riapribili da altre cartelle')
-        return {'status': 'passed', 'sha256': digest(archive), 'files': budget['files'], 'checks': checks,
+        return {'status': status, 'sha256': digest(archive), 'files': budget['files'], 'checks': checks,
                 'coverage': 'CRC e inventario; dipendenze/struttura FilmCraft, EffectCraft, SoundCraft; '
                             'Blender: riapertura, geometria e dipendenze se native=True; '
+                            'Calibre: struttura e risorse EPUB/AZW3 se native=True; '
                             'altri formati richiedono la prova specifica della skill'}
 
 

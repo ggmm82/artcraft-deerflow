@@ -84,7 +84,8 @@ window.showThread();
 <body><main class="mx-auto flex h-dvh max-w-[960px] flex-col"><header class="shrink-0 border-b p-3">Chat ArtCraft</header><div id="messages" class="min-h-0 flex-1 overflow-y-auto p-3">'''+paragraphs+'''</div><footer class="shrink-0 p-3"><div id="root"></div><textarea class="h-14 w-full rounded border p-2" aria-label="Scrivi un messaggio"></textarea></footer></main><script src="/app.js"></script></body></html>''')
         css = '@import ' + json.dumps(str(modules / 'tailwindcss/index.css')) + ' source(none);\n'
         css += '@source ' + json.dumps(str(repo / 'frontend/delegate-progress.tsx')) + ';\n@source "./index.html";\n'
-        css += '@theme { --color-background: #ffffff; --color-muted-foreground: #64748b; }\n'
+        css += '@layer base { * { border-color: var(--color-border); } }\n'
+        css += '@theme { --color-background: #ffffff; --color-foreground: #0f172a; --color-muted: #f1f5f9; --color-border: #cbd5e1; --color-ring: #2563eb; --color-muted-foreground: #64748b; }\n'
         (folder / 'input.css').write_text(css)
         subprocess.run([str(modules / '.bin/tailwindcss'), '-i', str(folder / 'input.css'), '-o', str(folder / 'app.css')],
                        check=True, capture_output=True)
@@ -154,10 +155,15 @@ window.showThread();
                     page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     composer.evaluate('(el)=>el.style.height=""')
+                    expect(page.get_by_test_id('paired-sources').get_by_role('link', name='Sorgenti.zip')).to_be_visible()
+                    expect(page.get_by_test_id('paired-sources').get_by_role('link', name='bozza.mp4')).to_have_count(0)
+                    assert page.get_by_test_id('primary-result').evaluate('(el)=>!!(el.compareDocumentPosition(document.querySelector("[data-testid=acceptance-criteria]")) & Node.DOCUMENT_POSITION_FOLLOWING)')
                     video = page.get_by_label('Anteprima video')
                     video.evaluate('(v)=>v.play()')
                     page.wait_for_function('document.querySelector("video").currentTime > .1')
                     video.evaluate('(v)=>v.pause()')
+                    page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
+                    expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 page.get_by_role('button', name='Attività', exact=True).click()
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
@@ -217,6 +223,17 @@ window.showThread();
                 page.get_by_role('button', name='Vedi risultato', exact=True).click()
                 expect(page.get_by_role('link', name='final.docx')).to_be_visible()
                 expect(page.get_by_label('Anteprima video')).to_have_count(0)
+                # A document without product_path is still discoverable, and old media cannot replace it.
+                document = {'path': '/mnt/user-data/outputs/software/release.zip', 'label': 'release.zip',
+                            'agent': 'workspace', 'validated': True, 'at': iso(now), 'delivery_id': 'final', 'role': 'export',
+                            'open_with': 'Estrarre il pacchetto e seguire README'}
+                state['project'] = {**project, 'product_path': '', 'results': [document, project['results'][2]]}
+                page.reload()
+                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                expect(page.get_by_test_id('primary-result').get_by_role('link', name='release.zip')).to_be_visible()
+                expect(page.get_by_test_id('primary-result')).to_contain_text('Estrarre il pacchetto')
+                expect(page.get_by_label('Anteprima video')).to_have_count(0)
+                expect(page.get_by_test_id('paired-sources')).to_have_count(0)
                 state['project'] = project
                 page.reload()
                 page.get_by_role('button', name='Squadra', exact=True).click()

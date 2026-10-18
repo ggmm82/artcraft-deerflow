@@ -16,6 +16,8 @@ class ProgressTests(unittest.TestCase):
                          'Esporto il risultato con Effectcraft')
         self.assertEqual(progress.tool_label('craft batch filmcraft /mnt/user-data/edit.json'), 'Comando Filmcraft in esecuzione')
         self.assertEqual(progress.tool_label('soundcraft-cli run --in session.scraft --bounce mix.wav'), 'Esporto il risultato con Soundcraft')
+        self.assertEqual(progress.tool_label('calibre-cli check /mnt/user-data/private.epub'), 'Comando Calibre in esecuzione')
+        self.assertEqual(progress.tool_label('ebook-convert private.docx private.epub'), 'Comando Calibre in esecuzione')
         self.assertEqual(progress.tool_label('craft help photocraft'), 'Consulto i comandi di Photocraft')
         self.assertEqual(progress.tool_label('ffprobe -show_streams private-movie.mp4'), 'Verifico formato, durata e tracce del file')
         self.assertNotIn('private', progress.tool_label('ffmpeg -i private-audio.wav -af volumedetect -f null -'))

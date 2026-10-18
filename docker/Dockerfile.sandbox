@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates python3 binutils ffmpeg xz-utils libsm6 libice6 libxfixes3 libxrender1 libxxf86vm1 libgomp1 fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core \
     libasound2 libfontconfig1 libfreetype6 libglib2.0-0 libgtk-3-0 \
     libgl1 libegl1 libx11-6 libxcursor1 libxi6 libxrandr2 libxkbcommon0 \
-    libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libdbus-1-3 git \
+    libnss3 libopengl0 libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libdbus-1-3 git \
     && rm -rf /var/lib/apt/lists/*
 ENV AGY_CLI_DISABLE_AUTO_UPDATE=true
 RUN npm install -g @openai/codex@0.162.1 \
@@ -15,9 +15,10 @@ COPY scripts/install_antigravity.py scripts/antigravity.lock.json /opt/artcraft/
 RUN python3 /opt/artcraft/install_antigravity.py "$TARGETARCH" && agy --version
 COPY versions.lock.json /opt/artcraft/versions.lock.json
 COPY scripts/install_artcraft.py scripts/craft.py scripts/smoke.py scripts/acceptance.py /opt/artcraft/
-COPY scripts/blender_cli.py scripts/blender_job.py /opt/artcraft/
+COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
 COPY studio/operations.py studio/resource_usage.py /opt/artcraft/
 RUN chmod 755 /opt/artcraft/blender_cli.py && ln -s /opt/artcraft/blender_cli.py /usr/local/bin/blender-cli
+RUN chmod 755 /opt/artcraft/calibre_cli.py && ln -s /opt/artcraft/calibre_cli.py /usr/local/bin/calibre-cli
 COPY scripts/check_provider_clis.py /opt/artcraft/
 RUN python3 /opt/artcraft/check_provider_clis.py
 RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \

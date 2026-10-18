@@ -3,7 +3,7 @@
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
 [![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml)
 
-DeerFlow con **ruoli compilati dal progetto e 14 strumenti: 13 ArtCraft e Blender**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
+DeerFlow con **ruoli compilati dal progetto e 15 strumenti: 13 ArtCraft, Blender e Calibre**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
 ## Come funziona
 
@@ -23,7 +23,7 @@ Le competenze di progetto non dipendono da un elenco di professioni: una procedu
 
 ## Stato della verifica
 
-La suite locale verifica configurazione, API del pannello, isolamento dei percorsi, gestione delle credenziali, timeout e rimozione dei container tramite fixture. GitHub Actions costruisce i quattro runtime, carica lo schema reale DeerFlow e prova i registri e i server MCP delle 14 CLI. Consulta il risultato del workflow prima del deploy.
+La suite locale verifica configurazione, API del pannello, isolamento dei percorsi, gestione delle credenziali, timeout e rimozione dei container tramite fixture. GitHub Actions costruisce i quattro runtime, carica lo schema reale DeerFlow e prova i registri e i server MCP delle 15 CLI. Consulta il risultato del workflow prima del deploy.
 
 **Login con account reali e consumo RAM su Hostinger richiedono il collaudo sull'istanza con i tuoi account.** Non sono dichiarati già verificati. Le applicazioni Craft sono alpha; la presenza di un tool non garantisce ogni import/export.
 
@@ -97,9 +97,10 @@ Una conversazione è uno spazio di lavoro. I container sono separati tra incaric
 | CADCraft | cadcraft | cadcraft-cli | CAD e DXF |
 | SoundCraft | soundcraft | soundcraft-cli | Audio e mix |
 | FigCraft | figcraft | figcraft-cli | Interfacce e prototipi |
+| Calibre | calibre | calibre-cli / ebook-convert | Conversione documenti, metadati, EPUB/AZW3 e sorgenti XHTML/CSS |
 | Blender | blender | blender-cli / blender | Modellazione, rig, animazione e render 3D |
 
-Sono incluse 14 skills specifiche dei programmi, una procedura comune e una skill di coordinamento. I comandi e gli schemi completi vengono scoperti dalla release effettivamente installata, con `craft help`, `craft commands`, `craft tools` e `craft batch`. I MCP Craft conservano lo stato nel batch. Blender apre un processo per ogni chiamata: salva e riapri esplicitamente il `.blend`.
+Sono incluse 15 skills specifiche dei programmi, una procedura comune e una skill di coordinamento. I comandi e gli schemi completi vengono scoperti dalla release effettivamente installata, con `craft help`, `craft commands`, `craft tools` e `craft batch`. I MCP Craft conservano lo stato nel batch. Blender apre un processo per ogni chiamata: salva e riapri esplicitamente il `.blend`.
 
 Ogni skill distingue il proprio ambito dagli specialisti vicini e definisce ispezione iniziale, procedura, controlli specifici del formato e limiti di compatibilità. Il worker assegna una cartella distinta tramite `ARTCRAFT_OUTPUT_DIR`, avvia la CLI in quella cartella e verifica `handoff.json` prima di restituire successo: gli output devono esistere, essere non vuoti e restare nella cartella assegnata. I controlli di qualità riportano `passed`, `failed` o `not_run` con evidenze; la presenza dei file non dimostra la qualità visiva o audio.
 
@@ -134,7 +135,7 @@ python -m unittest discover -s tests -v
 python scripts/validate.py
 ```
 
-Per il collaudo deterministico dei 14 programmi, senza account e senza consumo API:
+Per il collaudo deterministico dei 15 programmi, senza account e senza consumo API:
 
 ```bash
 docker run --rm --network=none --memory=1536m artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py
@@ -145,8 +146,8 @@ Il collaudo crea sorgenti ed export reali, li riapre e verifica contenuti e misu
 Per provare le skill con DeepSeek imposta `DEEPSEEK_API_KEY` nell'ambiente della shell (mai nel repository), poi:
 
 ```bash
-python scripts/evaluate_skills.py                     # piani dei 14 specialisti
-python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound
+python scripts/evaluate_skills.py                     # piani delle 15 capacità CLI
+python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound/Calibre
 # Per completare un incarico interrotto senza ricreare i file:
 python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
 ```
@@ -174,3 +175,7 @@ Il contratto comune di accettazione e la visibilità del prodotto durante le rev
 Lo specialista **Blender 4.5.14 LTS** crea scene, materiali, rig e animazioni e consegna `.blend` modificabili con risorse verificate. Usa la configurazione condivisa della squadra. [CLI, sorgenti, requisiti Linux amd64 e collaudo](docs/BLENDER.md).
 
 Il [budget comune per i lavori pesanti](docs/LAVORI-PESANTI.md) si imposta in La tua squadra; il supervisore controlla processi, avanzamento nativo e memoria senza aggiungere configurazioni per i singoli strumenti.
+
+### Calibre e capacità dinamiche
+
+**Calibre 9.16.0** è una capacità selezionabile da qualunque ruolo di progetto, con il modello condiviso. Non introduce una squadra o un processo specifico per gli ebook. [Comandi, sorgenti, verifiche e limiti](docs/CALIBRE.md). Progetto, ruoli, attività e consegne usano la stessa interfaccia per tutti gli ambiti.

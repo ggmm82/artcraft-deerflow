@@ -376,8 +376,77 @@ assert any(o.animation_data for o in bpy.data.objects)
     c.check('File corrotto non accettato come progetto', rejected.returncode != 0, rejected.stderr[-400:])
 
 
+def calibre(c):
+    source, book, cover = [c.root / n for n in ('input.xhtml', 'book.epub', 'cover.png')]
+    source.write_text('<html xmlns="http://www.w3.org/1999/xhtml" lang="it"><head><title>Prova</title></head>'
+        '<body><h1>Prima parte</h1><p>' + MARKER + ' Città e qualità.</p>'
+        '<h1>Seconda parte</h1><p>Contenuto da conservare.</p></body></html>')
+    png(cover)
+    original = hashlib.sha256(source.read_bytes()).hexdigest()
+    c.batch([step('calibre.convert', input=str(source), output=str(book), epub_version='3', title='Collaudo Calibre',
+                  authors='ArtCraft Test', language='it', cover=str(cover)),
+             step('calibre.inspect', input=str(book)), step('calibre.check', input=str(book))])
+    info = json.loads(c.run('calibre-cli', 'inspect', book))
+    c.check('Metadati e ordine di lettura nativi', info['title'] == ['Collaudo Calibre'] and info['languages'] == ['it'] and len(info['spine']) >= 2, info)
+    with zipfile.ZipFile(book) as z:
+        text = '\n'.join(z.read(n).decode('utf-8') for n in z.namelist() if n.endswith('.xhtml'))
+        c.check('Testo originale e copertina incorporati', MARKER in text and 'Città' in text
+                and any(n.endswith(('.jpg', '.png')) for n in z.namelist()), z.namelist())
+    metadata, polished = c.root / 'metadata.epub', c.root / 'polished.epub'
+    c.batch([step('calibre.metadata', input=str(book), output=str(metadata), title='Titolo aggiornato'),
+             step('calibre.polish', input=str(metadata), output=str(polished), smarten_punctuation=True),
+             step('calibre.check', input=str(polished))], 'refine')
+    info = json.loads(c.run('calibre-cli', 'inspect', polished))
+    c.check('Metadati persistono dopo polish', info['title'] == ['Titolo aggiornato'], info['title'])
+    sources, rebuilt = c.root / 'Sources', c.root / 'rebuilt.epub'
+    c.run('calibre-cli', 'unpack', polished, sources)
+    chapter = next(p for p in sources.rglob('*.xhtml') if MARKER in p.read_text())
+    chapter.write_text(chapter.read_text().replace(MARKER, MARKER + '-MODIFICATO'))
+    c.run('calibre-cli', 'pack', sources, rebuilt)
+    check = json.loads(c.run('calibre-cli', 'check', rebuilt))
+    with zipfile.ZipFile(rebuilt) as z:
+        modified = any((MARKER + '-MODIFICATO').encode() in z.read(n) for n in z.namelist() if n.endswith('.xhtml'))
+    c.check('Sorgenti modificati e ricostruiti', modified and check['status'] == 'passed', check)
+    azw3, pdf, docx = [c.root / n for n in ('book.azw3', 'book.pdf', 'book.docx')]
+    c.batch([step('calibre.convert', input=str(book), output=str(azw3)), step('calibre.check', input=str(azw3)),
+             step('calibre.convert', input=str(book), output=str(pdf)), step('calibre.convert', input=str(book), output=str(docx))], 'formats')
+    with zipfile.ZipFile(docx) as z:
+        c.check('DOCX contiene il testo', MARKER.encode() in z.read('word/document.xml'), 'word/document.xml')
+    pdf_text = c.run('pdfcraft-cli', 'text', pdf)
+    c.check('PDF con testo originale leggibile', pdf.read_bytes().startswith(b'%PDF-') and MARKER in pdf_text, pdf_text[-1000:])
+    library, exported = c.root / 'library', c.root / 'library-export'
+    c.batch([step('calibre.library', library=str(library), action='add', input=str(book))], 'library-add')
+    listing = json.loads(c.run('calibre-cli', 'call', 'library', json.dumps({'library': str(library), 'action': 'list'})))['result']
+    c.check('Libro presente nella libreria locale', len(listing) == 1 and listing[0]['title'] == 'Collaudo Calibre', listing)
+    c.batch([step('calibre.library', library=str(library), action='export', output=str(exported), ids=[listing[0]['id']])], 'library-export')
+    c.check('Export libreria contiene il libro', any(exported.rglob('*.epub')), str(exported))
+    archive = c.root / 'Sources.zip'
+    with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.write(rebuilt, 'publication.epub')
+        for path in sources.rglob('*'):
+            if path.is_file():
+                z.write(path, 'Sources/' + path.relative_to(sources).as_posix())
+    helper = Path(__file__).resolve().parents[1] / 'studio/source_packages.py'
+    if not helper.exists():
+        helper = Path('/opt/studio/source_packages.py')
+    report = json.loads(c.run('python3', helper, 'verify', archive, '--native'))
+    c.check('Pacchetto trasferito e controllato nativamente', any(x['check'] == 'calibre_structure' and x['status'] == 'passed' for x in report['checks']), report)
+    corrupt = c.root / 'corrupt.epub'; corrupt.write_bytes(b'not an epub')
+    rejected = subprocess.run(['calibre-cli', 'check', str(corrupt)], capture_output=True, text=True, timeout=60)
+    c.check('File corrotto non accettato', rejected.returncode != 0, rejected.stderr[-300:])
+    # A valid ZIP with a missing referenced resource must also fail, not just a malformed container.
+    missing = c.root / 'missing.epub'
+    with zipfile.ZipFile(book) as src, zipfile.ZipFile(missing, 'w') as dst:
+        for item in src.infolist():
+            if not item.filename.endswith(('.jpg', '.png')):
+                dst.writestr(item, src.read(item))
+    rejected = subprocess.run(['calibre-cli', 'check', str(missing)], capture_output=True, text=True, timeout=60)
+    c.check('Risorsa collegata mancante rilevata', rejected.returncode != 0, rejected.stdout[-1500:])
+    c.check('Input originale intatto', hashlib.sha256(source.read_bytes()).hexdigest() == original, original)
+
+
 CASES = {name: globals()[name] for name in ('photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft',
-            'effectcraft', 'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender')}
+            'effectcraft', 'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender', 'calibre')}
 
 
 def main():

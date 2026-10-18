@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_date": "2026-10-14",
+  "verified_date": "2026-10-18",
   "deerflow": {
     "repository": "https://github.com/bytedance/deer-flow.git",
     "commit": "0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d"
@@ -577,6 +577,56 @@
         "blender-cli inspect scena.blend",
         "blender-cli render scena.blend anteprima.png --frame 1",
         "blender --background --factory-startup --disable-autoexec --python-exit-code 1 --python lavoro.py"
+      ]
+    },
+    {
+      "id": "calibre",
+      "name": "Calibre",
+      "role": "Conversione e controllo delle pubblicazioni digitali",
+      "description": "Conversione documenti, EPUB/AZW3, metadati, copertine, sorgenti XHTML/CSS e librerie locali. Non sostituisce autore, revisione o impaginazione professionale.",
+      "repository": "https://github.com/kovidgoyal/calibre",
+      "version": "9.16.0",
+      "executable": "calibre-cli",
+      "binary": "ebook-convert",
+      "binary_paths": {
+        "ebook-convert": "ebook-convert",
+        "ebook-meta": "ebook-meta",
+        "ebook-polish": "ebook-polish",
+        "calibre-debug": "calibre-debug",
+        "calibredb": "calibredb",
+        "ebook-edit": "ebook-edit"
+      },
+      "download_base": "https://github.com/kovidgoyal/calibre/releases/download/v9.16.0/",
+      "registry_args": [
+        "commands"
+      ],
+      "mcp_args": [
+        "mcp"
+      ],
+      "assets": {
+        "amd64": {
+          "name": "calibre-9.16.0-x86_64.txz",
+          "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.16.0/calibre-9.16.0-x86_64.txz",
+          "sha256": "03cd4fda43de23d65405a3c90b924bc4a5c84753e388589d4ca343d9ba561a1d",
+          "size_bytes": 199098600
+        },
+        "arm64": {
+          "name": "calibre-9.16.0-arm64.txz",
+          "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.16.0/calibre-9.16.0-arm64.txz",
+          "sha256": "82bf5de819a655fc0c8b789d388fef53c4583f9c2f9b83a14df42724519a197d",
+          "size_bytes": 186152052
+        }
+      },
+      "checks": [
+        "Riaprire il prodotto con la CLI e ispezionare metadati, spine e risorse.",
+        "Eseguire il controllo strutturale nativo e riportare errori e avvisi reali.",
+        "Conservare gli input e consegnare i sorgenti modificabili con le dipendenze."
+      ],
+      "examples": [
+        "calibre-cli convert input.xhtml output.epub",
+        "calibre-cli inspect output.epub",
+        "calibre-cli unpack output.epub sorgenti",
+        "calibre-cli check output.epub"
       ]
     }
   ],

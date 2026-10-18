@@ -69,6 +69,29 @@ def download(asset, output):
             time.sleep(2 ** attempt)
 
 
+def install_binaries(app, destination, bin_dir):
+    executable = app.get('binary', app['executable'])
+    binary = None
+    for name, relative in app.get('binary_paths', {executable: None}).items():
+        if Path(name).name != name or name in ('', '.', '..'):
+            raise ValueError('Nome eseguibile non valido')
+        matches = [destination / relative] if relative is not None else [p for p in destination.rglob(name) if p.is_file()]
+        if (len(matches) != 1 or not matches[0].is_file()
+                or not matches[0].resolve().is_relative_to(destination.resolve())):
+            raise RuntimeError(f'Atteso un eseguibile interno {name}, trovati {matches}')
+        target = matches[0].resolve()
+        target.chmod(target.stat().st_mode | 0o111)
+        link = bin_dir / name
+        if link.exists() or link.is_symlink():
+            raise RuntimeError(f'Non sovrascrivo un eseguibile esistente: {link}')
+        link.symlink_to(target)
+        if name == executable:
+            binary = target
+    if binary is None:
+        raise ValueError('Eseguibile principale mancante dai percorsi dichiarati')
+    return binary
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--arch', default='')
@@ -92,16 +115,7 @@ def main():
             archive = Path(temp) / asset['name']
             download(asset, archive)
             safe_extract(archive, destination)
-        executable = app.get('binary', app['executable'])
-        matches = [p for p in destination.rglob(executable) if p.is_file()]
-        if len(matches) != 1:
-            raise RuntimeError(f'Atteso un eseguibile {executable}, trovati {matches}')
-        binary = matches[0].resolve()
-        binary.chmod(binary.stat().st_mode | 0o111)
-        link = args.bin_dir / executable
-        if link.exists() or link.is_symlink():
-            raise RuntimeError(f'Non sovrascrivo un eseguibile esistente: {link}')
-        link.symlink_to(binary)
+        binary = install_binaries(app, destination, args.bin_dir)
         installed.append({'id': app['id'], 'version': app['version'], 'binary': str(binary), 'sha256': asset['sha256']})
     (args.root / 'installed.json').write_text(json.dumps(installed, indent=2) + '\n')
     print(f'Installate {len(installed)} CLI.', flush=True)

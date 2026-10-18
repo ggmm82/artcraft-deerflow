@@ -4,10 +4,10 @@ from pathlib import Path
 import subprocess
 
 try:
-    from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend
+    from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
     from .acceptance import METHODS, evaluate
 except ImportError:
-    from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend
+    from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
     from acceptance import METHODS, evaluate
 
 
@@ -70,13 +70,23 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
             except (OSError, ValueError, subprocess.SubprocessError) as error:
                 record['verification'] = {'status': 'failed', 'error': str(error)[:1000]}
                 issues.append(path.name + ': ' + str(error)[:1000])
+        if path.suffix.lower() in ('.epub', '.azw3') and item['role'] in ('export', 'editable_source'):
+            try:
+                record['verification'] = inspect_ebook(path, root, native=native)
+                if record['verification']['status'] != 'passed':
+                    issues.append(path.name + ': controllo Calibre non eseguito')
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                record['verification'] = {'status': 'failed', 'error': str(error)[:1200]}
+                issues.append(path.name + ': ' + str(error)[:1200])
         if item['role'] == 'source_archive':
             try:
                 if path.suffix.lower() != '.zip':
                     raise ValueError('Archivio sorgenti: usare ZIP per il collaudo di trasferimento')
                 record['verification'] = verify_archive(path, native=native)
+                if record['verification']['status'] != 'passed':
+                    issues.append(path.name + ': controlli nativi del pacchetto non eseguiti')
                 packages.append(record)
-            except (OSError, ValueError, RuntimeError) as error:
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
                 record['verification'] = {'status': 'failed', 'error': str(error)[:1000]}
                 issues.append(path.name + ': ' + str(error)[:1000])
         if item['role'] in ('editable_source', 'source_archive') and item['reopen']['status'] != 'passed':

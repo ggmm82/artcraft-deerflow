@@ -34,7 +34,7 @@ class ProjectSkillTests(unittest.TestCase):
         # These are test inputs, never a production dispatch/profession catalog.
         cases = [('libro', 'Coerenza dei personaggi', []), ('palazzo', 'Vincoli di accessibilità', ['cadcraft']),
                  ('film', 'Continuità tra inquadrature', ['filmcraft', 'soundcraft']),
-                 ('software', 'Compatibilità del protocollo', []), ('evento', 'Dipendenze logistiche', []),
+                 ('software', 'Manuale installabile insieme al prodotto', ['calibre']), ('evento', 'Distribuzione del programma ai partecipanti', ['calibre', 'wordcraft']),
                  ('ecosistema orbitale immaginario', 'Esplicitare assunzioni fisiche', [])]
         for index, (domain, expertise, tools) in enumerate(cases):
             with self.subTest(domain=domain):

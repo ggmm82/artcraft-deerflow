@@ -36,7 +36,7 @@ skills:
   path: /app/skills
   container_path: /mnt/skills
 subagents:
-  max_total_per_run: 17
+  max_total_per_run: 18
   custom_agents:
     photocraft:
       description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing
@@ -275,6 +275,24 @@ subagents:
       skills:
       - artcraft-workspace
       - artcraft-blender
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    calibre:
+      description: 'Conversione e controllo delle pubblicazioni digitali: Conversione
+        documenti, EPUB/AZW3, metadati, copertine, sorgenti XHTML/CSS e librerie locali.
+        Non sostituisce autore, revisione o impaginazione professionale. Usa calibre-cli.'
+      system_prompt: Sei lo specialista calibre. Per eseguire il lavoro invoca studio_delegate
+        con agent="calibre", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-calibre
       model: inherit
       max_turns: 50
       timeout_seconds: 1800
@@ -538,7 +556,10 @@ lead_prompt_overlay:
     e scambio DXF.); soundcraft per Produzione audio (Montaggio, mix, tracce, elaborazione
     e bounce audio.); figcraft per Interfacce e prototipi (Layout UI, componenti,
     variabili, frame e prototipi.); blender per Modellazione e animazione 3D (Scene
-    3D, materiali, rigging, animazione, render e progetti .blend modificabili.).'
+    3D, materiali, rigging, animazione, render e progetti .blend modificabili.); calibre
+    per Conversione e controllo delle pubblicazioni digitali (Conversione documenti,
+    EPUB/AZW3, metadati, copertine, sorgenti XHTML/CSS e librerie locali. Non sostituisce
+    autore, revisione o impaginazione professionale.).'
 auth:
   local:
     allow_registration: true

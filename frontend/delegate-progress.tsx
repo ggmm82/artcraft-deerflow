@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
@@ -18,6 +18,18 @@ const roles: Record<string, string> = { export: "Prodotto", editable_source: "So
 const stepLabels: Record<string, string> = { pending: "Da fare", running: "In corso",
   completed: "Incarico concluso", needs_revision: "Da rivedere", review: "Da valutare", paused: "In pausa", skipped: "Non necessaria" };
 
+type Tone = "active" | "done" | "attention" | "neutral";
+function StatusBadge({ children, tone = "neutral" }: { children: ReactNode; tone?: Tone }) {
+  const colors = { active: "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    done: "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+    attention: "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300",
+    neutral: "border-border bg-muted/50 text-muted-foreground" };
+  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${colors[tone]}`}>{children}</span>;
+}
+const stepTone = (state: string): Tone => state === "running" ? "active" : state === "completed" ? "done"
+  : ["paused", "needs_revision", "review"].includes(state) ? "attention" : "neutral";
+const tabStyle = "rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-border aria-expanded:bg-muted aria-expanded:font-semibold disabled:opacity-50";
+
 function JobCard({ job, now }: { job: JobProgress; now: number }) {
   const operation = job.operations?.find(o => o.state === "running") ?? job.operations?.[0];
   const terminal = terminalJob(job);
@@ -29,7 +41,7 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
   const health = jobHealth(job, now);
   const stamp = (value: string) => Number.isFinite(Date.parse(value))
     ? new Date(value).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
-  return <article className="bg-background space-y-3 rounded-lg border p-4" data-testid="delegate-job">
+  return <article className="bg-background space-y-3 rounded-2xl border p-4 shadow-sm" data-testid="delegate-job">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <strong>{job.role_title || job.agent.charAt(0).toUpperCase() + job.agent.slice(1)} · {providers[job.engine] ?? job.engine}</strong>
       <span className="text-muted-foreground text-xs">{duration(elapsed)} trascorsi</span>
@@ -103,11 +115,12 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const deliveries = project?.deliveries ?? [];
   const selectedDelivery = deliveries.find((d) => d.current);
   const currentResults = selectedDelivery ? results.filter((r) => r.delivery_id === selectedDelivery.id) : results;
-  const media = [...results].sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
-  const selected = project?.product_path
+  const media = [...currentResults].filter(r => r.role !== "dependency" && r.role !== "report").sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
+  const selected: Result | undefined = project?.product_path
     ? results.find((r) => r.path === project.product_path) ?? { path: project.product_path, label: project.product_path.split("/").pop() ?? "Risultato", agent: "", validated: false, at: "" }
     : undefined;
-  const preview = selected ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const preview = selected ?? currentResults.find(r => r.role === "export") ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const pairedSources = preview?.delivery_id ? results.filter(r => r.delivery_id === preview.delivery_id && ["editable_source", "source_archive"].includes(r.role ?? "")) : [];
   const audio = currentResults.find((r) => kind(r.path) === "audio");
   const attention = !working && !active ? project?.attention : null;
   const ready = project?.status === "ready" && !!project.product_path && selectedDelivery?.technical_status === "passed"
@@ -203,26 +216,27 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   if (!jobs.length && !project && !pending && !coordinatorError) return null;
   const health = current ? jobHealth(current, now) : null;
   const recent = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 4)];
-  return <section ref={dock} className="bg-background relative mb-2 rounded-xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
-    {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 overflow-y-auto rounded-xl border p-4 shadow-xl" style={{ maxHeight: "min(60dvh, var(--studio-panel-space, 60dvh))" }} data-testid="studio-drawer">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="font-medium">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra al lavoro" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
-        <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
+  return <section ref={dock} className="bg-background relative mb-2 rounded-2xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
+    {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 flex flex-col overflow-hidden rounded-2xl border shadow-xl" style={{ maxHeight: "min(60dvh, var(--studio-panel-space, 60dvh))" }} data-testid="studio-drawer">
+      <div className="bg-background flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
+        <h3 className="text-sm font-semibold">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra del progetto" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
+        <button type="button" className="hover:bg-muted rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </div>
+      <div className="min-h-0 overflow-y-auto p-4" data-testid="studio-drawer-content">
       {tab === "project" && project && <div className="space-y-4 text-sm" data-testid="project-overview">
-        <section className="space-y-2">
-          <h4 className="font-semibold">Risultato da ottenere</h4>
-          <p>{project.outcome?.result || project.brief}</p>
+        <section className="bg-muted/30 space-y-3 rounded-xl border p-4">
+          <h4 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Risultato da ottenere</h4>
+          <p className="text-base font-medium leading-relaxed">{project.outcome?.result || project.brief}</p>
           <p><strong>Consegna:</strong> {project.outcome?.format || "Da definire con te prima di proseguire la produzione."}</p>
           {project.outcome?.use && <p><strong>Uso e destinatari:</strong> {project.outcome.use}</p>}
           {project.outcome?.quality && <p><strong>Qualità attesa:</strong> {project.outcome.quality}</p>}
         </section>
-        {questions.length > 0 && <section className="space-y-2 rounded border p-3" data-testid="brief-questions">
+        {questions.length > 0 && <section className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4" data-testid="brief-questions">
           <h4 className="font-semibold">Le scelte che mancano</h4>
           <ul className="list-inside list-disc">{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
           <p>Rispondi alle domande nella chat. La produzione attende queste scelte.</p>
         </section>}
-        <section className="space-y-2" data-testid="project-position">
+        <section className="space-y-2 rounded-xl border border-blue-500/25 bg-blue-500/5 p-4" data-testid="project-position">
           <h4 className="font-semibold">Dove siamo</h4>
           <p>{planned.length ? `${completed} di ${planned.length} incarichi conclusi` : "La squadra e le attività sono ancora da definire."}</p>
           {currentActivity && <p><strong>Traguardo in corso:</strong> {currentActivity.goal}</p>}
@@ -232,17 +246,36 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         </section>
         {planned.some(step => step.status !== "completed") && <section className="space-y-2">
           <h4 className="font-semibold">Attività ancora previste</h4>
-          <ul className="space-y-2">{planned.filter(step => step.status !== "completed").map(step => <li key={step.id}>
-            <strong>{stepLabels[step.status] ?? step.status}</strong> · {step.goal}
+          <ul className="space-y-2">{planned.filter(step => step.status !== "completed").map(step => <li key={step.id} className="flex items-start gap-3 rounded-lg border p-3">
+            <span className="shrink-0"><StatusBadge tone={stepTone(step.status)}>{stepLabels[step.status] ?? step.status}</StatusBadge></span><span>{step.goal}</span>
           </li>)}</ul>
         </section>}
         {!!project.outcome?.constraints.length && <section><h4 className="font-semibold">Vincoli</h4><ul className="list-inside list-disc">{project.outcome.constraints.map((c, i) => <li key={i}>{c}</li>)}</ul></section>}
         {!!project.outcome?.assumptions.length && <section><h4 className="font-semibold">Ipotesi adottate</h4><ul className="list-inside list-disc">{project.outcome.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul></section>}
       </div>}
       {tab === "preview" && <div className="space-y-3">
-        <p className="text-sm">{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</p>
+        <p><StatusBadge tone={ready ? "done" : "attention"}>{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</StatusBadge></p>
         {selectedDelivery && <p className="text-sm">{selectedDelivery.title}</p>}
-        {project?.quality_status && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: le misure tecniche non sostituiscono visione e ascolto."}</p>}
+        {preview && <div className="bg-muted/20 space-y-3 rounded-xl border p-3" data-testid="primary-result">
+          {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "audio" && <audio controls aria-label="Anteprima audio" src={artifactURL(threadId, preview.path)} />}
+          {kind(preview.path) === "source" && <p className="text-sm">Risultato disponibile come documento o progetto: scaricalo e aprilo con l’app indicata nella consegna.</p>}
+          <p className="text-muted-foreground text-xs">Scarica il risultato</p>
+          <a className="bg-foreground text-background inline-flex max-w-full items-center rounded-lg px-4 py-2 text-sm font-medium break-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={artifactURL(threadId, preview.path, true)}>{preview.label}</a>
+          {preview.open_with && <p className="text-sm">Come aprire: {preview.open_with}</p>}
+          {preview.limitations?.map((limit, i) => <p className="text-muted-foreground text-xs" key={i}>{limit}</p>)}
+        </div>}
+        {audio && preview && kind(preview.path) === "video" && audio.path !== preview.path && <div>
+          {!ready && <p className="text-sm">Audio disponibile separatamente. Questa bozza video potrebbe non contenerlo ancora.</p>}
+          <audio controls preload="metadata" aria-label="Traccia audio disponibile" src={artifactURL(threadId, audio.path)} />
+        </div>}
+        {!preview && <p className="text-sm">Nessuna anteprima disponibile. Puoi controllare attività e file salvati.</p>}
+        {pairedSources.length > 0 && <section className="space-y-3 rounded-xl border p-3 text-sm" data-testid="paired-sources">
+          <h4 className="font-semibold">Sorgenti della stessa consegna</h4>
+          <ul className="space-y-3">{pairedSources.map(file => <DeliveryFile key={file.path} file={file} threadId={threadId} />)}</ul>
+        </section>}
+        {project?.quality_status && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: i controlli tecnici non verificano tutti i requisiti del progetto."}</p>}
         {project?.acceptance && <details className="rounded border p-3 text-sm" data-testid="acceptance-criteria">
           <summary className="cursor-pointer font-medium">Rispondenza alla tua richiesta</summary>
           <p className="my-2 whitespace-pre-wrap">{project.acceptance.user_requests[0]}</p>
@@ -254,18 +287,6 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}
           {project.acceptance.request_manifest && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_manifest.path, true)}>Indice dei messaggi conservati ({project.acceptance.request_count ?? 1})</a></p>}
         </details>}
-        {preview && <div>
-          {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
-          {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
-          {kind(preview.path) === "audio" && <audio controls aria-label="Anteprima audio" src={artifactURL(threadId, preview.path)} />}
-          {kind(preview.path) === "source" && <p className="text-sm">Risultato disponibile come documento o progetto: scaricalo e aprilo con l’app indicata nella consegna.</p>}
-          <a className="text-sm underline" href={artifactURL(threadId, preview.path, true)}>{preview.label}</a>
-        </div>}
-        {audio && preview && kind(preview.path) === "video" && audio.path !== preview.path && <div>
-          {!ready && <p className="text-sm">Audio disponibile separatamente. Questa bozza video potrebbe non contenerlo ancora.</p>}
-          <audio controls preload="metadata" aria-label="Traccia audio disponibile" src={artifactURL(threadId, audio.path)} />
-        </div>}
-        {!preview && <p className="text-sm">Nessuna anteprima disponibile. Puoi controllare attività e file salvati.</p>}
         {!ready && !working && !active && selectedDelivery?.technical_status === "passed" && <div className="space-y-2 border-t pt-3">
           <p className="text-sm">Se hai verificato il risultato e ti soddisfa, puoi accettare questa versione. I controlli dei sorgenti restano obbligatori.</p>
           <button type="button" className="rounded border px-3 py-2 text-sm disabled:opacity-50" disabled={accepting} onClick={() => void acceptVersion()}>{accepting ? "Registro la scelta…" : "Ho verificato: accetta questa versione"}</button>
@@ -280,14 +301,14 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           const usage = project?.orientation?.roles?.[role.id];
           const used = (usage?.attempts ?? jobs.filter(job => job.role_id === role.id).length) > 0;
           const state = live || !!usage?.running ? "Al lavoro" : used && activities.some(step => step.status === "paused") ? "In pausa" : used ? "Ha lavorato al progetto" : "Previsto";
-          return <article key={role.id} className="space-y-2 rounded border p-3 text-sm" data-testid="compiled-role">
-            <div className="flex flex-wrap items-center justify-between gap-2"><strong>{role.title}</strong><span className="rounded border px-2 py-0.5 text-xs">{state}</span></div>
+          return <article key={role.id} className="bg-muted/20 space-y-3 rounded-xl border p-4 text-sm" data-testid="compiled-role">
+            <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-base">{role.title}</strong><StatusBadge tone={live || usage?.running ? "active" : state === "In pausa" ? "attention" : "neutral"}>{state}</StatusBadge></div>
             <p>{role.mission}</p>
-            <h4 className="font-medium">Competenze assegnate</h4>
+            <h4 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Competenze assegnate</h4>
             <ul className="list-inside list-disc">{role.expertise.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
-            <p><strong>Strumenti assegnati:</strong> {role.tools.length ? role.tools.map(person).join(", ") : "Strumenti di base del progetto"}</p>
+            <div className="space-y-2"><p className="text-muted-foreground text-xs font-semibold">Strumenti assegnati</p><div className="flex flex-wrap gap-1.5">{role.tools.length ? role.tools.map(tool => <StatusBadge key={tool}>{person(tool)}</StatusBadge>) : <span>Strumenti di base del progetto</span>}</div></div>
             {live && <p><strong>Adesso:</strong> {live.work_summary || live.summary}</p>}
-            <ul className="space-y-1">{activities.map(step => <li key={step.id}><strong>{stepLabels[step.status] ?? step.status}</strong> · {step.goal}</li>)}</ul>
+            <ul className="space-y-1">{activities.map(step => <li key={step.id}><StatusBadge tone={stepTone(step.status)}>{stepLabels[step.status] ?? step.status}</StatusBadge> {step.goal}</li>)}</ul>
             {!activities.length && <p className="text-muted-foreground">{used ? "Contributi registrati nelle attività precedenti." : "Nessun incarico ancora assegnato."}</p>}
             <details><summary className="cursor-pointer">Metodo e verifiche previste</summary>
               {!!role.procedure?.length && <ol className="mt-2 list-inside list-decimal">{role.procedure.map((item, i) => <li key={i}>{item}</li>)}</ol>}
@@ -303,9 +324,9 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       </div>}
       {tab === "files" && <div className="space-y-3 text-sm" data-testid="delivery-list">
         <p>Ogni pacchetto appartiene alla consegna indicata. Estrai tutto lo ZIP e segui le istruzioni di apertura; conserva le risorse accanto al progetto.</p>
-        {deliveries.map((d) => <details key={d.id} open={d.current} className="rounded border p-3" data-testid="delivery-group">
+        {deliveries.map((d) => <details key={d.id} open={d.current} className={`rounded-xl border p-4 ${d.current ? "border-blue-500/30 bg-blue-500/5" : "bg-muted/20"}`} data-testid="delivery-group">
           <summary className="cursor-pointer"><strong>{d.current ? "Consegna selezionata" : d.contribution ? "Contributo usato nella consegna" : d.purpose === "preview" ? "Prova" : "Lavorazione precedente"}</strong> · {person(d.agent)} · {d.at ? new Date(d.at).toLocaleString("it-IT") : ""}<p>{d.title}</p></summary>
-          <p className="mt-2">{d.technical_status === "passed" ? "Controlli tecnici superati" : d.technical_status === "needs_revision" ? "Consegna incompleta: da correggere" : "Consegna precedente: nuovo collaudo non eseguito"}</p>
+          <p className="mt-2"><StatusBadge tone={d.technical_status === "passed" ? "done" : d.technical_status === "needs_revision" ? "attention" : "neutral"}>{d.technical_status === "passed" ? "Controlli tecnici superati" : d.technical_status === "needs_revision" ? "Consegna incompleta: da correggere" : "Consegna precedente: nuovo collaudo non eseguito"}</StatusBadge></p>
           {d.issues.map((issue, i) => <p className="mt-1" key={i}>{issue}</p>)}
           <ul className="mt-3 space-y-3">{results.filter((r) => r.delivery_id === d.id && r.role !== "preview" && r.role !== "dependency").map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>
           <details className="mt-3"><summary className="cursor-pointer">Anteprime e risorse di questa consegna</summary><ul className="space-y-3">{results.filter((r) => r.delivery_id === d.id && (r.role === "preview" || r.role === "dependency")).map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul></details>
@@ -314,14 +335,15 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
+      </div>
     </div>}
     <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">
-      {project && <div className="space-y-1 border-b pb-2" data-testid="project-identity">
-        <p className="line-clamp-1 text-sm font-semibold">{project.outcome?.title || project.outcome?.result || "Il tuo progetto"}</p>
+      {project && <div className="mb-2 space-y-1 border-b pb-2" data-testid="project-identity">
+        <p className="line-clamp-1 text-sm font-semibold tracking-tight">{project.outcome?.title || project.outcome?.result || "Il tuo progetto"}</p>
         <p className="text-muted-foreground line-clamp-1 text-xs">Consegna: {project.outcome?.format || "da definire"}</p>
         {planned.length > 0 && <p className="text-muted-foreground line-clamp-2 text-xs">{completed} di {planned.length} incarichi conclusi{currentActivity ? ` · ${stepLabels[currentActivity.status]}: ${currentActivity.goal}` : ""}</p>}
       </div>}
-      <div className="flex items-center justify-between gap-2"><strong className="text-sm" data-testid="studio-status">{title}</strong>
+      <div className="flex items-center justify-between gap-2"><strong className="text-sm" data-testid="studio-status"><span aria-hidden="true" className={`mr-2 inline-block h-2 w-2 rounded-full ${working ? "bg-blue-500" : ready ? "bg-emerald-500" : attention || clarifying || coordinatorError ? "bg-amber-500" : "bg-muted-foreground"}`} />{title}</strong>
         {current && <span className="text-muted-foreground shrink-0 text-xs">{duration(secondsSince(current.started_at || current.created_at, now))}</span>}
       </div>
       {summary && <p className="line-clamp-2 text-sm" data-testid="studio-summary">{summary}</p>}
@@ -334,19 +356,19 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {unavailable && <p className="text-xs" role="alert">Aggiornamenti non disponibili: questo stato potrebbe non essere attuale. Riprovo automaticamente.</p>}
       {resumeError && <p className="text-xs" role="alert">{resumeError}</p>}
     </div>
-    <nav className="flex flex-wrap gap-2 border-t px-3 py-2 text-xs" aria-label="Controlli del progetto">
-      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "project"} onClick={() => toggle("project")}>Progetto</button>
-      <button type="button" className="rounded border px-3 py-1.5 disabled:opacity-50" disabled={!preview} aria-expanded={tab === "preview"} onClick={() => toggle("preview")}>Vedi risultato</button>
-      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
-      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
-      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
+    <nav className="flex flex-wrap gap-1 border-t px-2 py-1.5 text-xs" aria-label="Controlli del progetto">
+      <button type="button" className={tabStyle} aria-expanded={tab === "project"} onClick={() => toggle("project")}>Progetto</button>
+      <button type="button" className={tabStyle} disabled={!preview} aria-expanded={tab === "preview"} onClick={() => toggle("preview")}>Vedi risultato</button>
+      <button type="button" className={tabStyle} aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
+      <button type="button" className={tabStyle} aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
+      <button type="button" className={tabStyle} aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
       {!active && !working && !ready && !waitingForReview && !questions.length && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : clarifying ? "Definisci risultato" : "Riprendi lavoro"}</button>}
     </nav>
   </section>;
 }
 
 function DeliveryFile({ file, threadId }: { file: Result; threadId: string }) {
-  return <li><span className="font-medium">{roles[file.role ?? "file"] ?? "File"}: </span><a className="break-all underline" href={artifactURL(threadId, file.path, true)}>{file.label}</a>
+  return <li className="border-l-2 border-border pl-3"><span className="text-muted-foreground text-xs font-medium">{roles[file.role ?? "file"] ?? "File"}: </span><a className="break-all underline" href={artifactURL(threadId, file.path, true)}>{file.label}</a>
     {file.open_with && <p className="mt-1">Come aprire: {file.open_with}</p>}
     {file.editability && <p className="text-muted-foreground">Modificabile: {file.editability}</p>}
     {file.limitations?.map((limit, i) => <p className="text-muted-foreground" key={i}>{limit}</p>)}
