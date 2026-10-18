@@ -187,7 +187,8 @@ def main():
     parser.add_argument('--model', default=os.getenv('DEEPSEEK_MODEL', ''))
     parser.add_argument('--max-turns', type=int, default=16)
     parser.add_argument('--resume', type=Path, help='Con --execute riutilizza i file sotto questa cartella di report precedente')
-    parser.add_argument('--image', default='ghcr.io/ggmm82/artcraft-deerflow-sandbox:sha-0725ff88eb603e47deba10f4d0a1d12cf5533c23')
+    parser.add_argument('--image', default=os.getenv('ARTCRAFT_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0'),
+                        help='Runtime dello stesso checkout; per una PR usare il digest sandbox del runtime-manifest')
     parser.add_argument('--output', type=Path, default=ROOT / 'reports' / ('skills-' + uuid.uuid4().hex[:8]))
     args = parser.parse_args()
     key = os.environ.get('DEEPSEEK_API_KEY', '')

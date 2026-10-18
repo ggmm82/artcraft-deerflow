@@ -147,7 +147,8 @@ Per provare le skill con DeepSeek imposta `DEEPSEEK_API_KEY` nell'ambiente della
 
 ```bash
 python scripts/evaluate_skills.py                     # piani delle 15 capacità CLI
-python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound/Calibre
+python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound/Calibre nel runtime locale appena costruito
+# Per una release/PR usare --image con il digest sandbox del suo runtime-manifest.json
 # Per completare un incarico interrotto senza ricreare i file:
 python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
 ```
