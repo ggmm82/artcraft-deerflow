@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from studio import source_packages as packages
@@ -55,6 +56,18 @@ class PackageTests(unittest.TestCase):
         shutil.move(moved, self.root / 'moved-again')
         local, = packages.prepare(self.root / 'moved-again')
         self.assertIn('moved-again/Media/movie.mp4', local.read_text())
+
+    def test_released_preparers_remain_recognized_but_unknown_code_is_rejected(self):
+        archive = self.archive({'project.fcproj': json.dumps(self.film()), 'Media/movie.mp4': 'movie',
+                               'PREPARA_SORGENTI.py': 'declared historical fixture; never executed'})
+        real_digest = packages.digest
+        old_hash = 'dc64bb7d149025adba6c380ab676d0d19bbb74ea0779f70e0e514dd1a8b4c73a'
+        def historical(path):
+            return old_hash if Path(path).name == 'PREPARA_SORGENTI.py' else real_digest(path)
+        with patch.object(packages, 'digest', side_effect=historical):
+            self.assertEqual(packages.verify_archive(archive)['status'], 'passed')
+        with self.assertRaisesRegex(ValueError, 'preparato'):
+            packages.verify_archive(archive)
 
     def test_nested_broken_colleague_and_path_escape_are_rejected(self):
         effect = {'items': {'1': {'kind': {'type': 'Comp', 'layers': [{}]}},

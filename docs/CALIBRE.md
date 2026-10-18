@@ -12,6 +12,8 @@ L’integrazione non introduce professioni predefinite o una sequenza editoriale
 
 Il collaudo nativo automatizzato produce EPUB, AZW3, PDF e DOCX da XHTML, legge metadati e ordine di lettura, modifica una copia estratta e la ricostruisce, prova polish, libreria locale, export e trasferimento ZIP. Controlla contenuti testuali e input intatti; verifica che file corrotti e risorse mancanti falliscano.
 
+L’estensione dei controlli mantiene riconosciuti gli hash esatti dei preparatori FilmCraft già pubblicati; i vecchi script non vengono eseguiti dal verificatore e gli script sconosciuti restano rifiutati.
+
 Il runtime controlla EPUB/AZW3 consegnati e presenti negli archivi con il checker Calibre reale. Gli avvisi sono conservati, gli errori impediscono l’approvazione tecnica. Non viene dichiarata una certificazione EPUBCheck, accessibilità, qualità dei contenuti o resa in ogni lettore. Le altre conversioni esposte richiedono verifica nel formato e nell’app richiesti, non sono tutte certificate dal singolo test EPUB.
 
 Consegna il file finale e il sorgente di authoring effettivo con risorse e istruzioni. EPUB è modificabile in `ebook-edit`; uno ZIP XHTML/CSS/OPF può agevolare la lavorazione ma non sostituisce arbitrariamente un originale DOCX complesso. La riapertura CLI non significa che sia stata provata l’interfaccia grafica.
