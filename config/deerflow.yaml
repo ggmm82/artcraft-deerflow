@@ -36,7 +36,7 @@ skills:
   path: /app/skills
   container_path: /mnt/skills
 subagents:
-  max_total_per_run: 16
+  max_total_per_run: 17
   custom_agents:
     photocraft:
       description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing
@@ -265,6 +265,23 @@ subagents:
       - task
       - ask_clarification
       - present_files
+    blender:
+      description: 'Modellazione e animazione 3D: Scene 3D, materiali, rigging, animazione,
+        render e progetti .blend modificabili. Usa blender-cli.'
+      system_prompt: Sei lo specialista blender. Per eseguire il lavoro invoca studio_delegate
+        con agent="blender", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-blender
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
 subagent_runtime:
   max_running: 1
   max_queued: 24
@@ -293,13 +310,13 @@ skill_evolution:
   enabled: false
 lead_prompt_overlay:
   append: 'Sei la Squadra ArtCraft. Lavora in italiano. L’utente descrive il problema:
-    scegli autonomamente i ruoli utili fra TUTTI i 13 specialisti del catalogo. Il
+    scegli autonomamente i ruoli utili fra TUTTI gli specialisti del catalogo. Il
     modello e il servizio sono configurati una sola volta in La tua squadra. Chiedi
     solo requisiti indispensabili; per il resto adotta ipotesi ragionevoli.
 
 
     Lavora come un direttore di produzione: preserva il brief e scegli la strada capace
-    di raggiungere la qualità richiesta. I 13 strumenti sono un catalogo di competenze,
+    di raggiungere la qualità richiesta. Gli strumenti sono un catalogo di competenze,
     non un obbligo di usarli tutti. Un unico specialista è corretto se copre davvero
     il prodotto. PhotoCraft è un editor, non un generatore text-to-image; CADCraft
     verificato è CAD 2D; EffectCraft ha primitive 3D e animazione ma non è automaticamente
@@ -316,7 +333,7 @@ lead_prompt_overlay:
     La richiesta originale dell’utente è salvata dal runtime in acceptance, separata
     dal piano che scrivi. Conserva contenuti, riferimenti, intenzione e vincoli; non
     sostituire un riferimento richiesto con un’alternativa del medesimo genere/formato.
-    Questa regola vale per tutti i 13 tools e qualsiasi tipo di prodotto. Se manca
+    Questa regola vale per tutti gli strumenti e qualsiasi tipo di prodotto. Se manca
     un riferimento necessario, chiedi soltanto quello o dichiara il requisito non
     verificato; non inventare un’alternativa e non presentarla come il risultato richiesto.
     Definisci pochi criteri osservabili in studio_plan(criteria_json): id, requirement,
@@ -405,6 +422,12 @@ lead_prompt_overlay:
     producono i file.
 
 
+    Per modellazione 3D, rigging e animazione di personaggi usa lo specialista Blender;
+    CADCraft copre il CAD 2D e EffectCraft il compositing. Blender consegna .blend
+    con risorse incluse, oltre agli export; coinvolgi texture, audio e montaggio quando
+    utili al brief.
+
+
     Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Livelli, maschere,
     correzioni, compositing e PSD.); vectorcraft per Grafica vettoriale (Loghi, icone,
     tracciati, illustrazioni e SVG.); filmcraft per Montaggio video (Timeline, montaggio,
@@ -419,7 +442,8 @@ lead_prompt_overlay:
     grafici e PPTX.); cadcraft per Disegno CAD (Disegno tecnico, geometrie, quote
     e scambio DXF.); soundcraft per Produzione audio (Montaggio, mix, tracce, elaborazione
     e bounce audio.); figcraft per Interfacce e prototipi (Layout UI, componenti,
-    variabili, frame e prototipi.).'
+    variabili, frame e prototipi.); blender per Modellazione e animazione 3D (Scene
+    3D, materiali, rigging, animazione, render e progetti .blend modificabili.).'
 auth:
   local:
     allow_registration: true

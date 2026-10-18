@@ -32,7 +32,7 @@ LABELS = {
 SECRET = re.compile(r'(?i)\b(?:sk-[a-z0-9_-]{8,}|ya29\.[a-z0-9_.-]+|4/0[a-z0-9_-]+)|'
                     r'(?i:bearer\s+)[a-z0-9_.-]+|(?i:(?:api[_-]?key|token|password)\s*[:=]\s*)\S+')
 APPS = {'photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft', 'effectcraft',
-        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft'}
+        'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender'}
 
 
 def utcnow():

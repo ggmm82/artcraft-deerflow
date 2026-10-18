@@ -17,7 +17,7 @@ def safe_extract(archive, destination):
     """Nessun file speciale o percorso esterno; conserva link relativi interni."""
     destination = destination.resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(archive, 'r:gz') as tar:
+    with tarfile.open(archive, 'r:*') as tar:
         for member in tar:
             name = Path(member.name)
             if name.is_absolute() or '..' in name.parts:
@@ -79,6 +79,9 @@ def main():
     if arch not in ('amd64', 'arm64'):
         parser.error('Architetture supportate: amd64 e arm64')
     lock = json.loads((args.root / 'versions.lock.json').read_text())
+    unsupported = [a['id'] for a in lock['applications'] if arch not in a['assets']]
+    if unsupported:
+        parser.error('Release ufficiale non disponibile per ' + arch + ': ' + ', '.join(unsupported) + '. Usare linux/amd64.')
     installed = []
     args.bin_dir.mkdir(parents=True, exist_ok=True)
     for app in lock['applications']:
@@ -89,12 +92,13 @@ def main():
             archive = Path(temp) / asset['name']
             download(asset, archive)
             safe_extract(archive, destination)
-        matches = [p for p in destination.rglob(app['executable']) if p.is_file()]
+        executable = app.get('binary', app['executable'])
+        matches = [p for p in destination.rglob(executable) if p.is_file()]
         if len(matches) != 1:
-            raise RuntimeError(f'Atteso un eseguibile {app["executable"]}, trovati {matches}')
+            raise RuntimeError(f'Atteso un eseguibile {executable}, trovati {matches}')
         binary = matches[0].resolve()
         binary.chmod(binary.stat().st_mode | 0o111)
-        link = args.bin_dir / app['executable']
+        link = args.bin_dir / executable
         if link.exists() or link.is_symlink():
             raise RuntimeError(f'Non sovrascrivo un eseguibile esistente: {link}')
         link.symlink_to(binary)

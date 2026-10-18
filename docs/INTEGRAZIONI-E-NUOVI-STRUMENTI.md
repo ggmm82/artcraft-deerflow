@@ -77,3 +77,7 @@ Non serve un'altra configurazione di modelli. Il nuovo ruolo eredita automaticam
 6. Dopo CI verde, pubblicare le immagini e distribuire il Compose generato come sopra. All'avvio una vecchia installazione aggiunge il ruolo mancante sia al catalogo persistente sia alle definizioni del coordinatore, preservando preferenze e disabilitazioni esistenti. Il nuovo specialista eredita il provider/modello corrente.
 
 È coperta da regressione l'aggiunta di uno strumento fittizio in una vecchia installazione: compare il ruolo, eredita il modello, vengono preservate le preferenze, e configurazioni/cataloghi restano coerenti. Questo dimostra il meccanismo di integrazione, non le capacità di una CLI futura.
+
+## Esempio reale: Blender
+
+[Blender](BLENDER.md) aggiunge un programma esterno alla famiglia Craft tramite distribuzione ufficiale fissata, adattatore CLI/MCP locale, skill specialistica e prove native. L’installer supporta archivi gzip/xz e distingue il binario installato dall’adattatore. La configurazione dei modelli resta unica. Non inventare un endpoint MCP per un programma che ne è privo: va fornito e collaudato un adattatore, oppure dichiarato esplicitamente il solo uso CLI.

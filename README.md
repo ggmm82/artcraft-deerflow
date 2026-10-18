@@ -3,13 +3,13 @@
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
 [![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml)
 
-DeerFlow con **13 specialisti ArtCraft**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
+DeerFlow con **14 specialisti: 13 ArtCraft e Blender**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
 ## Come funziona
 
 - DeerFlow offre conversazioni, caricamento file, progetti, consegna degli artefatti, modelli e skills.
 - **La tua squadra**, nella barra laterale, è l’unico punto per collegare il servizio e scegliere il modello.
-- Un salvataggio applica il modello al coordinatore e a tutti i 13 specialisti. Ogni ruolo mantiene le proprie skills, verifiche e preferenze; non devi configurare 13 motori.
+- Un salvataggio applica il modello al coordinatore e a tutti gli specialisti. Ogni ruolo mantiene le proprie skills, verifiche e preferenze; non devi configurare motori per ogni ruolo.
 - Descrivi il problema in chat: il coordinatore sceglie gli specialisti utili, assegna gli incarichi e controlla le consegne. Non occorre conoscere nomi di agenti o strumenti.
 - Studio avvia un container per incarico, carica la procedura del programma pertinente e rimuove il container al termine, anche in caso di errore o timeout.
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
@@ -19,7 +19,7 @@ La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **acc
 
 ## Stato della verifica
 
-La suite locale verifica configurazione, API del pannello, isolamento dei percorsi, gestione delle credenziali, timeout e rimozione dei container tramite fixture. GitHub Actions costruisce i quattro runtime, carica lo schema reale DeerFlow e prova i registri e i server MCP delle 13 CLI. Consulta il risultato del workflow prima del deploy.
+La suite locale verifica configurazione, API del pannello, isolamento dei percorsi, gestione delle credenziali, timeout e rimozione dei container tramite fixture. GitHub Actions costruisce i quattro runtime, carica lo schema reale DeerFlow e prova i registri e i server MCP delle 14 CLI. Consulta il risultato del workflow prima del deploy.
 
 **Login con account reali e consumo RAM su Hostinger richiedono il collaudo sull'istanza con i tuoi account.** Non sono dichiarati già verificati. Le applicazioni Craft sono alpha; la presenza di un tool non garantisce ogni import/export.
 
@@ -57,7 +57,7 @@ Hostinger documenta Compose da URL e la gestione delle variabili nella [guida uf
 Non serve collegare account Codex/Antigravity per usare DeepSeek:
 
 1. Apri **La tua squadra**, incolla la chiave DeepSeek e premi **Salva e attiva la squadra**. **Automatico** sceglie tra i modelli effettivamente disponibili nell’account; una chiave o un modello rifiutati non cambiano la configurazione.
-2. Premi **Risolvi un problema**, carica i file e descrivi il risultato. Il coordinatore e tutti i 13 specialisti usano già il modello condiviso.
+2. Premi **Risolvi un problema**, carica i file e descrivi il risultato. Il coordinatore e tutti gli specialisti usano già il modello condiviso.
 3. Scarica i prodotti consegnati in chat. Per cambiare modello, torna allo stesso pannello: la chiave già collegata non va reinserita e le skills dei singoli ruoli restano attive.
 
 Il salvataggio della squadra rimuove le vecchie scelte di motore/modello dei singoli specialisti, preservando skills aggiuntive, istruzioni e stato attivo. Le conversazioni esistenti mantengono l’identificatore del profilo; il nome visibile diventa **Squadra ArtCraft**.
@@ -66,7 +66,7 @@ Il [collaudo utente documentato](docs/COLLAUDO-UTENTE-DEEPSEEK.md) verifica con 
 
 La chiave resta nel volume privato `studio-state`, separata dalla configurazione dei modelli e dalle risposte pubbliche. Il worker DeepSeek riceve la cartella credenziali in sola lettura; come gli altri motori è destinato a un proprietario fidato. Le richieste del coordinatore e degli specialisti consumano la quota API DeepSeek. Un incarico ha timeout e limite di turni; errori, file mancanti o manifest non validi non vengono presentati come successo.
 
-La [regia adattabile](docs/REGIA-ADATTABILE.md) descrive come la squadra usa i 13 ruoli per versioni successive, recupera i file senza blocchi di pipeline e mostra stato e anteprima sopra la casella di chat.
+La [regia adattabile](docs/REGIA-ADATTABILE.md) descrive come la squadra usa i ruoli del catalogo per versioni successive, recupera i file senza blocchi di pipeline e mostra stato e anteprima sopra la casella di chat.
 
 ## Prova di collaborazione
 
@@ -93,8 +93,9 @@ Una conversazione è uno spazio di lavoro. I container sono separati tra incaric
 | CADCraft | cadcraft | cadcraft-cli | CAD e DXF |
 | SoundCraft | soundcraft | soundcraft-cli | Audio e mix |
 | FigCraft | figcraft | figcraft-cli | Interfacce e prototipi |
+| Blender | blender | blender-cli / blender | Modellazione, rig, animazione e render 3D |
 
-Sono incluse 13 skills specifiche dei programmi, una procedura comune e una skill di coordinamento. I comandi e gli schemi completi vengono scoperti dalla release effettivamente installata, con `craft help`, `craft commands`, `craft tools` e `craft batch`. Il batch conserva lo stato MCP tra apertura, modifica e salvataggio.
+Sono incluse 14 skills specifiche dei programmi, una procedura comune e una skill di coordinamento. I comandi e gli schemi completi vengono scoperti dalla release effettivamente installata, con `craft help`, `craft commands`, `craft tools` e `craft batch`. I MCP Craft conservano lo stato nel batch. Blender apre un processo per ogni chiamata: salva e riapri esplicitamente il `.blend`.
 
 Ogni skill distingue il proprio ambito dagli specialisti vicini e definisce ispezione iniziale, procedura, controlli specifici del formato e limiti di compatibilità. Il worker assegna una cartella distinta tramite `ARTCRAFT_OUTPUT_DIR`, avvia la CLI in quella cartella e verifica `handoff.json` prima di restituire successo: gli output devono esistere, essere non vuoti e restare nella cartella assegnata. I controlli di qualità riportano `passed`, `failed` o `not_run` con evidenze; la presenza dei file non dimostra la qualità visiva o audio.
 
@@ -129,7 +130,7 @@ python -m unittest discover -s tests -v
 python scripts/validate.py
 ```
 
-Per il collaudo deterministico dei 13 programmi, senza account e senza consumo API:
+Per il collaudo deterministico dei 14 programmi, senza account e senza consumo API:
 
 ```bash
 docker run --rm --network=none --memory=1536m artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py
@@ -140,7 +141,7 @@ Il collaudo crea sorgenti ed export reali, li riapre e verifica contenuti e misu
 Per provare le skill con DeepSeek imposta `DEEPSEEK_API_KEY` nell'ambiente della shell (mai nel repository), poi:
 
 ```bash
-python scripts/evaluate_skills.py                     # piani dei 13 specialisti
+python scripts/evaluate_skills.py                     # piani dei 14 specialisti
 python scripts/evaluate_skills.py --execute           # lavori reali Grid/Word/Sound
 # Per completare un incarico interrotto senza ricreare i file:
 python scripts/evaluate_skills.py --execute --agents gridcraft --resume reports/skills-RUN
@@ -163,3 +164,7 @@ Il codice dell'integrazione è in `studio/`; il frontend upstream riceve onboard
 Per il collaudo delle consegne, il confezionamento dei sorgenti e i limiti della revisione qualitativa, vedi [Consegne affidabili](docs/CONSEGNE-AFFIDABILI.md).
 
 Il contratto comune di accettazione e la visibilità del prodotto durante le revisioni sono descritti in [Richiesta, risultato ed evidenze](docs/ACCETTAZIONE-COMUNE.md).
+
+### Blender 3D
+
+Lo specialista **Blender 4.5.14 LTS** crea scene, materiali, rig e animazioni e consegna `.blend` modificabili con risorse verificate. Usa la configurazione condivisa della squadra. [CLI, sorgenti, requisiti Linux amd64 e collaudo](docs/BLENDER.md).

@@ -134,9 +134,39 @@ def sample(path, seconds=0):
     return list(result.stdout)
 
 
+def inspect_blend(path, boundary, *, native=True):
+    """Reopen using trusted code, then verify portable dependencies, not a claim."""
+    if not native:
+        return {'file': Path(path).name, 'status': 'not_run', 'check': 'blender_reopen'}
+    result = subprocess.run(['blender-cli', 'inspect', str(path)], cwd=boundary,
+        env={**os.environ, 'ARTCRAFT_WORKSPACE_ROOT': str(Path(boundary).resolve())},
+        capture_output=True, text=True, timeout=120)
+    if result.returncode:
+        raise ValueError('Blender: riapertura fallita: ' + result.stderr[-500:])
+    info = json.loads(result.stdout)
+    if not any(o.get('type') in ('MESH', 'CURVE', 'SURFACE', 'FONT', 'VOLUME', 'POINTCLOUD', 'GREASEPENCIL')
+               for o in info.get('objects', [])):
+        raise ValueError('Blender: progetto senza geometria modificabile')
+    if info.get('limitations'):
+        raise ValueError('Blender: dipendenze non collaudate: ' + '; '.join(info['limitations'])[:700])
+    for dependency in info.get('dependencies', []):
+        ref = dependency['reference']
+        if not ref.startswith('//') or not dependency['exists']:
+            raise ValueError('Blender: risorsa mancante o percorso non portabile: ' + ref)
+        actual = Path(dependency['path']).resolve()
+        if not actual.is_relative_to(Path(boundary).resolve()):
+            raise ValueError('Blender: dipendenza fuori dal pacchetto: ' + ref)
+    return {'file': Path(path).relative_to(boundary).as_posix(), 'status': 'passed',
+            'check': 'blender_reopen', 'objects': len(info['objects']),
+            'dependencies': len(info.get('dependencies', [])),
+            'note': 'CLI nativa, geometria e risorse; qualità artistica e GUI non certificate'}
+
+
 def inspect_tree(folder, *, native=False, budget=None, depth=0):
     folder = Path(folder).resolve()
     projects, checks = [], []
+    for path in sorted(folder.rglob('*.blend')):
+        checks.append(inspect_blend(path, folder, native=native))
     for path in sorted(folder.rglob('*')):
         if path.suffix in NATIVE:
             value = document(path)
@@ -201,6 +231,7 @@ def verify_archive(archive, *, native=False):
                                  'percorsi relativi da soli non sono riapribili da altre cartelle')
         return {'status': 'passed', 'sha256': digest(archive), 'files': budget['files'], 'checks': checks,
                 'coverage': 'CRC e inventario; dipendenze/struttura FilmCraft, EffectCraft, SoundCraft; '
+                            'Blender: riapertura, geometria e dipendenze se native=True; '
                             'altri formati richiedono la prova specifica della skill'}
 
 
