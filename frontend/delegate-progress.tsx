@@ -32,7 +32,7 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
       <span className="text-muted-foreground text-xs">{duration(elapsed)} trascorsi</span>
     </div>
     {operation && <div className="rounded-md border p-2 text-sm" data-testid="operation-progress">
-      <p>{operation.label} · {operation.state === "running" ? "in esecuzione" : operation.state === "completed" ? "conclusa" : operation.state === "out_of_memory" ? "memoria esaurita" : "interrotta"}</p>
+      <p>{operation.label} · {operation.state === "running" && !terminal ? "in esecuzione" : operation.state === "completed" ? "conclusa" : operation.state === "out_of_memory" ? "memoria esaurita" : "interrotta"}</p>
       {operation.progress?.total && <p>{operation.progress.done ?? 0}/{operation.progress.total} campioni osservati</p>}
       {operation.estimate_seconds !== undefined && <p>Stima iniziale dal campione: circa {duration(Math.round(operation.estimate_seconds))}. Può variare.</p>}
       {operation.elapsed_seconds !== undefined && <p>{duration(Math.floor(operation.elapsed_seconds))} di elaborazione</p>}

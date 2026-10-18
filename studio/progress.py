@@ -206,13 +206,18 @@ class Reporter:
                 value.update(heartbeat_at=now, updated_at=now, files=files, files_count=len(files))
                 try:
                     from .resource_usage import snapshot
+                    from .operations import identity
                 except ImportError:
                     from resource_usage import snapshot
+                    from operations import identity
                 value['resources'] = snapshot()
                 operations = []
                 for record in sorted((self.output_dir / 'work/operations').glob('*/status.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:8]:
                     if not record.is_symlink() and record.stat().st_size < 30000:
-                        operations.append(json.loads(record.read_text()))
+                        operation = json.loads(record.read_text())
+                        if operation.get('state') == 'running' and operation.get('pid') and identity(operation['pid']) != operation.get('process_identity'):
+                            operation['state'] = 'interrupted'
+                        operations.append(operation)
                 previous = {o.get('id'): o for o in value.get('operations', []) if isinstance(o, dict)}
                 value['operations'] = operations
                 active = next((o for o in operations if o.get('state') == 'running'), None)
