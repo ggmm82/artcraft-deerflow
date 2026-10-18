@@ -23,6 +23,10 @@ class TeamTests(unittest.TestCase):
         self.bootstrap = importlib.reload(bootstrap)
         self.bootstrap.initialize()
         self.runtime = importlib.reload(docker_runtime)
+        from studio import runtime_settings
+        host = patch.object(runtime_settings, 'capacity', return_value={'cpus': 4, 'memory_mib': 8192, 'detected': True})
+        host.start()
+        self.addCleanup(host.stop)
         self.native_models.start()
         self.router = importlib.reload(router)
         from fastapi import FastAPI

@@ -15,6 +15,10 @@ class StudioTests(unittest.TestCase):
         self.state = importlib.reload(state)
         from studio import docker_runtime, login, router
         self.runtime = importlib.reload(docker_runtime)
+        from studio import runtime_settings
+        host = patch.object(runtime_settings, 'capacity', return_value={'cpus': 4, 'memory_mib': 8192, 'detected': True})
+        host.start()
+        self.addCleanup(host.stop)
         importlib.reload(login)
         self.router = importlib.reload(router)
         (self.state.STATE / 'installation-id').write_text('test-installation')
