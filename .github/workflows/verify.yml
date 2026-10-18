@@ -119,7 +119,20 @@ jobs:
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_progress_routes.py -v
       - name: Check adaptive orchestration tools, compact memory and explicit recovery
         if: matrix.component == 'gateway'
-        run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_adaptive_tools.py -v
+        run: |
+          set +e
+          docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_adaptive_tools.py -v > /tmp/studio-tools.log 2>&1
+          result=$?
+          cat /tmp/studio-tools.log
+          if [ "$result" -ne 0 ]; then
+            python - <<'PYTHON'
+          from pathlib import Path
+          text = Path('/tmp/studio-tools.log').read_text()[-8000:]
+          text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+          print('::error title=Gateway orchestration test failed::' + text)
+          PYTHON
+          fi
+          exit "$result"
       - name: Check memory exhaustion using genuine cgroup counters
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --memory=256m --memory-swap=256m --pids-limit=64 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_resource_supervision.py

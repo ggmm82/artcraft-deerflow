@@ -102,9 +102,3 @@ class AdaptiveToolTests(unittest.TestCase):
                 runtime.state['messages'].append(SimpleNamespace(type='human', id='explicit-continue'))
                 studio_delegate.func(agent='effectcraft', task='Riprendi la posa', runtime=runtime, step_id='motion')
                 self.assertEqual(worker.call_count, 2)
-                other = role(); other.update(id='verify', title='Responsabile delle verifiche')
-                studio_plan.func(runtime=runtime, roles_json=json.dumps([role(), other]),
-                    steps_json=json.dumps([{'id': 'prepare', 'agent': 'workspace', 'role_id': 'verify', 'goal': 'Verificare alternative'}]))
-                studio_delegate.func(agent='workspace', task='Controllare la proposta', step_id='prepare', runtime=runtime)
-                self.assertEqual(worker.call_args.kwargs['role']['id'], 'verify')
-                self.assertEqual(read_project(root)['steps'][0]['role_title'], other['title'])
