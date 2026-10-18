@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """Scoped headless Blender CLI/MCP adapter. Each call opens a fresh process."""
 import argparse
+import hashlib
+import time
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
+try:
+    from operations import supervise, folder
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from studio.operations import supervise, folder
 
 ROOT = Path(os.environ.get('ARTCRAFT_WORKSPACE_ROOT', '/mnt/user-data')).resolve()
 TOOLS = [
+    {'name': 'blender.profile', 'description': 'Measure a small representative CPU render before the full render; returns a rough cost estimate without changing the saved project.',
+     'inputSchema': {'type': 'object', 'properties': {'project': {'type': 'string'}, 'frame': {'type': 'integer'}}, 'required': ['project'], 'additionalProperties': False}},
     {'name': 'blender.inspect', 'description': 'Reopen a .blend and inspect objects, animation and external dependencies.',
      'inputSchema': {'type': 'object', 'properties': {'project': {'type': 'string'}}, 'required': ['project'], 'additionalProperties': False}},
     {'name': 'blender.execute', 'description': 'Execute an explicit workspace Python script with bpy in a fresh Blender process. The script must save its results.',
@@ -55,18 +63,40 @@ def invoke(action, arguments):
         output.parent.mkdir(parents=True, exist_ok=True)
         job['output'] = str(output)
     job['frame'] = arguments.get('frame')
-    with tempfile.TemporaryDirectory(prefix='artcraft-blender-') as directory:
-        folder = Path(directory)
-        payload, result = folder / 'job.json', folder / 'result.json'
-        job['result'] = str(result)
-        payload.write_text(json.dumps(job))
-        argv = ['blender', '--background', '--factory-startup', '--disable-autoexec',
-                '--threads', '2', '--python-exit-code', '1', '--python',
-                str(Path(__file__).resolve().with_name('blender_job.py')), '--', str(payload)]
-        p = subprocess.run(argv, capture_output=True, text=True, timeout=1200, cwd=ROOT)
-        if p.returncode or not result.is_file():
-            raise RuntimeError('Blender non ha completato il lavoro: ' + (p.stderr + p.stdout)[-2500:])
+    root = Path(os.environ.get('ARTCRAFT_OUTPUT_DIR', str(ROOT))).resolve()
+    digest = hashlib.sha256(json.dumps({**arguments, 'action': action,
+        'threads': os.environ.get('ARTCRAFT_CPU_THREADS', '2'), 'memory': os.environ.get('ARTCRAFT_MEMORY_MIB', '')}, sort_keys=True).encode())
+    for field in ('project', 'script'):
+        if field in job:
+            with Path(job[field]).open('rb') as stream:
+                digest.update(hashlib.file_digest(stream, 'sha256').digest())
+    digest.update(Path(__file__).resolve().with_name('blender_job.py').read_bytes())
+    key = 'blender-' + digest.hexdigest()
+    work = folder(root, key)
+    payload, result = work / 'job.json', work / 'result.json'
+    if action == 'profile' and result.is_file():
         return json.loads(result.read_text())
+    estimate = None
+    if action == 'render':
+        measured = invoke('profile', {'project': job['project'], **({'frame': job['frame']} if job['frame'] is not None else {})})
+        estimate = measured.get('profile', {}).get('rough_estimate_seconds')
+        remaining = float(os.environ.get('ARTCRAFT_JOB_DEADLINE', str(time.time() + 1200))) - time.time() - 60
+        if estimate is not None and estimate > remaining:
+            raise RuntimeError(f'Il campione stima circa {estimate} secondi, oltre il budget residuo di questa fase. Sorgente conservato: pianifica checkpoint/porzioni seriali con supervisore o una continuazione, senza ridurre la qualità richiesta.')
+    if action == 'profile':
+        job['output'] = str(work / 'profile.png')
+    job['result'] = str(result)
+    payload.write_text(json.dumps(job))
+    argv = ['blender', '--background', '--factory-startup', '--disable-autoexec',
+            '--threads', os.environ.get('ARTCRAFT_CPU_THREADS', '2'), '--python-exit-code', '1', '--python',
+            str(Path(__file__).resolve().with_name('blender_job.py')), '--', str(payload)]
+    budget = min(1200, max(1, int(float(os.environ.get('ARTCRAFT_JOB_DEADLINE', str(time.time() + 1200)))) - int(time.time()) - 10))
+    p, stats = supervise(argv, root, key, timeout=min(120, budget) if action == 'profile' else budget,
+                         label='Misurazione render campione' if action == 'profile' else 'Blender: ' + action, estimate_seconds=estimate)
+    if p.returncode or not result.is_file():
+        cause = 'memoria esaurita confermata dal worker' if stats.get('oom_kills') else 'arresto forzato, causa da verificare' if p.returncode in (-9, 137) else 'errore dello strumento'
+        raise RuntimeError('Blender non ha completato il lavoro (' + cause + '): ' + (p.stderr + p.stdout)[-2500:])
+    return json.loads(result.read_text())
 
 
 def mcp():
@@ -107,6 +137,7 @@ def main():
     for name in ('commands', 'mcp'):
         subs.add_parser(name)
     p = subs.add_parser('inspect'); p.add_argument('project')
+    p = subs.add_parser('profile'); p.add_argument('project'); p.add_argument('--frame', type=int)
     p = subs.add_parser('execute'); p.add_argument('script')
     for name in ('render', 'pack', 'export_glb'):
         p = subs.add_parser(name); p.add_argument('project'); p.add_argument('output')

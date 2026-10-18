@@ -196,6 +196,8 @@ def main():
                    'percorsi, verifiche e limiti. Non limitarti a ripetere un messaggio testuale: '
                    'finish conclude il processo. Non ricreare i file già verificati.')
     final = Path('/tmp/last-message.txt')
+    import time
+    os.environ['ARTCRAFT_JOB_DEADLINE'] = str(time.time() + job['timeout'])
     reporter = Reporter(output_dir, job).start(job['timeout'])
     try:
         if engine == 'deepseek':

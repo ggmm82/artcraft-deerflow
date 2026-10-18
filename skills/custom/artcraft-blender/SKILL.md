@@ -46,3 +46,7 @@ Compila `handoff.json` con `delivery.files` per OGNI download: `.blend` come `ed
 - https://docs.blender.org/api/4.5/
 - https://docs.blender.org/manual/en/4.5/files/blend/packed_data.html
 - https://download.blender.org/release/Blender4.5/
+
+## Costo e supervisione del render
+
+Usa `blender-cli profile SCENA.blend --frame 1` per la misura preventiva. `blender-cli render` lo fa automaticamente e pubblica i campioni osservati nel pannello; mantiene progetto, dimensioni e campioni finali. Per animazioni/script lunghi usa il supervisore comune in `artcraft-workspace`. Non sfuggire al controllo passando a Blender nativo in background dopo un timeout: verifica che il vecchio processo sia terminato e riprendi solo ciò che manca. I render nativi necessari devono usare lo stesso supervisore. Dopo un OOM confermato sospendi e conserva sorgenti; non tentare ripetutamente render interi o porzioni concorrenti con lo stesso budget.

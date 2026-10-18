@@ -38,3 +38,7 @@ Le simulazioni e dipendenze procedurali di Fluid, Cloth, Soft Body, Dynamic Pain
 Il caso `blender` di `scripts/acceptance.py` usa il binario ufficiale: mesh 3D con materiale e texture incorporata, animazione a keyframe, nuova apertura, valori diversi fra due pose, render PNG CPU non uniforme, export/reimport GLB con animazione, scambio MCP e sorgenti ZIP riaperti dopo trasferimento. È una fixture tecnica dichiarata, non una produzione artistica valutata da un utente.
 
 La CI esegue questo caso insieme agli altri 13, scopre il server MCP, costruisce i runtime e avvia il Compose completo prima di pubblicare il candidato. Il Compose viene distribuito come asset della PR, pronto per il collaudo prima del merge; il template interno non è il file installabile.
+
+## Lavori pesanti
+
+Il render ora misura un campione preventivo e usa il [supervisore comune](LAVORI-PESANTI.md), con un budget condiviso dal pannello, avanzamento effettivo dei campioni e controllo dei processi duplicati. Non cambia automaticamente la qualità richiesta.

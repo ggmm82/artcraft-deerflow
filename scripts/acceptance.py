@@ -340,6 +340,10 @@ bpy.ops.wm.save_as_mainfile(filepath=NATIVE)
     c.check('Mesh, keyframe e materiale riaperti', any(o['name'] == 'EditableBody' and o['vertices'] == 8 and o['animated']
             for o in info['objects']) and info['materials'] > 0 and info['frame_end'] == 12, info)
     c.check('Texture incorporata, nessun collegamento esterno', info['images'] > 0 and not info['dependencies'], info)
+    original_hash = hashlib.sha256(packed.read_bytes()).hexdigest()
+    measured = json.loads(c.run('blender-cli', 'profile', packed, '--frame', 6))
+    c.check('Profilazione preventiva senza modifiche al sorgente', measured['profile']['measured_pixels'] > 0
+            and original_hash == hashlib.sha256(packed.read_bytes()).hexdigest(), measured['profile'])
     c.run('blender-cli', 'render', packed, preview, '--frame', 6)
     pixels = c.pixels(preview)
     c.check('Render CPU reale non uniforme', len(pixels) == 64 * 64 * 4 and len(set(pixels[::4])) > 10, len(pixels))

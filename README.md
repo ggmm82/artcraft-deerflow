@@ -168,3 +168,5 @@ Il contratto comune di accettazione e la visibilità del prodotto durante le rev
 ### Blender 3D
 
 Lo specialista **Blender 4.5.14 LTS** crea scene, materiali, rig e animazioni e consegna `.blend` modificabili con risorse verificate. Usa la configurazione condivisa della squadra. [CLI, sorgenti, requisiti Linux amd64 e collaudo](docs/BLENDER.md).
+
+Il [budget comune per i lavori pesanti](docs/LAVORI-PESANTI.md) si imposta in La tua squadra; il supervisore controlla processi, avanzamento nativo e memoria senza aggiungere configurazioni per i singoli strumenti.

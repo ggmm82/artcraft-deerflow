@@ -16,6 +16,7 @@ RUN python3 /opt/artcraft/install_antigravity.py "$TARGETARCH" && agy --version
 COPY versions.lock.json /opt/artcraft/versions.lock.json
 COPY scripts/install_artcraft.py scripts/craft.py scripts/smoke.py scripts/acceptance.py /opt/artcraft/
 COPY scripts/blender_cli.py scripts/blender_job.py /opt/artcraft/
+COPY studio/operations.py studio/resource_usage.py /opt/artcraft/
 RUN chmod 755 /opt/artcraft/blender_cli.py && ln -s /opt/artcraft/blender_cli.py /usr/local/bin/blender-cli
 COPY scripts/check_provider_clis.py /opt/artcraft/
 RUN python3 /opt/artcraft/check_provider_clis.py
@@ -27,7 +28,7 @@ RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \
 COPY skills /mnt/skills
 COPY studio/run_agent.py studio/handoff.py studio/deepseek.py studio/refresh_codex.py /opt/studio/
 COPY studio/antigravity_cli.py studio/terminal_text.py /opt/studio/
-COPY studio/progress.py studio/cli_runner.py studio/work_results.py /opt/studio/
+COPY studio/progress.py studio/cli_runner.py studio/work_results.py studio/operations.py studio/resource_usage.py /opt/studio/
 COPY studio/source_packages.py studio/deliveries.py studio/acceptance.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
 WORKDIR /mnt/user-data

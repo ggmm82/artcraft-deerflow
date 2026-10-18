@@ -43,13 +43,18 @@ def mount(path, target, read_only=False):
     return value + (',readonly' if read_only else '')
 
 
-def base_arguments(name):
+def base_arguments(name, resources=None):
+    from .runtime_settings import effective
+    resources = resources or effective()
     return ['run', '--name', name, '--label', f'{LABEL}={OWNER}',
             '--init', '--cap-drop=ALL', '--security-opt=no-new-privileges',
-            '--pids-limit=256', '--memory=1536m', '--memory-swap=1536m',
-            '--cpus=1.5', '--network=bridge', '--tmpfs', '/tmp:rw,size=256m',
+            '--pids-limit=256', f"--memory={resources['memory_mib']}m", f"--memory-swap={resources['memory_mib']}m",
+            f"--cpus={resources['cpus']}", '--network=bridge', '--tmpfs', f"/tmp:rw,size={resources['tmp_mib']}m",
+            '--env', f"ARTCRAFT_CPU_THREADS={resources['threads']}",
+            '--env', f"ARTCRAFT_MEMORY_MIB={resources['memory_mib']}",
             '--env', 'NO_BROWSER=true', '--env', 'TZ=Europe/Rome',
-            '--env', 'TOKIO_WORKER_THREADS=2', '--env', 'RAYON_NUM_THREADS=2']
+            '--env', f"TOKIO_WORKER_THREADS={resources['threads']}", '--env', f"RAYON_NUM_THREADS={resources['threads']}",
+            '--env', f"OMP_NUM_THREADS={resources['threads']}", '--env', f"OPENBLAS_NUM_THREADS={resources['threads']}"]
 
 
 def remove(name):
@@ -176,7 +181,10 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         jobs = STATE / 'jobs'
         jobs.mkdir(exist_ok=True)
         job = jobs / (name + '.json')
-        payload = {'agent': agent_id, 'engine': engine, 'model': settings['model'],
+        from .runtime_settings import effective
+        resources = effective()
+        update(progress, limits=resources)
+        payload = {'resources': resources, 'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
                    'acceptance': acceptance}
@@ -188,7 +196,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         from .state import atomic_json
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
-        args = base_arguments(name) + ['--label', f'org.artcraft.studio.installation={installation}',
+        args = base_arguments(name, resources) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(workspace, '/mnt/user-data'),
             '--mount', mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek'),
             '--mount', mount(job, '/job.json', True),
@@ -207,6 +215,14 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             if not isinstance(failure, dict):
                 failure = {}
             error = failure.get('error') or completed.stderr or 'Specialista non completato'
+            try:
+                container_state = json.loads(docker('inspect', '--format', '{{json .State}}', name))
+                if isinstance(container_state, dict) and container_state.get('OOMKilled') is True:
+                    error = 'Memoria esaurita confermata dallo stato del container. ' + error
+                    previous_usage = read_status(progress).get('resources') or {}
+                    update(progress, resources={**previous_usage, 'oom_kills': max(1, previous_usage.get('oom_kills', 0))})
+            except (OSError, ValueError, TypeError, subprocess.SubprocessError):
+                pass  # Unknown cause must not be invented from exit 137.
             attention = failure_info(error)
             available = ['/mnt/user-data/' + str(Path(p).relative_to(workspace)) for p in
                          partial_files(workspace / 'outputs' / agent_id / name)]

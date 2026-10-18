@@ -35,11 +35,11 @@ class BlenderTests(unittest.TestCase):
     def test_python_error_or_missing_envelope_is_not_success(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); script = root / 'create.py';script.write_text('raise RuntimeError()')
-            def failure(argv, **kwargs):
+            def failure(argv, *args, **kwargs):
                 self.assertIn('--disable-autoexec', argv)
                 self.assertEqual(argv[argv.index('--python-exit-code') + 1], '1')
-                return subprocess.CompletedProcess(argv, 1, '', 'script failed')
-            with patch.object(blender_cli, 'ROOT', root), patch.object(blender_cli.subprocess, 'run', side_effect=failure):
+                return subprocess.CompletedProcess(argv, 1, '', 'script failed'), {}
+            with patch.object(blender_cli, 'ROOT', root), patch.object(blender_cli, 'supervise', side_effect=failure):
                 with self.assertRaisesRegex(RuntimeError, 'script failed'):
                     blender_cli.invoke('execute', {'script': str(script)})
 

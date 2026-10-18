@@ -29,6 +29,8 @@ def main():
     video_path = '/mnt/user-data/outputs/filmcraft/preview.mp4'
     job = {'job_id': 'artcraft-job-123456abcdef', 'agent': 'effectcraft', 'engine': 'codex',
         'model': 'fixture-model', 'phase': 'running_tool', 'summary': 'Esporto il risultato con Effectcraft',
+        'resources': {'memory_bytes': 1073741824, 'memory_limit_bytes': 2147483648, 'oom_kills': 0},
+        'limits': {'cpus': 1.5}, 'operations': [{'id': 'render', 'state': 'running', 'label': 'Render finale', 'elapsed_seconds': 600, 'progress': {'done': 12, 'total': 48}}],
         'work_summary': 'Correggo inquadratura e proporzioni del robot prima del render',
         'created_at': iso(now - timedelta(minutes=18)), 'started_at': iso(now - timedelta(minutes=18)),
         'finished_at': '', 'deadline_at': iso(now + timedelta(minutes=7)),
@@ -127,7 +129,7 @@ window.showThread();
                 page.goto(f'http://127.0.0.1:{server.server_port}')
                 dock = page.get_by_test_id('delegate-progress')
                 expect(page.get_by_test_id('studio-status')).to_have_text('Effectcraft sta lavorando')
-                expect(page.get_by_test_id('studio-summary')).to_have_text(job['summary'])
+                expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
                 expect(page.get_by_test_id('studio-health')).to_contain_text('Nessun nuovo avanzamento')
                 expect(page.get_by_test_id('delegate-job')).to_have_count(0)  # no wall of technical detail
                 composer = page.get_by_role('textbox', name='Scrivi un messaggio')
@@ -145,6 +147,10 @@ window.showThread();
                     page.wait_for_function('document.querySelector("video").currentTime > .1')
                     video.evaluate('(v)=>v.pause()')
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                page.get_by_role('button', name='Attività', exact=True).click()
+                expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
+                expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 # A report-only inventory must never replace the selected artifact.
                 state['project'] = {**project, 'results': [{'path': '/mnt/user-data/outputs/review/report.json',
                     'label': 'report.json', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}]}
@@ -180,7 +186,7 @@ window.showThread();
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
                 expect(card.get_by_text('Non è una stima di consegna.', exact=False)).to_be_visible()
                 page.reload()
-                expect(page.get_by_test_id('studio-summary')).to_have_text(job['summary'])
+                expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
                 expect(page.get_by_test_id('studio-drawer')).to_have_count(0)
                 state['job'] = {**job, 'phase': 'failed', 'summary': 'Quota esaurita', 'finished_at': iso(now)}
                 state['project'] = {**project, 'status': 'blocked', 'attention': {

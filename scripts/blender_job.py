@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import runpy
 import sys
+import time
+import os
 
 import bpy
 
@@ -49,16 +51,34 @@ def main():
     action = job['action']
     if action == 'execute':
         runpy.run_path(job['script'], run_name='__main__')
-    elif action == 'render':
+    elif action in ('render', 'profile'):
         scene = bpy.context.scene
         if job.get('frame') is not None:
             scene.frame_set(job['frame'])
+        requested = [scene.render.resolution_x, scene.render.resolution_y, scene.render.resolution_percentage, scene.cycles.samples]
+        requested_area = 1
+        if scene.render.use_border:
+            requested_area = (scene.render.border_max_x - scene.render.border_min_x) * (scene.render.border_max_y - scene.render.border_min_y)
+        if action == 'profile':
+            if scene.render.engine != 'CYCLES':
+                raise ValueError('Profilazione automatica disponibile per Cycles CPU. Verificare gli altri motori separatamente con il supervisore.')
+            width = max(1, scene.render.resolution_x * scene.render.resolution_percentage / 100)
+            height = max(1, scene.render.resolution_y * scene.render.resolution_percentage / 100)
+            scene.render.use_border = True
+            scene.render.use_crop_to_border = True
+            scene.render.border_min_x = max(0, .5 - 64 / width)
+            scene.render.border_max_x = min(1, .5 + 64 / width)
+            scene.render.border_min_y = max(0, .5 - 64 / height)
+            scene.render.border_max_y = min(1, .5 + 64 / height)
+            scene.cycles.samples = min(8, scene.cycles.samples)
         scene.render.filepath = job['output']
         scene.render.image_settings.file_format = 'PNG'
         if scene.render.engine == 'CYCLES':
             scene.cycles.device = 'CPU'
         scene.render.use_file_extension = True
+        benchmark_start = time.monotonic()
         bpy.ops.render.render(write_still=True)
+        render_seconds = time.monotonic() - benchmark_start
     elif action == 'export_glb':
         bpy.ops.export_scene.gltf(filepath=job['output'], export_format='GLB')
     elif action == 'pack':
@@ -67,12 +87,23 @@ def main():
     elif action != 'inspect':
         raise ValueError('Azione non supportata')
     result = inspect()
+    if action == 'profile':
+        image = bpy.data.images.load(job['output'])
+        pixels = max(1, image.size[0] * image.size[1])
+        total = requested[0] * requested[1] * (requested[2] / 100) ** 2 * requested_area
+        result['profile'] = {'measured_seconds': render_seconds, 'measured_pixels': pixels,
+                             'requested_resolution': requested[:3], 'requested_samples': requested[3],
+                             'rough_estimate_seconds': round(render_seconds * total / pixels * requested[3] / max(1, scene.cycles.samples)),
+                             'note': 'Stima indicativa da ritaglio campione, non una promessa di consegna. Il progetto salvato è invariato.'}
     if job.get('output'):
         output = Path(job['output'])
         if not output.is_file() or not output.stat().st_size:
             raise ValueError('Output Blender mancante o vuoto')
         result['output'] = str(output)
-    Path(job['result']).write_text(json.dumps(result))
+    target = Path(job['result'])
+    temp = target.with_suffix('.tmp')
+    temp.write_text(json.dumps(result))
+    os.replace(temp, target)
 
 
 if __name__ == '__main__':
