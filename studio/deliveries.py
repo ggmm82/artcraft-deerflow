@@ -55,7 +55,7 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
             'report_path': str(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
 
 
-def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''):
+def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=()):
     root = Path(output_dir)
     delivery = handoff['delivery']
     issues, files, packages = [], [], []
@@ -91,9 +91,10 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
             item['open_with'] = 'Usa il pacchetto sorgenti ZIP della stessa consegna e le sue istruzioni; questo progetto isolato può perdere i media.'
             item['limitations'] = [*item.get('limitations', []), 'Il progetto scaricato da solo non include le risorse collegate.']
     renders = [c for p in packages for c in p['verification']['checks'] if c.get('check') == 'filmcraft_render']
-    if purpose == 'delivery' and agent == 'filmcraft' and delivery['source_status'] == 'included' and not renders:
+    active_tools = {agent, *tools}
+    if purpose == 'delivery' and 'filmcraft' in active_tools and delivery['source_status'] == 'included' and not renders:
         issues.append('Consegna FilmCraft senza progetto .fcproj collaudato nel pacchetto: README o soli video non sono il sorgente di montaggio')
-    if purpose == 'delivery' and agent == 'blender' and not any(
+    if purpose == 'delivery' and 'blender' in active_tools and not any(
             (f['role'] == 'editable_source' and Path(f['path']).suffix.lower() == '.blend'
              and f.get('verification', {}).get('status') == 'passed') or
             (f['role'] == 'source_archive' and any(c.get('check') == 'blender_reopen' and c.get('status') == 'passed'
