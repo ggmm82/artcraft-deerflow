@@ -5,11 +5,13 @@ import subprocess
 
 try:
     from .source_packages import digest, verify_archive, sample, NATIVE
+    from .acceptance import METHODS, evaluate
 except ImportError:
     from source_packages import digest, verify_archive, sample, NATIVE
+    from acceptance import METHODS, evaluate
 
 
-def read_review(handoff, output_dir, workspace, engine):
+def read_review(handoff, output_dir, workspace, engine, acceptance=None):
     """Read a separate review of an existing product, never of a self-made export."""
     path = Path(output_dir) / 'quality-review.json'
     if not path.is_file() or str(path) not in handoff['output_files'] or path.stat().st_size > 30000:
@@ -22,23 +24,34 @@ def read_review(handoff, output_dir, workspace, engine):
     criteria = value.get('criteria', [])
     if not isinstance(criteria, list) or not 1 <= len(criteria) <= 20:
         raise ValueError('Revisione: specificare criteri concreti del brief')
+    reference_hashes = {}
     for criterion in criteria:
         if (not isinstance(criterion, dict) or not criterion.get('criterion') or not criterion.get('evidence')
                 or criterion.get('status') not in ('passed', 'failed', 'not_run')
-                or criterion.get('method') not in ('visual', 'listening', 'technical', 'content')):
+                or criterion.get('method') not in METHODS):
             raise ValueError('Revisione: criterio, metodo, stato ed evidenza obbligatori')
-        # Current DeepSeek transport accepts text only. Numeric measurements do
-        # not become an image inspection or an audition by naming them so.
-        if engine == 'deepseek' and criterion['method'] in ('visual', 'listening'):
-            criterion.update(status='not_run', evidence='Il collegamento DeepSeek attuale è testuale; valutazione sensoriale non disponibile.')
-    visual = target.suffix.lower() in ('.mp4', '.mov', '.webm', '.gif', '.png', '.jpg', '.jpeg', '.pdf', '.svg', '.glb')
-    audio = target.suffix.lower() in ('.wav', '.mp3', '.m4a', '.ogg')
+        if criterion.get('method') == 'reference' and criterion.get('status') == 'passed':
+            rule = next((r for r in (acceptance or {}).get('criteria', []) if r['id'] == criterion.get('requirement_id')), {})
+            paths = rule.get('reference_paths', [])
+            if not paths:
+                criterion.update(status='not_run', evidence='Confronto con riferimento senza un riferimento disponibile e verificabile.')
+            else:
+                for filename in paths:
+                    reference = Path(filename).resolve()
+                    if not reference.is_relative_to(Path(workspace).resolve()) or not reference.is_file() or str(reference) not in handoff['source_files']:
+                        criterion.update(status='not_run', evidence='Il riferimento necessario non è stato letto o non è disponibile.')
+                    else:
+                        reference_hashes[str(reference)] = digest(reference)
+    visual = not acceptance and target.suffix.lower() in ('.mp4', '.mov', '.webm', '.gif', '.png', '.jpg', '.jpeg', '.pdf', '.svg', '.glb')
+    audio = not acceptance and target.suffix.lower() in ('.wav', '.mp3', '.m4a', '.ogg')
     for needed, method in ((visual, 'visual'), (audio, 'listening')):
         if needed and not any(c['method'] == method for c in criteria):
             criteria.append({'criterion': 'Qualità del contenuto ' + method, 'method': method,
                              'status': 'not_run', 'evidence': 'Il rapporto contiene soltanto controlli di altre modalità.'})
+    criteria, status = evaluate(criteria, acceptance, engine)
     return {'product_path': str(target), 'sha256': digest(target), 'criteria': criteria,
-            'status': 'passed' if all(c['status'] == 'passed' for c in criteria) else 'needs_review',
+            'status': status, 'contract_hash': (acceptance or {}).get('hash'),
+            'reference_hashes': reference_hashes,
             'report_path': str(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
 
 

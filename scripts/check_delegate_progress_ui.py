@@ -38,6 +38,10 @@ def main():
     project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'status': 'working',
         'summary': 'Preparo una prima versione completa', 'next_action': 'Integro immagine, movimento e audio',
         'product_path': video_path, 'quality_status': 'not_reviewed',
+        'acceptance': {'user_requests': ['Conserva il contenuto del riferimento fornito'], 'criteria': [
+            {'id': 'request_fidelity', 'requirement': 'Contenuto conforme alla richiesta originale', 'critical': True}]},
+        'review_criteria': [{'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
+            'status': 'failed', 'evidence': 'Il contenuto è stato sostituito con una variante non richiesta.'}],
         'deliveries': [{'id': 'final', 'title': 'Robot con musica — versione 2', 'agent': 'filmcraft', 'at': iso(now),
                        'current': True, 'technical_status': 'needs_revision', 'issues': ['Texture collegata mancante'], 'purpose': 'delivery'},
                       {'id': 'old', 'title': 'Prima prova muta', 'agent': 'effectcraft', 'at': iso(now-timedelta(hours=1)),
@@ -141,6 +145,23 @@ window.showThread();
                     page.wait_for_function('document.querySelector("video").currentTime > .1')
                     video.evaluate('(v)=>v.pause()')
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                # A report-only inventory must never replace the selected artifact.
+                state['project'] = {**project, 'results': [{'path': '/mnt/user-data/outputs/review/report.json',
+                    'label': 'report.json', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}]}
+                page.reload()
+                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                expect(page.get_by_label('Anteprima video')).to_have_attribute('src', '/api/threads/fixture/artifacts'+video_path)
+                page.get_by_test_id('acceptance-criteria').locator('summary').click()
+                expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Conserva il contenuto del riferimento fornito')
+                expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Da correggere')
+                # Document/project outputs use the same result control, not a video-only flow.
+                state['project'] = {**state['project'], 'product_path': '/mnt/user-data/outputs/report/final.docx'}
+                page.reload()
+                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                expect(page.get_by_role('link', name='final.docx')).to_be_visible()
+                expect(page.get_by_label('Anteprima video')).to_have_count(0)
+                state['project'] = project
+                page.reload()
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 for name in ('Photocraft', 'Effectcraft', 'Soundcraft', 'Filmcraft'):
                     expect(page.get_by_test_id('team-plan').get_by_text(name, exact=True)).to_be_visible()

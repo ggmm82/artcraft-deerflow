@@ -114,3 +114,22 @@ Consegna nella tua cartella `quality-review.json`, ruolo `report`, elencato in `
 ```
 
 Metodi: `visual`, `listening`, `technical`, `content`. Criteri pertinenti e specifici al prodotto, non una lista generica di complimenti. Stati: `passed`, `failed`, `not_run`. Il runtime lega la valutazione all’hash del prodotto: una modifica richiede revisione della nuova versione. Un prodotto visivo richiede almeno un criterio visivo, un prodotto audio almeno un criterio d’ascolto. Se non puoi valutare, consegna il rapporto e mantieni lo stato da valutare; non avviare rigenerazioni inutili. Non usare sole misure tecniche per approvare contenuto creativo.
+
+
+## Contratto comune: contenuto richiesto, evidenze e riferimenti
+
+Il runtime fornisce `acceptance` nell’incarico: messaggi originali dell’utente, modifiche successive e requisiti con ID. Il piano del coordinatore è una proposta operativa e non può cambiare da solo il contenuto richiesto. Rispetta i messaggi successivi dell’utente quando correggono i precedenti. Questa procedura è comune a tutti gli strumenti.
+
+Prima di produrre in grande, scegli un campione rappresentativo e verifica il requisito più rischioso con gli input effettivi. Un file valido, dati presenti o segnale non silenzioso non dimostrano che contenuti, calcoli, forma, stile o riferimenti siano quelli richiesti. Se manca un riferimento indispensabile o una capacità reale, segnalalo e conserva i risultati; non sostituire il requisito con un’alternativa più facile senza l’utente.
+
+Nella revisione `quality-review.json` ogni criterio deve indicare `requirement_id` copiato da acceptance, `criterion`, `method`, `status`, `evidence` e facoltativamente `critical:false` per controlli aggiuntivi non essenziali. Includi sempre `request_fidelity`: confronta il prodotto con la richiesta originale e le sue modifiche, non con il riassunto del produttore. I criteri non coperti restano non verificati. La revisione è legata sia ai byte del prodotto sia al contratto: una richiesta cambiata non eredita l’approvazione precedente.
+
+Esempio di voce (da adattare e osservare realmente):
+
+```json
+{"requirement_id":"request_fidelity","criterion":"Contenuto conforme ai messaggi dell’utente","method":"content","status":"not_run","evidence":"Sostituire con osservazioni reali sul contenuto o con il motivo della mancata verifica"}
+```
+
+Metodi comuni: `content` per significato/contenuto, `structural` per struttura modificabile, `functional` per comportamento/calcoli, `reference` per confronto con risorse effettive, `visual` per immagini osservate, `listening` per ascolto effettivo, `technical` per formato/decodifica. Usa il metodo previsto dal requisito, senza rinominare una misura tecnica come giudizio percettivo. Per `reference` devi avere letto i `reference_paths` in `source_files`; il runtime ne conserva gli hash. Se il collegamento non offre il metodo necessario, registra `not_run`. L’ascolto non è attualmente collegato nei trasporti supportati; DeepSeek non offre neppure visione. Un confronto numerico appropriato al requisito può essere descritto come tale, non come ascolto o visione inventati.
+
+Le revisioni possono riusare lo stesso step_id della produzione: il software mantiene il prodotto selezionato, i sorgenti e le revisioni recenti come consegne distinte. Non rigenerare un risultato perché il suo rapporto è diventato il file più recente. Comunica “versione disponibile / requisiti da verificare” finché il contratto non è soddisfatto, senza dichiarare tutto concluso.

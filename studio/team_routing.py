@@ -1,6 +1,7 @@
 """Apply shared team routing and keep submitted work alive after browser disconnect."""
 import json
 import re
+from .progress import clean_summary
 
 RUN_PATH = re.compile(r'^/api/(?:threads/[^/]+/)?runs(?:/(?:stream|wait))?/?$')
 
@@ -16,6 +17,27 @@ def shared_run(body):
     config = dict(body.get('config') or {})
     if isinstance(config.get('configurable'), dict) and 'model_name' in config['configurable']:
         config['configurable'] = {**config['configurable'], 'model_name': 'studio-codex'}
+        result['config'] = config
+    # Ground the contract in the submitted human input, not synthetic HumanMessages
+    # created later by planners/subagents. Authorization remains in the native
+    # endpoint; nothing is written to a workspace before it runs.
+    inputs = body.get('input') or {}
+    messages = inputs.get('messages', []) if isinstance(inputs, dict) else []
+    requests = []
+    for message in messages if isinstance(messages, list) else []:
+        if isinstance(message, dict) and message.get('role', message.get('type')) in ('user', 'human'):
+            content = message.get('content', '')
+        elif isinstance(message, str):
+            content = message
+        else:
+            continue
+        if isinstance(content, list):
+            content = '\n'.join(b.get('text', '') for b in content if isinstance(b, dict) and b.get('type') == 'text')
+        if isinstance(content, str) and content.strip():
+            requests.append(clean_summary(content, 4000))
+    if config.get('configurable') is None or isinstance(config.get('configurable'), dict):
+        captured = requests[:1] + requests[-8:] if len(requests) > 9 else requests
+        config['configurable'] = {**(config.get('configurable') or {}), 'artcraft_user_messages': captured}
         result['config'] = config
     return result
 

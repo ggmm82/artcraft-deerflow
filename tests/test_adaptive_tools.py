@@ -17,10 +17,19 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def test_contract_uses_gateway_user_input_instead_of_synthetic_agent_message(self):
+        from studio.projects import read_project
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = SimpleNamespace(context={'is_subagent': True}, config={'configurable': {'artcraft_user_messages': ['Actual user reference']}},
+                state={'messages': [SimpleNamespace(type='human', id='synthetic', content='An easier substitute requested by planner')]})
+            with patch('studio.tools.workspace_for', return_value=Path(directory)):
+                studio_plan.func(runtime=runtime, brief='Coordinator interpretation')
+                self.assertEqual(read_project(Path(directory))['acceptance']['user_requests'], ['Actual user reference'])
+
     def test_tool_memory_is_compact_and_delivery_requirements_reach_the_worker(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request-one')]})
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request-one', content='Crea un robot con musica')]})
             folder = root / 'outputs/filmcraft/fixture'; folder.mkdir(parents=True)
             movie = folder / 'final.mp4'; movie.write_text('fixture media path')
             reply = {'ok': True, 'response': 'private verbose worker context' * 10000,

@@ -208,6 +208,11 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual(p['status'], 'ready')
         self.assertEqual(p['deliveries'][0]['id'], 'final-delivery')
         self.assertTrue(p['deliveries'][0]['current'])
+        negative = self.result('filmcraft', extension='json')
+        negative['quality_review'] = {**review['quality_review'], 'status': 'needs_revision'}
+        self.run_step('independent-review', negative, agent='filmcraft', purpose='review')
+        with self.assertRaisesRegex(ValueError, 'revisione separata'):
+            projects.create_plan(self.root, '', [], status='ready', product_path=product)
         Path(product).write_text('changed after review')
         with self.assertRaisesRegex(ValueError, 'sorgenti incompleti'):
             projects.create_plan(self.root, '', [], status='ready', product_path=product)
@@ -272,6 +277,26 @@ class ProjectTests(unittest.TestCase):
         p = projects.read_project(self.root)
         self.assertEqual(len(p['steps']), 1)
         self.assertEqual(p['steps'][0]['agent'], 'cadcraft')
+
+    def test_selected_delivery_and_sources_survive_many_reviews_in_the_same_activity(self):
+        projects.create_plan(self.root, 'Complete workbook', [])
+        result = self.result('gridcraft', extension='xlsx')
+        source = Path(result['output_dir']) / 'sources.zip';source.write_text('Declared fixture')
+        result['handoff']['output_files'].append(str(source))
+        result['verified_products'] = result['handoff']['output_files'][:1]
+        self.run_step('shared', result, agent='gridcraft', purpose='delivery')
+        selected = result['handoff']['output_files'][0]
+        for _ in range(24):
+            self.run_step('shared', self.result('gridcraft', extension='json'), agent='gridcraft', purpose='review')
+        state = projects.read_project(self.root)
+        paths = [r['path'] for r in state['results']]
+        self.assertIn(projects.public_artifact(self.root, selected), paths)
+        self.assertIn(projects.public_artifact(self.root, source), paths)
+        self.assertEqual(state['results'][0]['path'], projects.public_artifact(self.root, selected))
+        with projects.locked(self.root) as folder:
+            saved = projects.load(folder, self.root)
+        self.assertLessEqual(len(saved['steps'][0]['attempts']), projects.MAX_HISTORY)
+        self.assertTrue(any(selected in r['files'] for r in projects.read_results(saved, self.root)))
 
 
 if __name__ == '__main__':
