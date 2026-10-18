@@ -17,6 +17,7 @@ from .state import applications, atomic_json
 from .source_packages import digest
 from .acceptance import contract, fingerprint
 from .project_skills import compact_acceptance, save_requests, read_document, scoped_file, validate_roles, compile_role, ROLE_ID, redact_memory
+from .project_brief import validate_outcome, briefing_issue, orientation
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
 PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
@@ -201,6 +202,8 @@ def read_project(workspace):
     result['acceptance'] = compact_acceptance(value.get('acceptance'))
     result['roles'] = value.get('roles', [])
     result['memory'] = value.get('memory')
+    result['outcome'] = value.get('outcome')
+    result['orientation'] = orientation(value)
     result['brief'] = clean_summary(value.get('brief', ''), 4000)
     result['requirements'] = {k: v for k, v in value.get('requirements', {}).items()
                               if k in ('audio', 'video') and type(v) is bool}
@@ -302,14 +305,15 @@ def read_project(workspace):
 
 
 def create_plan(workspace, brief, steps, project_type='', omissions=None, *, summary='', next_action='',
-                status='', product_path='', requirements=None):
+                status='', product_path='', requirements=None, outcome=None):
     """Update an evolving brief and activity board, preserving work and versions."""
     if project_type not in ('', 'custom', 'animated_video'):
         raise ValueError('Tipo di progetto non valido')
     if not isinstance(steps, list) or len(steps) > 64:
         raise ValueError('Usa al massimo 64 attività')
-    if status not in ('', 'working', 'review', 'ready', 'blocked', 'idle'):
+    if status not in ('', 'working', 'review', 'ready', 'blocked', 'idle', 'clarifying'):
         raise ValueError('Stato progetto non valido')
+    outcome = validate_outcome(outcome) if outcome is not None else None
     if requirements is not None and (not isinstance(requirements, dict) or any(
             k not in ('audio', 'video') or type(v) is not bool for k, v in requirements.items())):
         raise ValueError('I requisiti media accettano audio e video come booleani')
@@ -340,6 +344,14 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 'created_at': utcnow(), 'steps': [], 'requirements': {}}
         if brief:
             value['brief'] = clean_summary(brief, 4000)
+        if outcome is not None:
+            if value.get('outcome') != outcome:
+                value.pop('user_acceptance', None)
+                if value.get('status') == 'ready':
+                    value['status'] = 'review'
+            value['outcome'] = outcome
+            if not briefing_issue(outcome) and value.get('status') == 'clarifying':
+                value['status'] = 'working'
         if project_type:
             value['project_type'] = project_type
         if value['project_type'] == 'animated_video' and not value.get('requirements'):
@@ -374,6 +386,8 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 raise ValueError('Prima della consegna finale usa studio_delegate con purpose=delivery per controllare il file completo')
             value['product_path'] = product_path
         if status == 'ready':
+            if value.get('outcome') and briefing_issue(value['outcome']):
+                raise ValueError('Rispondi prima alle domande sul risultato atteso')
             acceptance = value.get('acceptance') or {}
             if acceptance.get('request_manifest'):
                 for document in json.loads(read_document(workspace, acceptance['request_manifest'])):
@@ -408,6 +422,8 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
             value['status'] = status
             if status == 'ready':
                 value['attention'] = None
+        if value.get('outcome') and briefing_issue(value['outcome']):
+            value['status'] = 'clarifying'
         value.update(schema_version=2, updated_at=utcnow())
         atomic_json(folder / 'project.json', value)
     return read_project(workspace)
@@ -419,6 +435,8 @@ def accept_delivery(workspace, delivery_id):
         value = load(folder, workspace)
         if not value or any(s['status'] == 'running' for s in value['steps']):
             raise ValueError('Attendi la conclusione del lavoro attivo')
+        if value.get('outcome') and briefing_issue(value['outcome']):
+            raise ValueError('Rispondi prima alle domande sul risultato atteso')
         product = artifact_path(workspace, value.get('product_path', ''))
         records = [a.get('delivery_record') or {} for s in value['steps'] for a in s['attempts']]
         delivery = next((r for r in records if r.get('id') == delivery_id), None)
@@ -473,6 +491,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         create_plan(workspace, clean_summary(task), [])
     with locked(workspace) as folder:
         value = load(folder, workspace)
+        if value.get('outcome') and briefing_issue(value['outcome']):
+            raise ValueError('Prima della produzione completa le scelte sul risultato: ' + briefing_issue(value['outcome']))
         step = next((s for s in value['steps'] if s['id'] == step_id), None) if step_id else None
         if not step:
             sid = step_id or agent + '-' + uuid.uuid4().hex[:8]
@@ -500,6 +520,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
         contract_text = ('\n\nPiano del coordinatore (non sostituisce la richiesta utente): ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
+                    '\nRisultato e forma della consegna concordati (le richieste originali prevalgono):\n' + json.dumps(value.get('outcome'), ensure_ascii=False) +
                     '\nRichiesta originale e criteri di accettazione del prodotto:\n' + json.dumps(compact_acceptance(value.get('acceptance')), ensure_ascii=False) +
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
@@ -507,7 +528,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         if previous:
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
-        attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
+        attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'task': clean_summary(task, 1500), 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
         history = step['attempts'][-(MAX_HISTORY - 3):]
         last_usable = next((a for a in reversed(step['attempts']) if a.get('status') == 'completed'), None)
         if last_usable and last_usable not in history:
@@ -518,7 +539,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         step['attempts'] = [*history, attempt]
         step['attempt_count'] = step.get('attempt_count', len(step['attempts']) - 1) + 1
         step['status'] = 'running'
-        value.update(schema_version=2, status='working', summary=clean_summary(step['goal']), attention=None, updated_at=utcnow())
+        value.update(schema_version=2, status='working', attention=None, updated_at=utcnow())
         atomic_json(folder / 'project.json', value)
         project_id, sid = value['id'], step['id']
 
@@ -605,6 +626,8 @@ def sync_project_context(workspace, roles=None, memory=None):
         current = json.loads(read_document(workspace, value['memory'])) if value.get('memory') else {}
         if memory is not None:
             current.update(redact_memory(memory))
+        if value.get('outcome'):
+            current['project_outcome'] = value['outcome']
         serialized = json.dumps(current, ensure_ascii=False, sort_keys=True, indent=2)
         if len(serialized.encode()) > 40000:
             raise ValueError('Memoria troppo grande: conserva testi e asset nei file e indica i riferimenti')

@@ -37,7 +37,7 @@ class AdaptiveToolTests(unittest.TestCase):
             with patch('studio.tools.workspace_for', return_value=root), \
                  patch('studio.state.team', return_value={'engine': 'deepseek', 'model': 'shared-fixture'}), \
                  patch('studio.tools.delegate', return_value=json.dumps({'ok': True, 'handoff': {'checks': []}})) as worker:
-                studio_plan.func(runtime=runtime, brief='Proposta iniziale', roles_json=json.dumps([role()]),
+                studio_plan.func(runtime=runtime, brief='Proposta iniziale', outcome_json=json.dumps({'result': 'Proposta iniziale', 'format': 'Documento testuale modificabile'}), roles_json=json.dumps([role()]),
                     memory_json=json.dumps({'decisione': 'Prima la proposta'}),
                     steps_json=json.dumps([{'id': 'prepare', 'agent': 'workspace', 'role_id': 'design', 'goal': 'Proposta verificabile'}]))
                 studio_delegate.func(agent='workspace', task='Preparare la proposta', step_id='prepare', runtime=runtime)
@@ -62,6 +62,30 @@ class AdaptiveToolTests(unittest.TestCase):
                 self.assertEqual(worker.call_args.kwargs['role']['id'], 'verify')
                 self.assertEqual(read_project(root)['steps'][0]['role_title'], other['title'])
 
+    def test_briefing_blocks_worker_until_material_choices_are_resolved(self):
+        from studio.projects import read_project
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='initial', content='Crea il progetto')]})
+            with patch('studio.tools.workspace_for', return_value=root), \
+                 patch('studio.state.team', return_value={'engine': 'deepseek', 'model': 'fixture'}), \
+                 patch('studio.tools.delegate', return_value=json.dumps({'ok': True, 'handoff': {'checks': []}})) as worker:
+                response = json.loads(studio_delegate.func(agent='wordcraft', task='Avvia tutto', runtime=runtime))
+                self.assertTrue(response['needs_briefing'])
+                self.assertFalse(worker.called)
+                self.assertEqual(read_project(root)['status'], 'clarifying')
+                studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'questions': ['Quale forma deve avere la consegna?']}))
+                response = json.loads(studio_delegate.func(agent='wordcraft', task='Avvia comunque', runtime=runtime))
+                self.assertTrue(response['needs_briefing'])
+                self.assertFalse(worker.called)
+                runtime.state['messages'].append(SimpleNamespace(type='human', id='answer', content='Documento impaginato e sorgente modificabile'))
+                studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'format': 'Documento impaginato con sorgente modificabile', 'questions': []}))
+                response = json.loads(studio_delegate.func(agent='wordcraft', task='Prepara la prima versione', runtime=runtime))
+                self.assertTrue(response['ok'])
+                self.assertEqual(worker.call_count, 1)
+                self.assertIn('Documento impaginato con sorgente modificabile', worker.call_args.args[1])
+                self.assertFalse(read_project(root)['orientation']['needs_briefing'])
+
     def test_tool_memory_is_compact_and_delivery_requirements_reach_the_worker(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -79,7 +103,7 @@ class AdaptiveToolTests(unittest.TestCase):
             with patch('studio.tools.workspace_for', return_value=root), \
                  patch('studio.state.team', return_value={'engine': 'deepseek', 'model': 'fixture'}), \
                  patch('studio.tools.delegate', return_value=json.dumps(reply)) as worker:
-                studio_plan.func(runtime=runtime, brief='Robot con musica', project_type='animated_video')
+                studio_plan.func(runtime=runtime, brief='Robot con musica', project_type='animated_video', outcome_json=json.dumps({'result': 'Video con musica', 'format': 'MP4 con progetto modificabile'}))
                 compact = studio_delegate.func(agent='filmcraft', task='Integra il risultato completo', runtime=runtime, purpose='delivery')
                 self.assertLess(len(compact), 5000)
                 self.assertNotIn('private verbose', compact)
@@ -96,6 +120,7 @@ class AdaptiveToolTests(unittest.TestCase):
             with patch('studio.tools.workspace_for', return_value=Path(directory)), \
                  patch('studio.state.team', return_value={'engine': 'gemini', 'model': 'fixture'}), \
                  patch('studio.tools.delegate', return_value=json.dumps({'ok': False, 'error': 'Individual quota reached'})) as worker:
+                studio_plan.func(runtime=runtime, brief='Correggi la posa', outcome_json=json.dumps({'result': 'Posa corretta', 'format': 'Progetto modificabile e anteprima'}))
                 for _ in range(2):
                     studio_delegate.func(agent='effectcraft', task='Correggi la posa', runtime=runtime, step_id='motion')
                 self.assertEqual(worker.call_count, 1)

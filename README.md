@@ -17,6 +17,8 @@ DeerFlow con **ruoli compilati dal progetto e 14 strumenti: 13 ArtCraft e Blende
 
 La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Google tramite Antigravity CLI**. La stessa scelta vale per coordinatore e specialisti. Per il nuovo collegamento Google vedi [Antigravity CLI in abbonamento](docs/ANTIGRAVITY.md). Antigravity usa il binario ufficiale `agy` per login Google e generazione in abbonamento; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
 
+Prima della produzione il coordinatore chiarisce le scelte mancanti sul risultato e sulla forma della consegna. La scheda **Progetto** mostra obiettivo, formato e punto attuale; **Squadra** espone competenze e incarichi dei ruoli. [Brief e orientamento del progetto](docs/PROGETTO-E-BRIEF.md).
+
 Le competenze di progetto non dipendono da un elenco di professioni: una procedura può usare più CLI o soltanto gli strumenti di base del workspace. Brief integrale, memoria versionata e controlli restano comuni. [Come funzionano le skill dinamiche](docs/SKILL-DINAMICHE.md).
 
 ## Stato della verifica
