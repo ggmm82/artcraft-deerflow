@@ -1,0 +1,108 @@
+"""Result discovery and orientation across domains, without a profession catalog."""
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import Mock
+
+from studio import projects
+from studio.project_brief import briefing_issue, validate_outcome
+from studio.project_skills import read_document
+from test_project_skills import role
+
+
+class ProjectBriefTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+
+    def test_complete_results_in_different_domains_need_no_extra_approval(self):
+        for domain, form in [('libro', 'Documento impaginato e manoscritto modificabile'),
+                             ('palazzo', 'Studio preliminare con tavole modificabili, non progetto esecutivo'),
+                             ('film', 'Montaggio video con timeline e media'),
+                             ('software', 'Sorgenti eseguibili e istruzioni di avvio'),
+                             ('evento', 'Piano operativo con calendario e budget'),
+                             ('ecosistema orbitale', 'Proposta illustrata con ipotesi esplicite')]:
+            with self.subTest(domain=domain):
+                outcome = validate_outcome({'title': domain, 'result': 'Proposta di ' + domain, 'format': form})
+                self.assertIsNone(briefing_issue(outcome))
+                p = projects.create_plan(self.root, 'Richiesta completa', [], outcome=outcome)
+                self.assertFalse(p['orientation']['needs_briefing'])
+                self.assertEqual(p['outcome']['format'], form)
+
+    def test_unresolved_choices_block_work_and_ready_without_losing_files(self):
+        old = self.root / 'outputs/existing.txt'; old.parent.mkdir(); old.write_text('Preservare')
+        p = projects.create_plan(self.root, 'Progetto da definire', [], outcome={'result': 'Prodotto richiesto',
+                                'questions': ['Quale forma deve avere la consegna?']})
+        self.assertEqual(p['status'], 'clarifying')
+        invoke = Mock()
+        with self.assertRaisesRegex(ValueError, 'scelte sul risultato'):
+            projects.execute_step(self.root, 'wordcraft', 'Produrre', '', invoke)
+        self.assertFalse(invoke.called)
+        with self.assertRaisesRegex(ValueError, 'domande sul risultato'):
+            projects.create_plan(self.root, '', [], status='ready')
+        with self.assertRaisesRegex(ValueError, 'domande sul risultato'):
+            projects.accept_delivery(self.root, 'any')
+        self.assertEqual(old.read_text(), 'Preservare')
+        p = projects.create_plan(self.root, '', [], outcome={'result': 'Prodotto richiesto', 'format': 'Consegna scelta dall’utente'})
+        self.assertEqual(p['status'], 'working')
+        captured = []
+        def worker(task, started):
+            captured.append(task)
+            return json.dumps({'ok': True, 'handoff': {'checks': []}})
+        projects.execute_step(self.root, 'wordcraft', 'Preparare', '', worker)
+        self.assertIn('Consegna scelta dall’utente', captured[0])
+
+    def test_current_task_counts_and_summary_remain_distinct(self):
+        steps = [{'id': 'make', 'agent': 'workspace', 'goal': 'Completare il prodotto', 'role_id': 'design'},
+                 {'id': 'review', 'agent': 'workspace', 'goal': 'Verificare la versione', 'depends_on': ['make']},
+                 {'id': 'optional', 'agent': 'workspace', 'goal': 'Attività facoltativa', 'status': 'skipped'}]
+        projects.create_plan(self.root, 'Obiettivo generale', steps, summary='Rifinisco il campione prima di estendere il lavoro.',
+                             outcome={'result': 'Prodotto completo', 'format': 'Pacchetto modificabile'})
+        seen = []
+        def worker(task, started):
+            p = projects.read_project(self.root)
+            seen.append(p)
+            self.assertEqual(p['orientation']['counts']['running'], 1)
+            self.assertEqual(p['orientation']['counts']['completed'], 0)
+            self.assertEqual(p['orientation']['total'], 2)
+            self.assertEqual(p['orientation']['current'][0]['task'], 'Rifinire soltanto il campione')
+            self.assertEqual(p['summary'], 'Rifinisco il campione prima di estendere il lavoro.')
+            self.assertEqual(p['brief'], 'Obiettivo generale')
+            return json.dumps({'ok': True, 'handoff': {'checks': []}})
+        projects.execute_step(self.root, 'workspace', 'Rifinire soltanto il campione', 'make', worker)
+        p = projects.read_project(self.root)
+        self.assertEqual(p['orientation']['counts']['completed'], 1)
+        self.assertEqual(p['orientation']['current'], [])
+        self.assertEqual(p['orientation']['remaining'][0]['goal'], 'Verificare la versione')
+
+    def test_reassigning_an_activity_does_not_claim_the_new_role_has_already_worked(self):
+        projects.create_plan(self.root, 'Obiettivo', [{'id': 'task', 'agent': 'workspace', 'goal': 'Produrre', 'role_id': 'design'}])
+        projects.execute_step(self.root, 'workspace', 'Produci', 'task',
+            lambda task, started: json.dumps({'ok': True}), role=role())
+        projects.create_plan(self.root, '', [{'id': 'task', 'agent': 'workspace', 'goal': 'Verificare', 'role_id': 'verify', 'status': 'pending'}])
+        p = projects.read_project(self.root)
+        self.assertEqual(p['orientation']['roles']['design']['attempts'], 1)
+        self.assertNotIn('verify', p['orientation']['roles'])
+        self.assertEqual(p['steps'][0]['role_id'], 'verify')
+
+    def test_result_definition_reaches_versioned_memory_and_recompiles_roles(self):
+        projects.create_plan(self.root, 'Richiesta', [], outcome={'result': 'Contenuto', 'format': 'Testo modificabile'})
+        projects.sync_acceptance(self.root, ['Richiesta effettiva'])
+        projects.sync_project_context(self.root, [role()])
+        first = projects.read_project(self.root)
+        projects.create_plan(self.root, '', [], outcome={'result': 'Contenuto', 'format': 'Prodotto impaginato e sorgente'})
+        projects.sync_project_context(self.root)
+        second = projects.read_project(self.root)
+        self.assertNotEqual(first['roles'][0]['version'], second['roles'][0]['version'])
+        memory = json.loads(read_document(self.root, second['memory']))
+        self.assertEqual(memory['project_outcome']['format'], 'Prodotto impaginato e sorgente')
+        self.assertEqual(second['acceptance']['hash'], first['acceptance']['hash'])  # A coordinator reformulation is not a user instruction.
+
+    def test_no_silent_truncation_or_fictional_domain_fields(self):
+        for data in ({'result': 'Solo argomento'}, {'result': 'Prodotto', 'format': 'x' * 501},
+                     {'questions': ['q'] * 4}, {'profession': 'Invented fixed catalog'}):
+            with self.subTest(data=str(data)[:80]), self.assertRaises(ValueError):
+                validate_outcome(data)
+        self.assertTrue(briefing_issue(None))

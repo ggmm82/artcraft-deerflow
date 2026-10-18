@@ -8,8 +8,10 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
-type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; checks: string[]; tools: string[] };
-type Project = { roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
+type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
+type Orientation = { total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
+type Project = { outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -83,6 +85,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const resumeOwner = useRef(threadId);
+  const dock = useRef<HTMLElement>(null);
   const resumeSequence = useRef(0);
   resumeOwner.current = threadId;
   const [now, setNow] = useState(Date.now);
@@ -90,6 +93,11 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const project = snapshot?.threadId === threadId ? snapshot.project : null;
   const tab = panel?.threadId === threadId ? panel.tab : null;
   const current = jobs.find((job) => !terminalJob(job));
+  const questions = project?.outcome?.questions ?? [];
+  const clarifying = questions.length > 0 || project?.status === "clarifying";
+  const currentActivity = project?.steps.find(step => step.status === "running");
+  const planned = project?.steps.filter(step => step.status !== "skipped") ?? [];
+  const completed = planned.filter(step => step.status === "completed").length;
   const working = !!current;
   const results = (project?.results ?? []).filter((r) => artifactURL(threadId, r.path));
   const deliveries = project?.deliveries ?? [];
@@ -106,16 +114,28 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
-  const title = working ? `${current.role_title || person(current.agent)} sta lavorando` : active ? "La squadra sta preparando il prossimo risultato"
+  const title = working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
   const nativeOperation = current?.operations?.find(o => o.state === "running");
   const nativeSummary = nativeOperation ? nativeOperation.label + (nativeOperation.progress?.total ? ` · ${nativeOperation.progress.done ?? 0}/${nativeOperation.progress.total} campioni` : "") : null;
-  const summary = working ? (nativeSummary ?? (specificAction ? current.summary : current.work_summary || current.summary)) : attention?.message
+  const summary = clarifying && !working ? (questions[0] || "Mancano risultato atteso e forma della consegna.") : working ? (nativeSummary ?? (specificAction ? current.summary : current.work_summary || current.summary)) : attention?.message
     ?? (coordinatorError ? "Il coordinatore si è fermato. I file già salvati restano disponibili." : project?.summary || project?.brief);
   const toggle = (value: string) => setPanel(tab === value ? null : { threadId, tab: value });
   useEffect(() => { setPanel(null); setResumeRequested(null); setResumeError(null); setAcceptError(null); setAccepting(false); }, [threadId]);
+  useEffect(() => {
+    const element = dock.current;
+    if (!element) return;
+    const measure = () => element.style.setProperty("--studio-panel-space", `${Math.max(0, element.getBoundingClientRect().top - 16)}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    if (element.parentElement) observer.observe(element.parentElement);
+    window.addEventListener("resize", measure);
+    window.visualViewport?.addEventListener("resize", measure);
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); window.visualViewport?.removeEventListener("resize", measure); };
+  }, [threadId, tab, project, jobs.length, pending, coordinatorError]);
   useEffect(() => { if (active) { setResumeRequested(null); setResumeError(null); } }, [active]);
   useEffect(() => {
     if (resumeRequested !== threadId || active || working) return;
@@ -183,12 +203,42 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   if (!jobs.length && !project && !pending && !coordinatorError) return null;
   const health = current ? jobHealth(current, now) : null;
   const recent = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 4)];
-  return <section className="bg-background relative mb-2 rounded-xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
-    {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 max-h-[60dvh] overflow-y-auto rounded-xl border p-4 shadow-xl" data-testid="studio-drawer">
+  return <section ref={dock} className="bg-background relative mb-2 rounded-xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
+    {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 overflow-y-auto rounded-xl border p-4 shadow-xl" style={{ maxHeight: "min(60dvh, var(--studio-panel-space, 60dvh))" }} data-testid="studio-drawer">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="font-medium">{tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra al lavoro" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
+        <h3 className="font-medium">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra al lavoro" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
         <button type="button" className="rounded border px-3 py-1 text-sm" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </div>
+      {tab === "project" && project && <div className="space-y-4 text-sm" data-testid="project-overview">
+        <section className="space-y-2">
+          <h4 className="font-semibold">Risultato da ottenere</h4>
+          <p>{project.outcome?.result || project.brief}</p>
+          <p><strong>Consegna:</strong> {project.outcome?.format || "Da definire con te prima di proseguire la produzione."}</p>
+          {project.outcome?.use && <p><strong>Uso e destinatari:</strong> {project.outcome.use}</p>}
+          {project.outcome?.quality && <p><strong>Qualità attesa:</strong> {project.outcome.quality}</p>}
+        </section>
+        {questions.length > 0 && <section className="space-y-2 rounded border p-3" data-testid="brief-questions">
+          <h4 className="font-semibold">Le scelte che mancano</h4>
+          <ul className="list-inside list-disc">{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
+          <p>Rispondi alle domande nella chat. La produzione attende queste scelte.</p>
+        </section>}
+        <section className="space-y-2" data-testid="project-position">
+          <h4 className="font-semibold">Dove siamo</h4>
+          <p>{planned.length ? `${completed} di ${planned.length} incarichi conclusi` : "La squadra e le attività sono ancora da definire."}</p>
+          {currentActivity && <p><strong>Traguardo in corso:</strong> {currentActivity.goal}</p>}
+          {summary && <p><strong>Adesso:</strong> {summary}</p>}
+          {!working && !clarifying && project.next_action && <p><strong>Prossima azione:</strong> {project.next_action}</p>}
+          <p className="text-muted-foreground text-xs">Gli incarichi possono cambiare. Il conteggio non è una percentuale di completamento o una stima dei tempi.</p>
+        </section>
+        {planned.some(step => step.status !== "completed") && <section className="space-y-2">
+          <h4 className="font-semibold">Attività ancora previste</h4>
+          <ul className="space-y-2">{planned.filter(step => step.status !== "completed").map(step => <li key={step.id}>
+            <strong>{stepLabels[step.status] ?? step.status}</strong> · {step.goal}
+          </li>)}</ul>
+        </section>}
+        {!!project.outcome?.constraints.length && <section><h4 className="font-semibold">Vincoli</h4><ul className="list-inside list-disc">{project.outcome.constraints.map((c, i) => <li key={i}>{c}</li>)}</ul></section>}
+        {!!project.outcome?.assumptions.length && <section><h4 className="font-semibold">Ipotesi adottate</h4><ul className="list-inside list-disc">{project.outcome.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul></section>}
+      </div>}
       {tab === "preview" && <div className="space-y-3">
         <p className="text-sm">{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</p>
         {selectedDelivery && <p className="text-sm">{selectedDelivery.title}</p>}
@@ -224,14 +274,30 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       </div>}
       {tab === "team" && <div data-testid="team-plan" className="space-y-3">
         <p className="text-sm">La squadra si adatta al risultato: può riprendere, cambiare ordine e integrare i file già disponibili.</p>
-        {(project?.roles ?? []).map(role => <details key={role.id} className="rounded border p-3 text-sm" data-testid="compiled-role">
-          <summary className="cursor-pointer"><strong>{role.title}</strong> · procedura compilata per questo progetto</summary>
-          <p>{role.mission}</p><p className="text-muted-foreground">Strumenti: {role.tools.length ? role.tools.join(", ") : "workspace e strumenti di base"}</p>
-          <ul className="list-inside list-disc">{role.checks.map((check, i) => <li key={i}>{check}</li>)}</ul>
-          <p className="text-muted-foreground text-xs">Versione {role.version.slice(0, 12)} · verifiche da eseguire sul risultato</p>
-        </details>)}
-        {(project?.steps ?? []).map((step) => <article className="rounded border p-3 text-sm" key={step.id}>
-          <strong>{step.role_title || project?.roles?.find(r => r.id === step.role_id)?.title || person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
+        {(project?.roles ?? []).map(role => {
+          const activities = project?.steps.filter(step => step.role_id === role.id) ?? [];
+          const live = jobs.find(job => job.role_id === role.id && !terminalJob(job));
+          const usage = project?.orientation?.roles?.[role.id];
+          const used = (usage?.attempts ?? jobs.filter(job => job.role_id === role.id).length) > 0;
+          const state = live || !!usage?.running ? "Al lavoro" : used && activities.some(step => step.status === "paused") ? "In pausa" : used ? "Ha lavorato al progetto" : "Previsto";
+          return <article key={role.id} className="space-y-2 rounded border p-3 text-sm" data-testid="compiled-role">
+            <div className="flex flex-wrap items-center justify-between gap-2"><strong>{role.title}</strong><span className="rounded border px-2 py-0.5 text-xs">{state}</span></div>
+            <p>{role.mission}</p>
+            <h4 className="font-medium">Competenze assegnate</h4>
+            <ul className="list-inside list-disc">{role.expertise.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
+            <p><strong>Strumenti assegnati:</strong> {role.tools.length ? role.tools.map(person).join(", ") : "Strumenti di base del progetto"}</p>
+            {live && <p><strong>Adesso:</strong> {live.work_summary || live.summary}</p>}
+            <ul className="space-y-1">{activities.map(step => <li key={step.id}><strong>{stepLabels[step.status] ?? step.status}</strong> · {step.goal}</li>)}</ul>
+            {!activities.length && <p className="text-muted-foreground">{used ? "Contributi registrati nelle attività precedenti." : "Nessun incarico ancora assegnato."}</p>}
+            <details><summary className="cursor-pointer">Metodo e verifiche previste</summary>
+              {!!role.procedure?.length && <ol className="mt-2 list-inside list-decimal">{role.procedure.map((item, i) => <li key={i}>{item}</li>)}</ol>}
+              <ul className="mt-2 list-inside list-disc">{role.checks.map((check, i) => <li key={i}>{check}</li>)}</ul>
+              <p className="text-muted-foreground mt-2 text-xs">Versione {role.version.slice(0, 12)} · questi sono controlli da eseguire, non verifiche già superate. Gli strumenti effettivamente invocati sono nell’attività dell’incarico.</p>
+            </details>
+          </article>;
+        })}
+        {(project?.steps ?? []).filter(step => !(project?.roles ?? []).some(role => role.id === step.role_id)).map(step => <article className="rounded border p-3 text-sm" key={step.id}>
+          <strong>{step.role_title || person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
           <p>{step.goal}</p>{step.note && <p className="text-muted-foreground">{step.note}</p>}
         </article>)}
       </div>}
@@ -250,24 +316,31 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
     </div>}
     <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">
+      {project && <div className="space-y-1 border-b pb-2" data-testid="project-identity">
+        <p className="line-clamp-1 text-sm font-semibold">{project.outcome?.title || project.outcome?.result || "Il tuo progetto"}</p>
+        <p className="text-muted-foreground line-clamp-1 text-xs">Consegna: {project.outcome?.format || "da definire"}</p>
+        {planned.length > 0 && <p className="text-muted-foreground line-clamp-2 text-xs">{completed} di {planned.length} incarichi conclusi{currentActivity ? ` · ${stepLabels[currentActivity.status]}: ${currentActivity.goal}` : ""}</p>}
+      </div>}
       <div className="flex items-center justify-between gap-2"><strong className="text-sm" data-testid="studio-status">{title}</strong>
         {current && <span className="text-muted-foreground shrink-0 text-xs">{duration(secondsSince(current.started_at || current.created_at, now))}</span>}
       </div>
       {summary && <p className="line-clamp-2 text-sm" data-testid="studio-summary">{summary}</p>}
       {health && <p className="text-xs" data-testid="studio-health">{health}</p>}
-      {!working && project?.next_action && !attention && <p className="text-muted-foreground line-clamp-2 text-xs">Prossimo passo: {project.next_action}</p>}
+      {!working && !clarifying && project?.next_action && !attention && <p className="text-muted-foreground line-clamp-2 text-xs">Prossimo passo: {project.next_action}</p>}
       {waitingForReview && !active && <p className="text-xs">Guarda il risultato e indica nella chat cosa vuoi correggere. Una verifica non disponibile non richiede di rigenerare tutto.</p>}
       {(attention || coordinatorError) && !active && !working && <p className="text-xs">{attention?.action ?? "Verifica il servizio AI e riprendi il lavoro dai risultati disponibili."}
         {(!attention || attention.code.startsWith("provider_")) && <> <a className="underline" href="/workspace/studio">Apri La tua squadra</a></>}</p>}
+      {clarifying && !working && <p className="text-xs">Rispondi nella chat: la produzione attende le scelte sul risultato.</p>}
       {unavailable && <p className="text-xs" role="alert">Aggiornamenti non disponibili: questo stato potrebbe non essere attuale. Riprovo automaticamente.</p>}
       {resumeError && <p className="text-xs" role="alert">{resumeError}</p>}
     </div>
     <nav className="flex flex-wrap gap-2 border-t px-3 py-2 text-xs" aria-label="Controlli del progetto">
+      <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "project"} onClick={() => toggle("project")}>Progetto</button>
       <button type="button" className="rounded border px-3 py-1.5 disabled:opacity-50" disabled={!preview} aria-expanded={tab === "preview"} onClick={() => toggle("preview")}>Vedi risultato</button>
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
       <button type="button" className="rounded border px-3 py-1.5" aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
-      {!active && !working && !ready && !waitingForReview && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : "Riprendi lavoro"}</button>}
+      {!active && !working && !ready && !waitingForReview && !questions.length && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : clarifying ? "Definisci risultato" : "Riprendi lavoro"}</button>}
     </nav>
   </section>;
 }

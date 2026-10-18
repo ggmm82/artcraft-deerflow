@@ -38,6 +38,7 @@ def main():
         'files': [{'name': 'robot.ecproj', 'size': 120}], 'files_count': 1,
         'events': [{'at': iso(now - timedelta(minutes=18)), 'phase': 'planning', 'summary': 'Esporto il risultato con Effectcraft'}]}
     project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'status': 'working',
+        'outcome': {'title': 'Progetto dimostrativo', 'result': 'Video completo da presentare', 'format': 'MP4 e progetto modificabile', 'use': 'Presentazione', 'quality': 'Versione curata', 'constraints': [], 'assumptions': [], 'questions': []},
         'summary': 'Preparo una prima versione completa', 'next_action': 'Integro immagine, movimento e audio',
         'product_path': video_path, 'quality_status': 'not_reviewed',
         'acceptance': {'user_requests': ['Conserva il contenuto del riferimento fornito'],
@@ -110,7 +111,8 @@ window.showThread();
                     self.send_header('Content-Type', 'application/json'); self.end_headers()
                     owned = '/fixture/' in self.path
                     try:
-                        self.wfile.write(json.dumps({'jobs': [state['job']] if owned else [],
+                        reported_job = {**state['job'], 'heartbeat_at': iso(datetime.now(timezone.utc))}
+                        self.wfile.write(json.dumps({'jobs': [reported_job] if owned else [],
                             'project': state['project'] if owned else None}).encode())
                     except (BrokenPipeError, ConnectionResetError):
                         pass  # Navigation deliberately aborts the previous request.
@@ -144,6 +146,14 @@ window.showThread();
                         assert input_box['y'] + input_box['height'] <= viewport['height']
                     page.get_by_role('button', name='Vedi risultato', exact=True).click()
                     expect(page.get_by_text('Bozza di lavoro:', exact=False)).to_be_visible()
+                    page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
+                    drawer = page.get_by_test_id('studio-drawer').bounding_box()
+                    assert drawer['y'] + drawer['height'] <= dock.bounding_box()['y']
+                    expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
+                    composer.evaluate('(el)=>el.style.height="140px"')
+                    page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
+                    expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
+                    composer.evaluate('(el)=>el.style.height=""')
                     video = page.get_by_label('Anteprima video')
                     video.evaluate('(v)=>v.play()')
                     page.wait_for_function('document.querySelector("video").currentTime > .1')
@@ -157,16 +167,39 @@ window.showThread();
                 state['job'] = {**job, 'role_id': 'coherence', 'role_title': 'Responsabile della coerenza', 'role_version': 'abcdef0123456789'}
                 state['project'] = {**project, 'roles': [{'id': 'coherence', 'title': 'Responsabile della coerenza',
                     'mission': 'Confrontare risultati e vincoli', 'expertise': ['Analisi delle dipendenze'],
-                    'checks': ['Confrontare il risultato con il brief integrale'], 'tools': [], 'version': 'abcdef0123456789'}]}
+                    'checks': ['Confrontare il risultato con il brief integrale'], 'tools': [], 'version': 'abcdef0123456789'},
+                    {'id': 'verify', 'title': 'Revisore indipendente', 'mission': 'Verificare la consegna', 'expertise': ['Verifiche indipendenti'], 'checks': ['Raccogliere evidenze'], 'tools': [], 'version': 'fedcba0123456789'}],
+                    'steps': [{**step, 'role_id': 'coherence' if step['id'] == 'motion' else 'verify' if step['id'] == 'final' else '', 'attempt_count': 1 if step['id'] == 'motion' else 0} for step in project['steps']]}
                 page.reload()
                 expect(page.get_by_test_id('studio-status')).to_have_text('Responsabile della coerenza sta lavorando')
                 page.get_by_role('button', name='Squadra', exact=True).click()
-                compiled = page.get_by_test_id('compiled-role')
+                compiled = page.get_by_test_id('compiled-role').first
+                expect(compiled).to_contain_text('Al lavoro')
+                expect(compiled).to_contain_text('Analisi delle dipendenze')
+                expect(page.get_by_test_id('compiled-role').nth(1)).to_contain_text('Previsto')
                 compiled.locator('summary').click()
-                expect(compiled).to_contain_text('workspace e strumenti di base')
+                expect(compiled).to_contain_text('Strumenti di base del progetto')
                 expect(compiled).to_contain_text('Confrontare il risultato con il brief integrale')
                 expect(compiled).to_contain_text('Versione abcdef012345')
                 state['job'] = job
+                page.get_by_role('button', name='Progetto', exact=True).click()
+                overview = page.get_by_test_id('project-overview')
+                expect(overview).to_contain_text('Video completo da presentare')
+                expect(overview).to_contain_text('MP4 e progetto modificabile')
+                expect(overview).to_contain_text('1 di 4 incarichi conclusi')
+                expect(overview).to_contain_text('Traguardo in corso:')
+                expect(page.get_by_test_id('project-identity')).to_contain_text('Progetto dimostrativo')
+                state['project'] = {**project, 'status': 'clarifying', 'outcome': {**project['outcome'], 'format': '', 'questions': ['Una proposta di lavoro o un prodotto pronto da distribuire?']}}
+                state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now)}
+                page.reload()
+                page.evaluate("window.showThread('fixture',false,false,false)")
+                expect(page.get_by_test_id('studio-status')).to_have_text('Definiamo il risultato insieme')
+                expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
+                page.get_by_role('button', name='Progetto', exact=True).click()
+                expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
+                expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
+                state['job'] = job
+                page.evaluate("window.showThread('fixture',true,true,false)")
                 # A report-only inventory must never replace the selected artifact.
                 state['project'] = {**project, 'results': [{'path': '/mnt/user-data/outputs/review/report.json',
                     'label': 'report.json', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}]}

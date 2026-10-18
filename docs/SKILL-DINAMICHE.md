@@ -2,6 +2,8 @@
 
 Gli strumenti installati e i ruoli professionali rispondono a domande diverse: con cosa eseguire il lavoro e quale metodo applicare. Il coordinatore definisce i ruoli dal brief, dalla fase richiesta e dalle incertezze effettive. Non c’è un catalogo di professioni né una lista di squadre per settore. Libri, edifici, film, software, eventi e domini futuri usano lo stesso percorso.
 
+Prima della produzione il coordinatore registra il [risultato atteso e le scelte decisive](PROGETTO-E-BRIEF.md) con `outcome_json`. La definizione viene conservata nella memoria versionata e aggiorna le procedure quando cambia. Le domande aperte fermano le nuove deleghe fino alle risposte.
+
 Per un progetto articolato il coordinatore registra un piano visibile e compila i ruoli con `studio_plan(roles_json=..., memory_json=...)`. Per una domanda semplice può rispondere direttamente. La scelta dei ruoli resta una decisione del modello: il runtime valida e rende eseguibili le procedure, senza un classificatore a parole chiave che imponga professioni o fasi.
 
 ## Contratto di un ruolo

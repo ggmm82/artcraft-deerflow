@@ -69,7 +69,7 @@ for (const relative of [
   let page=fs.readFileSync(pageFile,'utf8');
   page=replaceRequired(page, '"use client";', '"use client";\n\nimport { DelegateProgress } from "@/components/workspace/messages/delegate-progress";\nimport { hasPendingDelegate } from "@/components/workspace/messages/delegate-progress-state";', 'project dock import');
   const anchor='                  {(hasGoal || goalOutcome !== null || hasTodos) && (';
-  const dock='                  {!isNewThread && !isMock && <DelegateProgress threadId={threadId} active={thread.isLoading} pending={thread.isLoading && hasPendingDelegate(thread.messages)} coordinatorError={!!thread.error} onContinue={() => handleSubmit({ text: "Riprendi il lavoro dai file disponibili. Verifica il servizio AI, integra una versione completa e correggi soltanto ciò che manca.", files: [] })} />}\n';
+  const dock='                  {!isNewThread && !isMock && <DelegateProgress threadId={threadId} active={thread.isLoading} pending={thread.isLoading && hasPendingDelegate(thread.messages)} coordinatorError={!!thread.error} onContinue={() => handleSubmit({ text: "Riprendi il progetto dal punto attuale. Considera le mie risposte e le scelte aperte sul risultato, conserva i file validi e procedi con la prossima attività utile.", files: [] })} />}\n';
   page=replaceRequired(page, anchor, dock+anchor, 'project composer placement');
   fs.writeFileSync(pageFile,page);
 }

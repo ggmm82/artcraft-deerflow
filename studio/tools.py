@@ -5,6 +5,7 @@ from deerflow.config.paths import get_paths
 from deerflow.runtime.user_context import resolve_runtime_user_id
 from .docker_runtime import delegate
 from .projects import archive_plan, create_plan, execute_step, read_project, revise_step, sync_acceptance, sync_project_context
+from .project_brief import briefing_issue
 import json
 
 
@@ -60,7 +61,7 @@ def user_requests(runtime):
 def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
                 project_type: str = '', omissions_json: str = '{}', revise_step_id: str = '',
                 archive: bool = False, summary: str = '', next_action: str = '', status: str = '',
-                product_path: str = '', requirements_json: str = '', criteria_json: str = '', roles_json: str = '', memory_json: str = '') -> str:
+                product_path: str = '', requirements_json: str = '', criteria_json: str = '', roles_json: str = '', memory_json: str = '', outcome_json: str = '') -> str:
     """Maintain a concise, adaptive production workspace and visible user status.
 
     Read without arguments. Update the brief, activity board or current status as
@@ -81,11 +82,12 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         archive: Archive an inactive abandoned project, preserving files.
         summary: One short sentence explaining the current practical work to the user.
         next_action: One short sentence describing the next useful result or action.
-        status: working, review, ready, blocked or idle.
+        status: clarifying, working, review, ready, blocked or idle.
         product_path: Existing verified final product to show prominently; ready requires it.
         requirements_json: Media acceptance requirements such as {"audio":true,"video":true}; follow the user's brief.
         roles_json: JSON roles compiled for this project: id, title, mission, expertise, procedure, checks, deliverables, tools (installed IDs, optional), inputs and risks. No fixed profession list.
         memory_json: JSON object with project-specific decisions, facts, questions and asset references; merge top-level keys, keep evidence and uncertainty explicit.
+        outcome_json: JSON intended result with title, result, format (delivery form, not necessarily a file extension), use, quality, constraints, assumptions, questions. Questions are at most three decisive missing user choices; ask them with ask_clarification, then replace the object with the real answers and questions empty before delegating. Do not ask again for choices already explicit in the brief.
         criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Preserve requested references; no invented substitutions.
     """
     workspace = workspace_for(runtime)
@@ -98,10 +100,11 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = archive_plan(workspace, brief)
     elif revise_step_id:
         value = revise_step(workspace, revise_step_id, brief or summary or next_action)
-    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json, roles_json, memory_json)):
+    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json, roles_json, memory_json, outcome_json)):
         value = create_plan(workspace, brief, json.loads(steps_json or '[]'), project_type,
             json.loads(omissions_json), summary=summary, next_action=next_action, status=status,
-            product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None)
+            product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None,
+            outcome=json.loads(outcome_json) if outcome_json else None)
     else:
         value = read_project(workspace)
     if value and not value.get('archived'):
@@ -143,6 +146,13 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     if not read_project(workspace):
         create_plan(workspace, requests[0] if requests else task, [])
     sync_acceptance(workspace, requests)
+    project = read_project(workspace) or {}
+    issue = briefing_issue(project.get('outcome'))
+    if issue:
+        create_plan(workspace, '', [], status='clarifying', summary='Prima definiamo il risultato da ottenere.',
+                    next_action='Rispondi alle domande sul risultato e sulla forma della consegna.')
+        return json.dumps({'ok': False, 'needs_briefing': True, 'error': issue,
+                           'outcome': project.get('outcome'), 'instruction': 'Usa ask_clarification per le scelte decisive mancanti; aggiorna studio_plan(outcome_json) prima di riprovare. Non è un errore del provider e non richiede tentativi ripetuti.'}, ensure_ascii=False)
     from .state import team
     profile = team()
     request_id = interaction_id(runtime)

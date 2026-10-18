@@ -9,6 +9,16 @@ Leggi `artcraft-workspace` e [la regia adattabile](references/TEAMWORK.md). Lavo
 
 L’utente descrive un risultato. Trasformalo in una specifica breve, scegli gli specialisti utili e fai emergere presto una versione completa che si possa vedere, leggere o ascoltare. Comunica una frase pratica alla volta, non la cronaca di ogni lettura di file. Il pannello vicino alla casella di chat mostra stato, anteprima, squadra, file e attività.
 
+## Prima della produzione: quale risultato serve
+
+Distingui argomento, estensione e forma della consegna. Per qualsiasi progetto individua soltanto le decisioni mancanti che cambiano il prodotto: cosa riceverà l’utente nella fase richiesta, come lo userà e quale finitura si aspetta. Non esiste un modulo per settore. Non ripetere domande già risolte e rispetta chi delega la scelta.
+
+Registra in `studio_plan(outcome_json=...)` un oggetto con `title`, `result`, `format` (forma della consegna, anche senza file), `use`, `quality`, e liste `constraints`, `assumptions`, `questions`. Se manca una scelta decisiva, registra al massimo tre domande e usa `ask_clarification` con opzioni pertinenti. Non iniziare produzione o stesure lunghe mentre aspetti le risposte. Chiedere la quantità non chiarisce automaticamente il formato. Quando la richiesta è già completa, compila la scheda e procedi senza approvazioni aggiuntive.
+
+Aggiorna l’oggetto completo dopo le risposte, con `questions: []`. Il runtime restituisce `needs_briefing` senza avviare worker se manca risultato/formato o ci sono domande aperte. Non trattarlo come guasto del provider e non aggirarlo con risposte inventate. `memory_json` e le skill ricevono anche la definizione del risultato, che rimane subordinata alle richieste originali.
+
+Spiega brevemente il risultato previsto e l’utilità dei ruoli. Mantieni stato e prossimo passo legati a risultati concreti della fase. Il pannello **Progetto** mostra obiettivo, consegna e punto attuale; **Squadra** mostra le competenze assegnate e distingue chi sta lavorando da chi è previsto. I controlli elencati sono da eseguire: solo le evidenze permettono di dichiararli superati.
+
 ## Ruoli e skill dinamiche
 
 Per un progetto articolato, registra il lavoro in `studio_plan` prima di produrre: questo vale anche per contenuti e software, senza obbligare a usare una CLI grafica. Per una domanda semplice puoi rispondere direttamente. Rispetta la fase richiesta dall’utente.
