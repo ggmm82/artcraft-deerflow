@@ -158,10 +158,22 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None, purpose='work', acceptance=None):
+def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None, purpose='work', acceptance=None, role=None):
     settings = effective_agent(agent_id)
     if not settings or not settings['enabled']:
         raise ValueError('Specialista sconosciuto o disattivato')
+    role_text = None
+    if role:
+        from .project_skills import load_compiled
+        from .state import catalog
+        if agent_id != 'workspace' and agent_id not in role['tools']:
+            raise ValueError('La CLI assegnata deve essere inclusa negli strumenti del ruolo')
+        role_text = load_compiled(workspace, role)
+        if any(not catalog().get(t, {}).get('enabled') for t in role['tools']):
+            raise ValueError('Il ruolo richiede uno strumento disabilitato: rivedi il metodo o la configurazione')
+        if role.get('request_hash') != (acceptance or {}).get('hash'):
+            raise ValueError('Ricompila il ruolo per la richiesta corrente prima della delega')
+        settings = {**settings, 'skills': list(dict.fromkeys([*settings['skills'], *['artcraft-' + t for t in role['tools']]]))}
     engine = settings['engine']
     if not connection_status(engine):
         raise ValueError(f'Collega {engine} nel pannello Studio prima di usare lo specialista')
@@ -169,6 +181,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
     workspace.mkdir(parents=True, exist_ok=True)
     name = 'artcraft-job-' + uuid.uuid4().hex[:12]
     progress = create_job(workspace, name, agent_id, engine, settings['model'], tool_call_id)
+    if role:
+        update(progress, role_id=role['id'], role_title=role['title'], role_version=role['version'])
     output_dir = '/mnt/user-data/outputs/' + agent_id + '/' + name
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
     if not EXECUTION_LOCK.acquire(timeout=120):
@@ -187,7 +201,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         payload = {'resources': resources, 'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
-                   'acceptance': acceptance}
+                   'acceptance': acceptance, 'role': role, 'compiled_skill': role_text}
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())

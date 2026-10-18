@@ -1,7 +1,7 @@
 """Apply shared team routing and keep submitted work alive after browser disconnect."""
 import json
 import re
-from .progress import clean_summary
+from .project_skills import request_text
 
 RUN_PATH = re.compile(r'^/api/(?:threads/[^/]+/)?runs(?:/(?:stream|wait))?/?$')
 
@@ -34,7 +34,7 @@ def shared_run(body):
         if isinstance(content, list):
             content = '\n'.join(b.get('text', '') for b in content if isinstance(b, dict) and b.get('type') == 'text')
         if isinstance(content, str) and content.strip():
-            requests.append(clean_summary(content, 4000))
+            requests.append(request_text(content))
     if config.get('configurable') is None or isinstance(config.get('configurable'), dict):
         captured = requests[:1] + requests[-8:] if len(requests) > 9 else requests
         config['configurable'] = {**(config.get('configurable') or {}), 'artcraft_user_messages': captured}

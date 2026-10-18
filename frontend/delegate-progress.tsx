@@ -8,8 +8,9 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
-type Project = { acceptance?: { user_requests: string[]; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
-  status: string; note?: string; error?: string; attempt_count?: number }[] };
+type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; checks: string[]; tools: string[] };
+type Project = { roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+  status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
 const stepLabels: Record<string, string> = { pending: "Da fare", running: "In corso",
@@ -28,7 +29,7 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
     ? new Date(value).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "";
   return <article className="bg-background space-y-3 rounded-lg border p-4" data-testid="delegate-job">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <strong>{job.agent.charAt(0).toUpperCase() + job.agent.slice(1)} · {providers[job.engine] ?? job.engine}</strong>
+      <strong>{job.role_title || job.agent.charAt(0).toUpperCase() + job.agent.slice(1)} · {providers[job.engine] ?? job.engine}</strong>
       <span className="text-muted-foreground text-xs">{duration(elapsed)} trascorsi</span>
     </div>
     {operation && <div className="rounded-md border p-2 text-sm" data-testid="operation-progress">
@@ -105,7 +106,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
-  const title = working ? `${person(current.agent)} sta lavorando` : active ? "La squadra sta preparando il prossimo risultato"
+  const title = working ? `${current.role_title || person(current.agent)} sta lavorando` : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
@@ -200,6 +201,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
             return <li key={rule.id}><strong>{observed?.status === "passed" ? "Verificato" : observed?.status === "failed" ? "Da correggere" : "Da verificare"}</strong> · {rule.requirement}
               {observed && <p className="text-muted-foreground">{observed.evidence}</p>}</li>;
           })}</ul>
+          {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}
+          {project.acceptance.request_manifest && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_manifest.path, true)}>Indice dei messaggi conservati ({project.acceptance.request_count ?? 1})</a></p>}
         </details>}
         {preview && <div>
           {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
@@ -221,8 +224,14 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       </div>}
       {tab === "team" && <div data-testid="team-plan" className="space-y-3">
         <p className="text-sm">La squadra si adatta al risultato: può riprendere, cambiare ordine e integrare i file già disponibili.</p>
+        {(project?.roles ?? []).map(role => <details key={role.id} className="rounded border p-3 text-sm" data-testid="compiled-role">
+          <summary className="cursor-pointer"><strong>{role.title}</strong> · procedura compilata per questo progetto</summary>
+          <p>{role.mission}</p><p className="text-muted-foreground">Strumenti: {role.tools.length ? role.tools.join(", ") : "workspace e strumenti di base"}</p>
+          <ul className="list-inside list-disc">{role.checks.map((check, i) => <li key={i}>{check}</li>)}</ul>
+          <p className="text-muted-foreground text-xs">Versione {role.version.slice(0, 12)} · verifiche da eseguire sul risultato</p>
+        </details>)}
         {(project?.steps ?? []).map((step) => <article className="rounded border p-3 text-sm" key={step.id}>
-          <strong>{person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
+          <strong>{step.role_title || project?.roles?.find(r => r.id === step.role_id)?.title || person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
           <p>{step.goal}</p>{step.note && <p className="text-muted-foreground">{step.note}</p>}
         </article>)}
       </div>}

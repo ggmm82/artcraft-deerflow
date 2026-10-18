@@ -3,19 +3,21 @@
 [![Verify and build](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml/badge.svg)](https://github.com/ggmm82/artcraft-deerflow/actions/workflows/verify.yml)
 [![Deploy on Hostinger](https://assets.hostinger.com/vps/deploy.svg)](https://www.hostinger.com/docker-hosting?compose_url=https://github.com/ggmm82/artcraft-deerflow/releases/latest/download/compose.hostinger.yaml)
 
-DeerFlow con **14 specialisti: 13 ArtCraft e Blender**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
+DeerFlow con **ruoli compilati dal progetto e 14 strumenti: 13 ArtCraft e Blender**, motori **Codex, Antigravity CLI e DeepSeek API**, configurazione dal browser e **sandbox Docker temporanee**. Progetto indipendente; non è una distribuzione ufficiale dei prodotti integrati.
 
 ## Come funziona
 
 - DeerFlow offre conversazioni, caricamento file, progetti, consegna degli artefatti, modelli e skills.
 - **La tua squadra**, nella barra laterale, è l’unico punto per collegare il servizio e scegliere il modello.
 - Un salvataggio applica il modello al coordinatore e a tutti gli specialisti. Ogni ruolo mantiene le proprie skills, verifiche e preferenze; non devi configurare motori per ogni ruolo.
-- Descrivi il problema in chat: il coordinatore sceglie gli specialisti utili, assegna gli incarichi e controlla le consegne. Non occorre conoscere nomi di agenti o strumenti.
+- Descrivi il problema in chat: il coordinatore compila ruoli e procedure dal brief, associa gli strumenti pertinenti, assegna gli incarichi e controlla le consegne. Non occorre conoscere nomi di agenti o strumenti.
 - Studio avvia un container per incarico, carica la procedura del programma pertinente e rimuove il container al termine, anche in caso di errore o timeout.
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
 - Il profilo iniziale esegue **un solo specialista alla volta**, per la VPS da 4 GB. Non sono previsti modelli locali.
 
 La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Google tramite Antigravity CLI**. La stessa scelta vale per coordinatore e specialisti. Per il nuovo collegamento Google vedi [Antigravity CLI in abbonamento](docs/ANTIGRAVITY.md). Antigravity usa il binario ufficiale `agy` per login Google e generazione in abbonamento; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
+
+Le competenze di progetto non dipendono da un elenco di professioni: una procedura può usare più CLI o soltanto gli strumenti di base del workspace. Brief integrale, memoria versionata e controlli restano comuni. [Come funzionano le skill dinamiche](docs/SKILL-DINAMICHE.md).
 
 ## Stato della verifica
 

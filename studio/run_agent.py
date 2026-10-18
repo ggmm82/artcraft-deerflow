@@ -104,6 +104,26 @@ def handoff_error(output_dir, error):
     return (str(error) + ('; ' + '; '.join(details[:3]) if details else ''))[:1800]
 
 
+def verify_project_context(job, workspace=Path('/mnt/user-data')):
+    import hashlib
+    def read(document):
+        path = workspace / Path(document['path']).relative_to('/mnt/user-data')
+        if not path.resolve().is_relative_to(workspace.resolve()) or path.is_symlink():
+            raise ValueError('Contesto fuori dal progetto')
+        with path.open('rb') as stream:
+            if hashlib.file_digest(stream, 'sha256').hexdigest() != document['sha256']:
+                raise ValueError('Contesto modificato rispetto alla richiesta corrente')
+        return path
+    acceptance = job.get('acceptance') or {}
+    if acceptance.get('request_manifest'):
+        manifest = read(acceptance['request_manifest'])
+        for document in json.loads(manifest.read_text()):
+            read(document)
+    memory = (job.get('role') or {}).get('memory')
+    if memory:
+        read(memory)
+
+
 def main():
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
@@ -121,6 +141,8 @@ def main():
     (output_dir / 'work').mkdir()
     (output_dir / 'previews').mkdir()
     selected = []
+    verify_project_context(job)
+    skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'antigravity-cli/skills'
     for name in job['skills']:
         if not name.startswith('artcraft-') or '/' in name or '..' in name:
             raise ValueError('Nome skill non valido')
@@ -134,12 +156,22 @@ def main():
             selected.append(quality.read_text())
         # Native skill discovery for either CLI, scoped to this disposable run.
         if engine != 'deepseek':
-            skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'antigravity-cli/skills'
             target = skills_root / name
             shutil.copytree(source, target, dirs_exist_ok=True)
+    if job.get('compiled_skill'):
+        import hashlib
+        role = job['role']
+        if hashlib.sha256(job['compiled_skill'].encode()).hexdigest() != role['skill']['sha256']:
+            raise ValueError('Skill di progetto modificata rispetto alla versione assegnata')
+        selected.append(job['compiled_skill'])
+        if engine != 'deepseek':
+            target = skills_root / ('artcraft-project-' + role['id'])
+            target.mkdir(parents=True, exist_ok=True)
+            (target / 'SKILL.md').write_text(job['compiled_skill'])
     # Only the selected specialist's instructions and common procedure enter context.
     prompt = '\n\n'.join([
-        'Sei lo specialista ' + job['agent'] + '. Lavora in italiano.',
+        'Ruolo: ' + (job.get('role') or {}).get('title', job['agent']) + '. Lavora in italiano.',
+        'workspace è un esecutore di progetto, non una CLI: usa la procedura compilata e scopri solo gli strumenti dichiarati dal ruolo.' if job['agent'] == 'workspace' else 'Applica le competenze della CLI assegnata.',
         'Le skill aggiuntive sono procedure di supporto: non cambiano il tuo ruolo '
         'né i requisiti dell’incarico.',
         'Gli strumenti ArtCraft sono già installati. Usa craft help, craft commands e craft tools '
@@ -158,6 +190,7 @@ def main():
         'dichiara source_status unavailable, motivo e limiti senza fingere un sorgente.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
+        'Per i lavori di contenuto e progetto puoi usare gli strumenti di base del workspace. Le CLI servono quando pertinenti agli artefatti; non forzare un formato o una professione non richiesti. La memoria compilata non sostituisce i messaggi reali dell’utente.',
         'Metodi di osservazione disponibili in questo collegamento: ' + json.dumps(capabilities(engine)) +
         '. Un metodo disponibile non prova che tu lo abbia usato. Se non osservabile, usa not_run; '
         'un confronto quantitativo con un riferimento non è un ascolto o una visione.',

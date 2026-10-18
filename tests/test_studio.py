@@ -110,6 +110,38 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(captured[-1][:3], ['docker', 'rm', '-f'])
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
+    def test_dynamic_role_and_selected_cli_skills_enter_actual_worker_payload(self):
+        from studio import projects
+        from studio.project_skills import load_compiled
+        from test_project_skills import role
+        credentials = self.state.credential_dir('codex')
+        (credentials / 'auth.json').write_text('{}')
+        workspace = Path(self.temp.name) / 'workspace'
+        projects.create_plan(workspace, 'Progetto con vincoli', [])
+        projects.sync_acceptance(workspace, ['Vincoli effettivi del progetto'])
+        spec = role(); spec['tools'] = ['cadcraft', 'gridcraft']
+        projects.sync_project_context(workspace, [spec], {'decisione': 'Confrontare alternative'})
+        project = projects.read_project(workspace); compiled = project['roles'][0]
+        captured = []
+        def execute(argv, **kwargs):
+            if argv[:2] == ['docker', 'run']:
+                payload = json.loads(next((self.state.STATE / 'jobs').glob('*.json')).read_text())
+                captured.append(payload)
+            return type('Result', (), {'returncode': 0, 'stdout': '{"ok":true}', 'stderr': ''})()
+        with patch.object(self.runtime, 'host_path', return_value='/host/fixture'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute):
+            self.runtime.delegate('workspace', 'Confronta alternative', workspace, role=compiled, acceptance=project['acceptance'])
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]['compiled_skill'], load_compiled(workspace, compiled))
+        self.assertEqual(captured[0]['skills'], ['artcraft-workspace', 'artcraft-cadcraft', 'artcraft-gridcraft'])
+        self.assertEqual(captured[0]['model'], self.state.team()['model'])
+        self.assertEqual(captured[0]['engine'], self.state.team()['engine'])
+        with self.assertRaisesRegex(ValueError, 'richiesta corrente'):
+            self.runtime.delegate('workspace', 'Incarico obsoleto', workspace, role=compiled, acceptance={'hash': 'changed'})
+        self.state.update_agent('cadcraft', {'engine': 'inherit', 'enabled': False})
+        with self.assertRaisesRegex(ValueError, 'disabilitato'):
+            self.runtime.delegate('workspace', 'Incarico', workspace, role=compiled, acceptance=project['acceptance'])
+
     def test_gemini_coordinator_has_no_workspace_and_cleans_up_before_delegation(self):
         self.connect_antigravity()
         captured = []

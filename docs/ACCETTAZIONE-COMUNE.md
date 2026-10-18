@@ -1,4 +1,4 @@
-# Richiesta, risultato ed evidenze: contratto comune ai 13 strumenti
+# Richiesta, risultato ed evidenze: contratto comune a tutti gli strumenti
 
 Un incarico terminato non prova che il prodotto soddisfi la richiesta. Nella regressione osservata il coordinatore aveva modificato il contenuto richiesto, il rapporto valutava la sua interpretazione e la revisione, eseguita nello stesso step del montaggio, nascondeva il prodotto originale. Non era un problema del codec o di uno specifico strumento.
 
@@ -6,7 +6,7 @@ Un incarico terminato non prova che il prodotto soddisfi la richiesta. Nella reg
 
 Il Gateway conserva una copia dei messaggi umani effettivamente inviati nella configurazione del run. Non modifica i messaggi, le autorizzazioni o la politica di esecuzione in background. La configurazione non può sostituire questi dati con una copia fornita dal client. I sottoagenti ereditano l’input reale e non possono promuovere i propri incarichi sintetici a nuove istruzioni dell’utente. Nel lead vengono conservati anche i messaggi originali già presenti nella conversazione.
 
-`acceptance.user_requests` conserva la prima richiesta e fino a otto chiarimenti recenti. È separata dal `brief` del coordinatore: una sua riformulazione non diventa automaticamente una modifica autorizzata del contenuto. Se un riferimento manca, va dichiarato o richiesto; non sostituito silenziosamente con qualcosa dello stesso genere, formato o categoria.
+`acceptance.user_requests` mostra anteprime della prima richiesta e fino a otto chiarimenti recenti. Il testo completo di ogni messaggio acquisito viene conservato in documenti versionati, indicizzati da `acceptance.request_manifest`; gli SHA-256 comprendono anche i chiarimenti fuori dalla finestra delle anteprime. Il worker verifica l’integrità prima di eseguire. Il Gateway non tronca più i brief a 4.000 caratteri. Le vecchie copie abbreviate sono recuperabili solo se il testo completo è ancora nel contesto reale della conversazione. È separata dal `brief` del coordinatore: una sua riformulazione non diventa automaticamente una modifica autorizzata del contenuto. Se un riferimento manca, va dichiarato o richiesto; non sostituito silenziosamente con qualcosa dello stesso genere, formato o categoria.
 
 ## Criteri osservabili per qualsiasi prodotto
 
