@@ -12,11 +12,13 @@ import yaml
 from .state import STATE, ROOT, catalog
 
 
-def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, connection_id=None, token_limit_param='max_tokens'):
+def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, connection_id=None, token_limit_param='max_tokens', tool_choice='specified'):
     """Apply a profile to coordinator, production workers, or both in one catalog."""
     from .state import LOCK, atomic_json, credential_dir, custom_connection_path, applications
     if engine not in ('codex', 'deepseek', 'gemini', 'openai') or scope not in ('both', 'coordinator', 'squad'):
         raise ValueError('Servizio o destinazione non disponibile')
+    if tool_choice not in ('specified', 'required', 'auto'):
+        raise ValueError('Modalità tool_choice non supportata')
     if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
         raise ValueError('Modello non valido')
     if engine != 'openai' and not re.fullmatch(r'[a-z0-9][a-z0-9._:/-]*', model):
@@ -58,7 +60,7 @@ def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, 
             if engine == 'deepseek' and api_key is not None:
                 atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
             elif engine == 'openai':
-                credentials = {'api_key': api_key, 'base_url': base_url, 'connection_id': connection_id, 'token_limit_param': token_limit_param}
+                credentials = {'api_key': api_key, 'base_url': base_url, 'connection_id': connection_id, 'token_limit_param': token_limit_param, 'tool_choice': tool_choice}
                 atomic_json(custom_connection_path(connection_id), credentials)
                 atomic_json(custom_connection_path(), credentials)
             if scope in ('both', 'squad'):

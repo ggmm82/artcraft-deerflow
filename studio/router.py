@@ -204,11 +204,12 @@ def save_team(value: TeamConfig, request: Request):
         chosen = value.model.strip()
         connection_id, base_url = value.connection_id, value.base_url
         token_limit_param = 'max_tokens'
+        tool_choice = 'specified'
         if value.engine == 'openai':
             from .openai_compatible import validate
             base_url, key, previous = custom_credentials(value)
-            base_url, chosen, available, token_limit_param = validate(base_url, key, chosen)
-            connection_id = previous.get('connection_id') if (base_url, key, token_limit_param) == (previous.get('base_url'), previous.get('api_key'), previous.get('token_limit_param','max_tokens')) else None
+            base_url, chosen, available, token_limit_param, tool_choice = validate(base_url, key, chosen)
+            connection_id = previous.get('connection_id') if (base_url, key, token_limit_param, tool_choice) == (previous.get('base_url'), previous.get('api_key'), previous.get('token_limit_param','max_tokens'), previous.get('tool_choice','specified')) else None
         elif value.engine == 'deepseek':
             if not key:
                 path = credential_dir('deepseek') / 'api.json'
@@ -239,7 +240,7 @@ def save_team(value: TeamConfig, request: Request):
                 if chosen not in available:
                     raise ValueError('Scegli un modello dall’elenco del tuo account Antigravity')
         configure_team(value.engine, chosen, key if value.engine in ('deepseek', 'openai') else None,
-                       scope=value.scope, base_url=base_url, connection_id=connection_id, token_limit_param=token_limit_param)
+                       scope=value.scope, base_url=base_url, connection_id=connection_id, token_limit_param=token_limit_param, tool_choice=tool_choice)
     except ValueError as error:
         raise HTTPException(400, str(error)) from None
     except RuntimeError as error:

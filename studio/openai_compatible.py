@@ -89,16 +89,33 @@ def validate(base_url, key, model):
         'messages': [{'role': 'user', 'content': 'Call artcraft_connection_check with no arguments.'}],
         'tools': [{'type': 'function', 'function': {'name': check, 'description': 'Verify tool calling.',
             'parameters': {'type': 'object', 'properties': {}, 'additionalProperties': False}}}],
-        'tool_choice': {'type': 'function', 'function': {'name': check}}, 'max_tokens': 64, 'stream': False}
+        'tool_choice': {'type': 'function', 'function': {'name': check}}, 'max_tokens': 1024, 'stream': False}
     token_limit_param = 'max_tokens'
-    try:
-        response = request(base_url, key, '/chat/completions', payload, timeout=30)
-    except ProviderHTTPError as error:
-        if error.code != 400:
-            raise
-        token_limit_param = 'max_completion_tokens'
-        payload[token_limit_param] = payload.pop('max_tokens')
-        response = request(base_url, key, '/chat/completions', payload, timeout=30)
+    tool_choice = 'specified'
+    for fallback in range(6):
+        try:
+            response = request(base_url, key, '/chat/completions', payload, timeout=30)
+            break
+        except ProviderHTTPError as error:
+            if error.code != 400 or fallback == 5:
+                raise
+            if fallback % 2 == 0:
+                # Some providers accept only max_completion_tokens.
+                token_limit_param = 'max_completion_tokens'
+                payload[token_limit_param] = payload.pop('max_tokens')
+            elif fallback == 1:
+                # Thinking models (e.g. Kimi K3) reject a forced tool_choice:
+                # require any of the offered tools instead of one named function.
+                tool_choice = 'required'
+                token_limit_param = 'max_tokens'
+                payload['tool_choice'] = 'required'
+                payload['max_tokens'] = payload.pop('max_completion_tokens')
+            else:
+                # Some thinking models (e.g. Kimi K2.6) reject any explicit tool_choice.
+                tool_choice = 'auto'
+                token_limit_param = 'max_tokens'
+                del payload['tool_choice']
+                payload['max_tokens'] = payload.pop('max_completion_tokens')
     if not isinstance(response.get('choices'), list) or not response['choices']:
         raise ValueError('Il provider non ha restituito una risposta Chat Completions valida')
     try:
@@ -109,7 +126,7 @@ def validate(base_url, key, model):
         valid = False
     if not valid:
         raise ValueError('Il modello non ha eseguito la chiamata di strumenti: scegli un modello con function calling')
-    return base_url, model, available, token_limit_param
+    return base_url, model, available, token_limit_param, tool_choice
 
 
 def run(model, prompt, output_dir, timeout, progress=None):
@@ -122,6 +139,12 @@ def run(model, prompt, output_dir, timeout, progress=None):
         payload = dict(payload)
         if credentials.get('token_limit_param') == 'max_completion_tokens' and 'max_tokens' in payload:
             payload['max_completion_tokens'] = payload.pop('max_tokens')
+        tool_choice = credentials.get('tool_choice')
+        if isinstance(payload.get('tool_choice'), dict):
+            if tool_choice == 'required':
+                payload['tool_choice'] = 'required'
+            elif tool_choice == 'auto':
+                del payload['tool_choice']
         return request(credentials['base_url'], credentials['api_key'], path, payload, timeout)
     return tool_loop(model, prompt, output_dir, timeout, progress=progress,
         transport=transport,

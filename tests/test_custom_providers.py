@@ -51,6 +51,8 @@ class CustomProviderTests(unittest.TestCase):
                 body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                 owner.requests.append(('POST',self.path,body,self.headers.get('Authorization')))
                 if 'completion-token' in self.path and 'max_tokens' in body:return self.respond({},400)
+                if 'required-choice' in self.path and isinstance(body.get('tool_choice'),dict):return self.respond({},400)
+                if 'auto-choice' in self.path and 'tool_choice' in body:return self.respond({},400)
                 if self.headers.get('Authorization') == 'Bearer rejected': return self.respond({'error':'reflected rejected'},401)
                 if body.get('stream'):
                     self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
@@ -179,6 +181,63 @@ class CustomProviderTests(unittest.TestCase):
         self.assertEqual(credentials['token_limit_param'],'max_completion_tokens')
         self.assertEqual(self.state.team('squad'),original)
         self.assertIn('max_completion_tokens',self.requests[-1][2])
+
+    def test_thinking_only_model_tool_choice_fallback_is_detected_saved_and_reused(self):
+        response=self.save(base_url=self.base+'/required-choice');self.assertEqual(response.status_code,200,response.text)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertEqual(credentials['tool_choice'],'required')
+        self.assertEqual(credentials['token_limit_param'],'max_tokens')
+        checks=[r[2] for r in self.requests if r[0]=='POST' and any(t.get('function',{}).get('name')=='artcraft_connection_check' for t in r[2].get('tools',[]))]
+        self.assertEqual(len(checks),3)
+        self.assertTrue(all(isinstance(c['tool_choice'],dict) for c in checks[:2]))
+        self.assertEqual(checks[2]['tool_choice'],'required')
+        result=self.save(api_key=None,base_url=profile['base_url'],connection_id=profile['connection_id'],model='Acme/Model-Y')
+        self.assertEqual(result.status_code,200,result.text)
+        self.assertEqual(result.json()['team']['connection_id'],profile['connection_id'])
+
+    def test_provider_rejecting_any_explicit_tool_choice_falls_back_to_omission(self):
+        response=self.save(base_url=self.base+'/auto-choice');self.assertEqual(response.status_code,200,response.text)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertEqual(credentials['tool_choice'],'auto')
+        self.assertEqual(credentials['token_limit_param'],'max_tokens')
+        checks=[r[2] for r in self.requests if r[0]=='POST' and any(t.get('function',{}).get('name')=='artcraft_connection_check' for t in r[2].get('tools',[]))]
+        self.assertEqual(len(checks),5)
+        self.assertNotIn('tool_choice',checks[-1])
+
+    def test_worker_downgrades_forced_tool_choice_for_thinking_only_providers(self):
+        from studio import deepseek,openai_compatible
+        from studio.handoff import validate_handoff
+        import test_deepseek
+        output=self.root/'output';(output/'work').mkdir(parents=True)
+        self.worker_manifest={'task':'Report','source_files':[],'output_files':[str(output/'report.txt')],
+            'checks':[{'name':'Content','status':'passed','evidence':'Verified report'}],'warnings':[],
+            'delivery':test_deepseek.report_delivery(output/'report.txt')}
+        creds=self.root/'api.json';creds.write_text(json.dumps({'api_key':'fixture-private-key','base_url':self.base+'/required-choice','tool_choice':'required'}))
+        def path(value):return creds if value=='/credentials/api.json' else Path(value)
+        with patch.object(deepseek,'MAX_TURNS',2),patch.object(openai_compatible,'Path',side_effect=path),patch.object(deepseek,'Path',side_effect=path),patch.object(deepseek,'validate_handoff',side_effect=lambda folder,workspace,**kwargs:validate_handoff(folder,self.root,**kwargs)):
+            message=openai_compatible.run('Acme/Model-X','Produce report',output,30)
+        self.assertIn('Consegna registrata',message)
+        posts=[r[2] for r in self.requests if r[0]=='POST']
+        self.assertTrue(all(not isinstance(p.get('tool_choice'),dict) for p in posts))
+        self.assertTrue(any(p.get('tool_choice')=='required' for p in posts))
+
+    def test_worker_omits_forced_tool_choice_when_provider_rejects_it(self):
+        from studio import deepseek,openai_compatible
+        from studio.handoff import validate_handoff
+        import test_deepseek
+        output=self.root/'output';(output/'work').mkdir(parents=True)
+        self.worker_manifest={'task':'Report','source_files':[],'output_files':[str(output/'report.txt')],
+            'checks':[{'name':'Content','status':'passed','evidence':'Verified report'}],'warnings':[],
+            'delivery':test_deepseek.report_delivery(output/'report.txt')}
+        creds=self.root/'api.json';creds.write_text(json.dumps({'api_key':'fixture-private-key','base_url':self.base+'/auto-choice','tool_choice':'auto'}))
+        def path(value):return creds if value=='/credentials/api.json' else Path(value)
+        with patch.object(deepseek,'MAX_TURNS',2),patch.object(openai_compatible,'Path',side_effect=path),patch.object(deepseek,'Path',side_effect=path),patch.object(deepseek,'validate_handoff',side_effect=lambda folder,workspace,**kwargs:validate_handoff(folder,self.root,**kwargs)):
+            message=openai_compatible.run('Acme/Model-X','Produce report',output,30)
+        self.assertIn('Consegna registrata',message)
+        posts=[r[2] for r in self.requests if r[0]=='POST']
+        self.assertTrue(all('tool_choice' not in p for p in posts))
 
     def test_worker_uses_real_custom_http_tools_and_validates_handoff(self):
         from studio import deepseek,openai_compatible
