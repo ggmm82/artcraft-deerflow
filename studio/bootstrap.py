@@ -12,47 +12,73 @@ import yaml
 from .state import STATE, ROOT, catalog
 
 
-def configure_team(engine, model, api_key=None):
-    """One public profile drives coordinator and every specialist/skill."""
-    from .state import LOCK, atomic_json, credential_dir
-    if engine not in ('codex', 'deepseek', 'gemini'):
-        raise ValueError('Servizio non disponibile per il coordinamento')
+def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, connection_id=None, token_limit_param='max_tokens'):
+    """Apply a profile to coordinator, production workers, or both in one catalog."""
+    from .state import LOCK, atomic_json, credential_dir, custom_connection_path, applications
+    if engine not in ('codex', 'deepseek', 'gemini', 'openai') or scope not in ('both', 'coordinator', 'squad'):
+        raise ValueError('Servizio o destinazione non disponibile')
     if not model or len(model) > 200 or any(ord(c) < 32 for c in model):
         raise ValueError('Modello non valido')
-    if not re.fullmatch(r'[a-z0-9][a-z0-9._:/-]*', model):
+    if engine != 'openai' and not re.fullmatch(r'[a-z0-9][a-z0-9._:/-]*', model):
         raise ValueError('Usa l’identificatore del modello dall’elenco, non il nome visualizzato')
     with LOCK:
         path = STATE / 'config.yaml'
         content = yaml.safe_load(path.read_text())
+        old = content.get('models', [])
+        worker = next((p for p in old if p.get('name') == 'studio-squad'), None) or next(iter(old), {})
         entry = {'name': 'studio-codex', 'display_name': 'Squadra ArtCraft',
                  'use': {'deepseek': 'studio.deepseek_provider:StudioDeepSeekChatModel',
                          'codex': 'studio.codex_provider:StudioCodexChatModel',
-                         'gemini': 'studio.gemini_provider:StudioGeminiChatModel'}[engine],
+                         'gemini': 'studio.gemini_provider:StudioGeminiChatModel',
+                         'openai': 'studio.openai_provider:StudioCompatibleChatModel'}[engine],
                  'model': model, 'supports_thinking': engine == 'codex',
                  'supports_reasoning_effort': engine == 'codex', 'request_timeout': 1800}
-        # Keep old saved conversation identifiers working, with the same profile.
-        aliases = [{**entry, 'name': item['name']} for item in content.get('models', [])
-                   if item['name'] == 'studio-deepseek']
-        content['models'] = [entry, *aliases, *[m for m in content.get('models', [])
-                              if m['name'] not in ('studio-codex', 'studio-deepseek')]]
+        if engine == 'openai':
+            if not connection_id:
+                connection_id = uuid.uuid4().hex
+            custom_connection_path(connection_id)  # Validate the opaque selector before writes.
+            if not api_key or not base_url:
+                raise ValueError('Endpoint e chiave API sono necessari per il collegamento personalizzato')
+            entry['connection_id'] = connection_id
+        if scope == 'squad':
+            content['models'] = [p for p in old if p.get('name') != 'studio-squad'] + [{**entry, 'name': 'studio-squad', 'display_name': 'Specialisti ArtCraft'}]
+        else:
+            aliases = [{**entry, 'name': item['name']} for item in old if item['name'] == 'studio-deepseek']
+            content['models'] = [entry, *aliases, *[m for m in old if m['name'] not in ('studio-codex', 'studio-deepseek', 'studio-squad')]]
+            if scope == 'coordinator':
+                content['models'].append({**worker, 'name': 'studio-squad', 'display_name': 'Specialisti ArtCraft'})
+        split = any(p.get('name') == 'studio-squad' for p in content['models'])
+        for identifier, definition in content.get('subagents', {}).get('custom_agents', {}).items():
+            if identifier in {a['id'] for a in applications()}:
+                definition['model'] = 'studio-squad' if split else 'inherit'
         temporary = path.with_suffix('.yaml.tmp')
         try:
             temporary.write_text(yaml.safe_dump(content, allow_unicode=True, sort_keys=False))
             temporary.chmod(0o600)
-            if api_key is not None:
+            if engine == 'deepseek' and api_key is not None:
                 atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
-            agents = catalog()
-            for settings in agents.values():
-                settings.update(engine='inherit', model='')
-            atomic_json(STATE / 'agents.json', agents)
+            elif engine == 'openai':
+                credentials = {'api_key': api_key, 'base_url': base_url, 'connection_id': connection_id, 'token_limit_param': token_limit_param}
+                atomic_json(custom_connection_path(connection_id), credentials)
+                atomic_json(custom_connection_path(), credentials)
+            if scope in ('both', 'squad'):
+                agents = catalog()
+                for settings in agents.values():
+                    settings.update(engine='inherit', model='')
+                atomic_json(STATE / 'agents.json', agents)
             temporary.replace(path)
         finally:
             temporary.unlink(missing_ok=True)
 
 
 def configure_coordinator(model):
-    from .state import team
-    configure_team(team()['engine'], model)
+    from .state import team, custom_connection_path
+    profile = team()
+    if profile['engine'] == 'openai':
+        connection = json.loads(custom_connection_path(profile.get('connection_id')).read_text())
+        configure_team('openai', model, connection['api_key'], base_url=connection['base_url'], connection_id=connection['connection_id'], token_limit_param=connection.get('token_limit_param','max_tokens'))
+    else:
+        configure_team(profile['engine'], model)
 
 
 def configure_deepseek(api_key, model):
@@ -97,6 +123,11 @@ def initialize():
         for identifier, definition in template['subagents']['custom_agents'].items():
             if identifier not in definitions:
                 definitions[identifier] = definition
+                changed = True
+        inherited_model = 'studio-squad' if any(p.get('name') == 'studio-squad' for p in content.get('models', [])) else 'inherit'
+        for identifier in template['subagents']['custom_agents']:
+            if definitions[identifier].get('model') != inherited_model:
+                definitions[identifier]['model'] = inherited_model
                 changed = True
         overlay = content.get('lead_prompt_overlay', {})
         if overlay.get('append', '').startswith(('Per ogni lavoro ArtCraft usa studio_delegate', 'Sei la Squadra ArtCraft.')):

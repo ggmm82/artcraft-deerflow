@@ -131,7 +131,7 @@ def main():
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
     auth = Path('/root') / ('.' + engine)
-    if engine != 'deepseek':
+    if engine not in ('deepseek', 'openai'):
         copy_credentials(Path('/credentials'), auth, engine)
     if engine == 'gemini':
         try:
@@ -158,7 +158,7 @@ def main():
         if quality.is_file():
             selected.append(quality.read_text())
         # Native skill discovery for either CLI, scoped to this disposable run.
-        if engine != 'deepseek':
+        if engine not in ('deepseek', 'openai'):
             target = skills_root / name
             shutil.copytree(source, target, dirs_exist_ok=True)
     if job.get('compiled_skill'):
@@ -167,7 +167,7 @@ def main():
         if hashlib.sha256(job['compiled_skill'].encode()).hexdigest() != role['skill']['sha256']:
             raise ValueError('Skill di progetto modificata rispetto alla versione assegnata')
         selected.append(job['compiled_skill'])
-        if engine != 'deepseek':
+        if engine not in ('deepseek', 'openai'):
             target = skills_root / ('artcraft-project-' + role['id'])
             target.mkdir(parents=True, exist_ok=True)
             (target / 'SKILL.md').write_text(job['compiled_skill'])
@@ -182,7 +182,7 @@ def main():
         'Python: /usr/bin/python3 (non python). CLI native e craft: /usr/local/bin; '
         'non usare /opt/artcraft/bin, che non esiste.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
-        'Non leggere o modificare credenziali, /credentials, .codex, .gemini o .deepseek.',
+        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
         'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
@@ -236,11 +236,17 @@ def main():
     os.environ['ARTCRAFT_JOB_DEADLINE'] = str(time.time() + job['timeout'])
     reporter = Reporter(output_dir, job).start(job['timeout'])
     try:
-        if engine == 'deepseek':
-            try:
-                from .deepseek import run
-            except ImportError:
-                from deepseek import run
+        if engine in ('deepseek', 'openai'):
+            if engine == 'openai':
+                try:
+                    from .openai_compatible import run
+                except ImportError:
+                    from openai_compatible import run
+            else:
+                try:
+                    from .deepseek import run
+                except ImportError:
+                    from deepseek import run
             os.environ['ARTCRAFT_OUTPUT_DIR'] = str(output_dir)
             message = run(job['model'], prompt, output_dir, job['timeout'], progress=reporter)
         else:
@@ -311,7 +317,7 @@ def main():
     finally:
         reporter.close()
         # One worker at a time. Preserve refreshed tokens for the next run.
-        if engine != 'deepseek':
+        if engine not in ('deepseek', 'openai'):
             copy_credentials(auth, Path('/credentials'), engine)
 
 

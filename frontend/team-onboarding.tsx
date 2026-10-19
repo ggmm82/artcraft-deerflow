@@ -18,11 +18,11 @@ export function TeamOnboarding() {
       .then(async (response) => {
         if (response.status === 403) return; // The administrator configures the shared team.
         if (!response.ok) throw new Error("Configurazione non disponibile");
-        const data: { team?: { ready?: boolean } } = await response.json();
+        const data: { team?: { ready?: boolean }; profiles?: { squad?: { ready?: boolean } } } = await response.json();
         if (typeof data.team?.ready !== "boolean") {
           throw new Error("Configurazione non disponibile");
         }
-        if (!controller.signal.aborted && !data.team.ready) {
+        if (!controller.signal.aborted && (!data.team.ready || data.profiles?.squad?.ready === false)) {
           window.location.replace("/workspace/studio");
         }
       })

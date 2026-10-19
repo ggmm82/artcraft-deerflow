@@ -28,6 +28,7 @@ RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \
     && python3 /opt/artcraft/smoke.py --output /opt/artcraft/build-checks.json
 COPY skills /mnt/skills
 COPY studio/run_agent.py studio/handoff.py studio/deepseek.py studio/refresh_codex.py /opt/studio/
+COPY studio/openai_compatible.py /opt/studio/
 COPY studio/antigravity_cli.py studio/terminal_text.py /opt/studio/
 COPY studio/progress.py studio/cli_runner.py studio/work_results.py studio/operations.py studio/resource_usage.py /opt/studio/
 COPY studio/source_packages.py studio/deliveries.py studio/acceptance.py studio/revision.py /opt/studio/

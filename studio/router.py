@@ -28,15 +28,19 @@ def page():
 
 @router.get('/api/catalog')
 def get_catalog():
-    return {'team': team(), 'effective_agents': {a['id']: effective_agent(a['id']) for a in applications()}, 'agents': catalog(), 'skills': available_skills(), 'applications': [
+    from .state import custom_connection_path
+    import json
+    custom = json.loads(custom_connection_path().read_text()) if connection_status('openai') else {}
+    return {'team': team(), 'profiles': {'coordinator': team(), 'squad': team('squad')}, 'effective_agents': {a['id']: effective_agent(a['id']) for a in applications()}, 'agents': catalog(), 'skills': available_skills(), 'applications': [
         {k: a[k] for k in ('id', 'name', 'role', 'description', 'version')}
         for a in applications()], 'connections': {
-            engine: {'credentials_present': connection_status(engine)}
-            for engine in ('codex', 'gemini', 'deepseek')}}
+            engine: {'credentials_present': connection_status(engine), **(
+                {k: custom.get(k, '') for k in ('base_url', 'connection_id')} if engine == 'openai' else {})}
+            for engine in ('codex', 'gemini', 'deepseek', 'openai')}}
 
 
 class AgentConfig(BaseModel):
-    engine: str = Field(default='inherit', pattern='^(inherit|codex|gemini|deepseek)$')
+    engine: str = Field(default='inherit', pattern='^(inherit|codex|gemini|deepseek|openai)$')
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
     enabled: bool = True
@@ -98,9 +102,12 @@ def cancel_login(identifier: str, request: Request):
 
 
 class TeamConfig(BaseModel):
-    engine: str = Field(pattern='^(codex|deepseek|gemini)$')
+    engine: str = Field(pattern='^(codex|deepseek|gemini|openai)$')
     model: str = Field(default='', max_length=200)
     api_key: SecretStr | None = None
+    scope: str = Field(default='both', pattern='^(both|coordinator|squad)$')
+    base_url: str | None = Field(default=None, max_length=2000)
+    connection_id: str | None = Field(default=None, pattern='^[0-9a-f]{32}$')
 
 
 def validated_deepseek(key, model):
@@ -115,10 +122,23 @@ def validated_deepseek(key, model):
 
 
 @router.get('/api/team/models')
-def team_models(engine: str = 'deepseek'):
+def team_models(engine: str = 'deepseek', connection_id: str | None = None):
     import json
     from .state import credential_dir
     from .deepseek import models
+    if engine == 'openai':
+        from .state import custom_connection_path
+        from .openai_compatible import models as compatible_models
+        try:
+            path = custom_connection_path(connection_id)
+            if not path.is_file():
+                raise ValueError('Collega prima l’endpoint OpenAI compatibile')
+            connection = json.loads(path.read_text())
+            return {'models': compatible_models(connection['base_url'], connection['api_key'])}
+        except ValueError as error:
+            raise HTTPException(400, str(error)) from None
+        except RuntimeError as error:
+            raise HTTPException(502, str(error)) from None
     if engine in ('codex', 'gemini'):
         if not connection_status(engine):
             raise HTTPException(400, 'Collega prima ' + ('Antigravity' if engine == 'gemini' else 'Codex'))
@@ -152,7 +172,21 @@ def save_team(value: TeamConfig, request: Request):
         key = value.api_key.get_secret_value().strip() if value.api_key else None
         available = []
         chosen = value.model.strip()
-        if value.engine == 'deepseek':
+        connection_id, base_url = value.connection_id, value.base_url
+        token_limit_param = 'max_tokens'
+        if value.engine == 'openai':
+            from .state import custom_connection_path
+            from .openai_compatible import endpoint, validate
+            path = custom_connection_path(connection_id)
+            previous = json.loads(path.read_text()) if path.is_file() else {}
+            base_url = endpoint(base_url or previous.get('base_url', ''))
+            if not key:
+                if base_url != previous.get('base_url'):
+                    raise ValueError('Se cambi endpoint, inserisci nuovamente la chiave API')
+                key = previous.get('api_key')
+            base_url, chosen, available, token_limit_param = validate(base_url, key, chosen)
+            connection_id = previous.get('connection_id') if (base_url, key, token_limit_param) == (previous.get('base_url'), previous.get('api_key'), previous.get('token_limit_param','max_tokens')) else None
+        elif value.engine == 'deepseek':
             if not key:
                 path = credential_dir('deepseek') / 'api.json'
                 if not path.is_file():
@@ -181,12 +215,14 @@ def save_team(value: TeamConfig, request: Request):
                 chosen = chosen or 'auto'
                 if chosen not in available:
                     raise ValueError('Scegli un modello dall’elenco del tuo account Antigravity')
-        configure_team(value.engine, chosen, key if value.engine == 'deepseek' else None)
+        configure_team(value.engine, chosen, key if value.engine in ('deepseek', 'openai') else None,
+                       scope=value.scope, base_url=base_url, connection_id=connection_id, token_limit_param=token_limit_param)
     except ValueError as error:
         raise HTTPException(400, str(error)) from None
     except RuntimeError as error:
         raise HTTPException(502, str(error)) from None
-    return {'ok': True, 'team': team(), 'models': available}
+    return {'ok': True, 'team': team(), 'profiles': {'coordinator': team(), 'squad': team('squad')},
+            'applied_to': value.scope, 'models': available}
 
 
 class CoordinatorConfig(BaseModel):
@@ -195,8 +231,10 @@ class CoordinatorConfig(BaseModel):
 
 @router.put('/api/coordinator', deprecated=True)
 def set_coordinator(value: CoordinatorConfig, request: Request):
-    # Compatibility endpoint: no independent coordinator setting remains.
-    result = save_team(TeamConfig(engine=team()['engine'], model=value.model), request)
+    # Compatibility endpoint retains its historical shared-profile behavior.
+    profile = team()
+    result = save_team(TeamConfig(engine=profile['engine'], model=value.model,
+        connection_id=profile.get('connection_id'), base_url=profile.get('base_url')), request)
     return {**result, 'model': result['team']['model']}
 
 

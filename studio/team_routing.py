@@ -1,4 +1,4 @@
-"""Apply shared team routing and keep submitted work alive after browser disconnect."""
+"""Route chat to the coordinator profile and keep work alive after disconnect."""
 import json
 import re
 from .project_skills import request_text
