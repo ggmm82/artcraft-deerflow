@@ -39,6 +39,10 @@ def main():
         'events': [{'at': iso(now - timedelta(minutes=18)), 'phase': 'planning', 'summary': 'Esporto il risultato con Effectcraft'}]}
     project = {'id': 'fixture-project', 'brief': 'Robot che balla', 'status': 'working',
         'outcome': {'title': 'Progetto dimostrativo', 'result': 'Video completo da presentare', 'format': 'MP4 e progetto modificabile', 'use': 'Presentazione', 'quality': 'Versione curata', 'constraints': [], 'assumptions': [], 'questions': []},
+        'strategy': {'state': 'exploring', 'method': 'Composizione alternativa', 'reason': 'Il primo campione non rispetta i vincoli',
+            'user_action': '', 'stop_reason': '', 'alternatives': [{'method': 'Costruzione da riferimenti', 'reason': 'Verificare prima gli elementi essenziali',
+            'status': 'tested', 'tools': ['vectorcraft'], 'evidence': [{'path': '/mnt/user-data/outputs/review/report.json', 'sha256': 'fixture'}]}]},
+        'method_recovery': {'message': 'Il metodo va rivalutato prima di richiedere risorse esterne'},
         'summary': 'Preparo una prima versione completa', 'next_action': 'Integro immagine, movimento e audio',
         'product_path': video_path, 'quality_status': 'not_reviewed',
         'acceptance': {'user_requests': ['Conserva il contenuto del riferimento fornito'],
@@ -198,6 +202,10 @@ window.showThread();
                 expect(overview).to_contain_text('MP4 e progetto modificabile')
                 expect(overview).to_contain_text('1 di 4 incarichi conclusi')
                 expect(overview).to_contain_text('Traguardo in corso:')
+                expect(page.get_by_test_id('project-method')).to_contain_text('Composizione alternativa')
+                expect(page.get_by_test_id('project-method')).to_contain_text('Prova disponibile')
+                expect(page.get_by_test_id('project-method')).to_contain_text('prima di richiedere risorse esterne')
+                expect(page.get_by_test_id('project-method').get_by_role('link', name='Prova 1')).to_have_attribute('href', '/api/threads/fixture/artifacts/mnt/user-data/outputs/review/report.json')
                 expect(page.get_by_test_id('revision-actions')).to_contain_text('Correggere il contenuto usando il riferimento originale')
                 expect(page.get_by_test_id('revision-actions')).to_contain_text('Serve provare un metodo diverso')
                 expect(page.get_by_test_id('quality-comparison')).to_contain_text('Invariato')

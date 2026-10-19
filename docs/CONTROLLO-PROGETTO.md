@@ -46,4 +46,37 @@ Richiesta pratica nella chat: «Registra nella memoria del progetto cosa ha funz
 
 La scheda Impostazioni → Memory riguarda il profilo personale di DeerFlow, non la memoria dei progetti. Può quindi risultare vuota dopo molte conversazioni. L'interfaccia spiega che apprendimento e utilizzo automatico del profilo sono disattivati; le annotazioni manuali restano archiviabili ed esportabili. Non interpreta il profilo vuoto come perdita dei progetti.
 
+## Quando il campione fallisce: cambiare metodo, non inventare un vincolo
+
+Le scelte affidate alla squadra rimangono in `outcome.assumptions`. Il contesto effettivo dei worker le distingue esplicitamente dai vincoli dell'utente, anche quando l'incarico le ripete come obblighi. Nei criteri `origin=proposal` indica una proposta della squadra; `origin=user` richiede una `source_quote` presente nei messaggi reali conservati, anche fuori dalle anteprime del contesto. La verifica controlla la presenza della citazione, non ne certifica l'interpretazione semantica. I criteri precedenti restano `unspecified`; nessun criterio perde automaticamente il suo carattere critico e nessun fallimento diventa un'approvazione. Cambiare una proposta richiede aggiornare esplicitamente il contratto, invalidando le vecchie revisioni.
+
+`studio_plan(strategy_json=...)` conserva metodo, ragione e fino a tre alternative con strumenti, stato e prove. Non è un elenco di professioni, né un piano a fasi obbligatorie. La scelta si usa soprattutto quando un campione è insufficiente e occorre decidere come proseguire. Esempio di struttura, con contenuti da ricavare dal caso reale:
+
+```json
+{
+  "state": "selected",
+  "method": "Nuovo procedimento coerente con il risultato richiesto",
+  "reason": "Affronta il limite osservato nel campione precedente",
+  "alternatives": [{
+    "method": "Procedimento precedente",
+    "status": "tested",
+    "tools": [],
+    "reason": "Difetto osservato e ragione per cambiare",
+    "evidence_paths": ["/mnt/user-data/outputs/revisione.json"]
+  }]
+}
+```
+
+Una alternativa `tested` richiede file esistenti della conversazione; il runtime registra percorsi e hash, senza dedurne che la qualità sia buona. `candidate` indica una strada da provare; `unavailable` una strada valutata non disponibile, con una spiegazione da controllare. Un file di prova non dimostra da solo la verità del giudizio del modello. Le versioni della strategia restano in `.studio-project/strategies`, la memoria del ruolo ne contiene il riferimento e il worker ne verifica l'integrità.
+
+Dopo una revisione qualitativa fallita, `status=blocked` senza una decisione adeguata restituisce `review` e `method_recovery`: il coordinatore deve rivalutare le proprie scelte e un'alternativa pertinente, oppure spiegare una dipendenza reale. Il pannello mostra metodo, alternative e prove; i vecchi progetti bloccati senza strategia ricevono la stessa indicazione alla lettura, senza modificare o riavviare automaticamente i lavori.
+
+Per una pausa reale, la strategia usa `state=needs_user`, `stop_reason` (`missing_input`, `capability_limit`, `budget`, `user_choice`) e `user_action` concreta. Per input/capacità mancanti devono essere indicate le alternative valutate; un'alternativa ancora `candidate` impedisce di trattare la questione come capacità esterna mancante. Budget e scelte dell'utente possono giustificare una pausa anche prima di ulteriori prove. Richiesta e hash delle prove devono essere ancora attuali. Il coordinatore presenta la scelta con `ask_clarification`; gli errori operativi già diagnosticati, come quota e autenticazione, mantengono il loro recupero specifico. `idle` resta disponibile per una sospensione esplicita.
+
+Questa correzione non avvia un ciclo automatico infinito, non aggiunge un generatore di contenuti e non crea una capacità professionale dal nome di un ruolo. Migliora la decisione su come usare capacità effettive e quando coinvolgere l'utente. Se nessun metodo disponibile raggiunge il livello richiesto, la dipendenza va dichiarata con alternative concrete: non si può garantire un risultato professionale cambiando soltanto le istruzioni.
+
+## Presentare anche un risultato parziale
+
+Il pannello Progetto e la presentazione degli allegati nella chat sono canali distinti. Il controllo finale di DeerFlow può registrare `run.delivery.satisfied=false` e segnare il turno come errore se sono stati prodotti file ma il coordinatore non ha chiamato `present_files`. `studio_plan` indica ora `presentation.paths` per il prodotto selezionato disponibile e i sorgenti della stessa consegna, insieme all'istruzione di presentarli prima di concludere o mettere in pausa. La bozza deve essere etichettata come non approvata; i criteri per dichiarare il progetto pronto restano invariati. L'indicazione non invoca automaticamente il tool e non dichiara una presentazione mai avvenuta.
+
 La conservazione dipende anche dal deployment: il volume `deerflow-data` contiene i dati delle conversazioni, inclusi memoria, ruoli e prove. Mantenerlo tra aggiornamenti e includerlo nei backup del VPS; un volume persistente non è un backup. Git conserva le skills distribuite, ma non i dati privati delle conversazioni. Nessuno di questi meccanismi addestra i pesi del modello.

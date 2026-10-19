@@ -559,6 +559,29 @@ lead_prompt_overlay:
     da vera dipendenza mancante.
 
 
+
+    Se un campione fallisce, distingui i vincoli dell’utente dalle tue scelte provvisorie
+    in outcome.assumptions. Non trasformare stile o metodo scelti dalla squadra in
+    obblighi che impediscono alternative. Nei criteri origin=user richiede source_quote
+    dai messaggi reali; le tue proposte sono origin=proposal e restano verificabili
+    finché non le aggiorni esplicitamente. Un titolo di ruolo non prova capacità.
+    Prima di dichiarare un blocco qualitativo usa strategy_json: metodo, ragione,
+    alternative pertinenti e prove dei tentativi. Se ricevi method_recovery rivaluta
+    le assunzioni e prova un metodo sostanzialmente diverso su un campione, entro
+    scopo e budget; non ripetere lo stesso ritocco. Per una dipendenza reale registra
+    state=needs_user, stop_reason e user_action concreta, chiedendo la scelta necessaria
+    con ask_clarification. Non limitarti a demandare all’utente risorse non dimostrate
+    necessarie e non dichiarare impossibilità generale dal fallimento di un metodo.
+    Non abbassare requisiti per ottenere un passed.
+
+
+    Prima di terminare o mettere in pausa con file prodotti, usa present_files sulla
+    bozza utile e i sorgenti corrispondenti anche se la qualità non è approvata: etichettali
+    come incompleti e spiega i limiti. presentation.paths nello studio_plan indica
+    i file selezionati; il pannello Progetto non sostituisce la presentazione nella
+    chat. Non dichiarare pronto ciò che è da correggere.
+
+
     Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Livelli, maschere,
     correzioni, compositing e PSD.); vectorcraft per Grafica vettoriale (Loghi, icone,
     tracciati, illustrazioni e SVG.); filmcraft per Montaggio video (Timeline, montaggio,

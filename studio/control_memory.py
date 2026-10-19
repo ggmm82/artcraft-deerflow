@@ -38,7 +38,7 @@ def project_view(project):
     value['brief'] = clean_summary(project.get('brief'), 500)
     acceptance = project.get('acceptance') or {}
     value['acceptance'] = {k: acceptance.get(k) for k in ('hash', 'request_count', 'request_manifest')}
-    value['acceptance']['criteria'] = [{k: c.get(k) for k in ('id', 'method', 'critical')} |
+    value['acceptance']['criteria'] = [{k: c.get(k) for k in ('id', 'method', 'critical', 'origin')} |
             {'requirement': clean_summary(c.get('requirement'), 160)} for c in acceptance.get('criteria', [])]
     orientation = project.get('orientation') or {}
     value['orientation'] = {k: orientation.get(k) for k in ('total', 'counts', 'current', 'needs_briefing', 'history_count')}
@@ -52,6 +52,19 @@ def project_view(project):
     value['revision_actions'] = [fit(a, 160) for a in project.get('revision_actions', [])[:3]]
     value['revision_action_count'] = len(project.get('revision_actions', []))
     value['comparison'] = fit(project.get('comparison'), 120)
+    strategy = project.get('strategy') or {}
+    value['strategy'] = {k: strategy.get(k) for k in ('state', 'method', 'reason', 'user_action', 'stop_reason', 'record')}
+    value['strategy']['alternatives'] = [fit(a, 160) for a in strategy.get('alternatives', [])]
+    value['method_recovery'] = project.get('method_recovery')
+    product = next((r for r in project.get('results', []) if r.get('path') == project.get('product_path')), None)
+    if product and project.get('status') in ('review', 'blocked', 'ready'):
+        sources = [r for r in project.get('results', []) if product.get('delivery_id')
+                   and r.get('delivery_id') == product['delivery_id'] and r.get('role') in ('source_archive', 'editable_source')]
+        sources.sort(key=lambda r: r.get('role') != 'source_archive')
+        value['presentation'] = {'paths': list(dict.fromkeys([product['path'], *[s['path'] for s in sources[:2]]])),
+            'instruction': 'Prima di terminare o mettere in pausa il turno, chiama present_files sui file utili indicati. '
+                'Se non approvati, etichettali come bozza/studio incompleto e spiega i difetti. La presenza nel pannello '
+                'Progetto non sostituisce present_files e non dimostra il completamento del risultato richiesto.'}
     return value
 
 
@@ -79,7 +92,7 @@ def fit(value, limit=280):
         return [fit(x, limit) for x in value]
     if isinstance(value, dict):
         identities = {'path', 'product_path', 'baseline_path', 'handoff_path', 'output_dir', 'details_path', 'report_path',
-                      'id', 'requirement_id', 'role_id', 'delivery_id', 'sha256', 'details_sha256', 'verified_products', 'available_files'}
+                      'id', 'requirement_id', 'role_id', 'delivery_id', 'sha256', 'details_sha256', 'verified_products', 'available_files', 'method_recovery', 'presentation'}
         return {k: v if k in identities else fit(v, limit) for k, v in value.items()}
     return value
 
@@ -122,7 +135,7 @@ def reply(workspace, payload, kind):
                 'attention', 'retry_blocked', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
         if kind == 'plan':
             p = value.get('project') or {}
-            value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention')}}
+            value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention', 'method_recovery', 'presentation')}}
         else:
             value = {k: value[k] for k in keys if k in value}
             if 'quality_review' in value:

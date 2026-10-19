@@ -121,7 +121,10 @@ def verify_project_context(job, workspace=Path('/mnt/user-data')):
             read(document)
     memory = (job.get('role') or {}).get('memory')
     if memory:
-        read(memory)
+        memory_path = read(memory)
+        method = json.loads(memory_path.read_text()).get('method_selection')
+        if isinstance(method, dict) and 'path' in method and 'sha256' in method:
+            read(method)
 
 
 def main():

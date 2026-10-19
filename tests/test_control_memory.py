@@ -11,6 +11,19 @@ from studio.project_brief import orientation
 
 
 class ControlMemoryTests(unittest.TestCase):
+    def test_paused_draft_is_presented_with_its_own_sources_without_claiming_approval(self):
+        with tempfile.TemporaryDirectory() as temp:
+            product = '/mnt/user-data/outputs/current/sample.pdf'
+            project = {'status': 'blocked', 'quality_status': 'needs_revision', 'product_path': product,
+                'results': [{'path': product, 'role': 'export', 'delivery_id': 'current'},
+                    {'path': '/mnt/user-data/outputs/current/sources.zip', 'role': 'source_archive', 'delivery_id': 'current'},
+                    {'path': '/mnt/user-data/outputs/old/sources.zip', 'role': 'source_archive', 'delivery_id': 'old'}]}
+            value = json.loads(reply(Path(temp), {'project': project}, 'plan'))['project']
+            self.assertEqual(value['presentation']['paths'], [product, '/mnt/user-data/outputs/current/sources.zip'])
+            self.assertIn('present_files', value['presentation']['instruction'])
+            self.assertIn('incompleto', value['presentation']['instruction'])
+            self.assertEqual(value['quality_status'], 'needs_revision')
+
     def test_large_inventory_preserves_failed_verdict_and_full_opening_evidence(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

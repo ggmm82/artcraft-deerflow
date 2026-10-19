@@ -18,6 +18,7 @@ from .source_packages import digest
 from .acceptance import contract, fingerprint
 from .project_skills import compact_acceptance, save_requests, read_document, scoped_file, validate_roles, compile_role, ROLE_ID, redact_memory
 from .project_brief import validate_outcome, briefing_issue, orientation
+from .strategy import validate as validate_strategy, recovery as method_recovery
 
 STEP_ID = re.compile(r'[a-z][a-z0-9_-]{0,47}\Z')
 PROJECT_ID = re.compile(r'[0-9a-f]{32}\Z')
@@ -170,7 +171,9 @@ def sync_acceptance(workspace, requests, criteria=None):
             requests = previous + [r for r in requests if r not in previous]
         documents, manifest = save_requests(workspace, requests, documents)
         selected = documents[:1] + documents[-8:] if len(documents) > 9 else documents
-        texts = [read_document(workspace, d) for d in selected]
+        # Provenance must also resolve a quoted choice outside the compact
+        # first/latest previews. The contract still exposes only those previews.
+        texts = [read_document(workspace, d) for d in documents]
         if criteria is None:
             criteria = [c for c in old.get('criteria', []) if c['id'] != 'request_fidelity']
         updated = compact_acceptance(contract(texts, criteria))
@@ -203,6 +206,8 @@ def read_project(workspace):
     result['roles'] = value.get('roles', [])
     result['memory'] = value.get('memory')
     result['outcome'] = value.get('outcome')
+    result['strategy'] = value.get('strategy')
+    result['method_recovery'] = value.get('method_recovery')
     result['orientation'] = orientation(value)
     result['brief'] = clean_summary(value.get('brief', ''), 4000)
     result['requirements'] = {k: v for k, v in value.get('requirements', {}).items()
@@ -303,11 +308,16 @@ def read_project(workspace):
                 result['attention'] = failure_info(error)
     if not result['status']:
         result['status'] = 'working' if any(s['status'] == 'running' for s in value['steps']) else 'review'
+    if result['status'] == 'blocked' and not value.get('strategy'):
+        recovery = method_recovery(workspace, value)
+        if recovery:
+            result.update(method_recovery=recovery, status='review', summary=recovery['message'],
+                          next_action='Rivalutare il metodo e le scelte provvisorie della squadra.')
     return result
 
 
 def create_plan(workspace, brief, steps, project_type='', omissions=None, *, summary='', next_action='',
-                status='', product_path='', requirements=None, outcome=None):
+                status='', product_path='', requirements=None, outcome=None, strategy=None):
     """Update an evolving brief and activity board, preserving work and versions."""
     if project_type not in ('', 'custom', 'animated_video'):
         raise ValueError('Tipo di progetto non valido')
@@ -387,6 +397,11 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                     for s in value['steps'] for a in s['attempts']):
                 raise ValueError('Prima della consegna finale usa studio_delegate con purpose=delivery per controllare il file completo')
             value['product_path'] = product_path
+        if strategy is not None:
+            value['strategy'] = validate_strategy(workspace, strategy, applications(), (value.get('acceptance') or {}).get('hash'))
+            value.pop('method_recovery', None)
+            if value.get('status') == 'blocked' and value['strategy']['state'] != 'needs_user':
+                value['status'] = 'review'
         if status == 'ready':
             if value.get('outcome') and briefing_issue(value['outcome']):
                 raise ValueError('Rispondi prima alle domande sul risultato atteso')
@@ -424,6 +439,17 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
             value['status'] = status
             if status == 'ready':
                 value['attention'] = None
+            if status == 'blocked':
+                recovery = method_recovery(workspace, value)
+                if recovery:
+                    value.update(status='review', method_recovery=recovery, summary=recovery['message'],
+                        next_action='Rivalutare le scelte della squadra e il metodo; il risultato richiesto resta da completare.')
+                else:
+                    value.pop('method_recovery', None)
+                    if (value.get('strategy') or {}).get('state') == 'needs_user':
+                        value['next_action'] = value['strategy']['user_action']
+            elif status in ('working', 'ready', 'idle'):
+                value.pop('method_recovery', None)
         if value.get('outcome') and briefing_issue(value['outcome']):
             value['status'] = 'clarifying'
         value.update(schema_version=2, updated_at=utcnow())
@@ -527,6 +553,12 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
                     'rifare tutto per un controllo facoltativo o una chiusura formale mancante.')
+        contract_text += ('\nScelte provvisorie della squadra, rivedibili se non funzionano: ' +
+                         json.dumps((value.get('outcome') or {}).get('assumptions', []), ensure_ascii=False) +
+                         '\nNon trasformarle in requisiti dell’utente, anche se ripetute nell’incarico. '
+                         'Rileggi le richieste originali; mantieni prodotto, contenuto e qualità richiesti. '
+                         'Se il campione fallisce, proponi un metodo diverso e la prova concreta necessaria, non solo una correzione cosmetica.\n' +
+                         'Metodo e alternative valutate: ' + json.dumps((value.get('strategy') or {}).get('record'), ensure_ascii=False))
         if previous:
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
@@ -542,6 +574,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         step['attempt_count'] = step.get('attempt_count', len(step['attempts']) - 1) + 1
         step['status'] = 'running'
         value.update(schema_version=2, status='working', attention=None, updated_at=utcnow())
+        value.pop('method_recovery', None)
         atomic_json(folder / 'project.json', value)
         project_id, sid = value['id'], step['id']
 
@@ -633,6 +666,8 @@ def sync_project_context(workspace, roles=None, memory=None):
             current.update(redact_memory(memory))
         if value.get('outcome'):
             current['project_outcome'] = value['outcome']
+        if value.get('strategy'):
+            current['method_selection'] = value['strategy']['record']
         serialized = json.dumps(current, ensure_ascii=False, sort_keys=True, indent=2)
         if len(serialized.encode()) > 40000:
             raise ValueError('Memoria troppo grande: conserva testi e asset nei file e indica i riferimenti')
