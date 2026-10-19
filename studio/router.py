@@ -110,6 +110,36 @@ class TeamConfig(BaseModel):
     connection_id: str | None = Field(default=None, pattern='^[0-9a-f]{32}$')
 
 
+def custom_credentials(value):
+    import json
+    from .state import custom_connection_path
+    from .openai_compatible import endpoint, validate_key
+    path = custom_connection_path(value.connection_id)
+    previous = json.loads(path.read_text()) if path.is_file() else {}
+    base_url = endpoint(value.base_url or previous.get('base_url', ''))
+    key = value.api_key.get_secret_value().strip() if value.api_key else None
+    if not key:
+        if base_url != previous.get('base_url'):
+            raise ValueError('Se cambi endpoint, inserisci nuovamente la chiave API')
+        key = previous.get('api_key')
+    return base_url, validate_key(key), previous
+
+
+@router.post('/api/team/models')
+def preview_custom_models(value: TeamConfig, request: Request):
+    same_origin(request)
+    from .openai_compatible import models
+    try:
+        if value.engine != 'openai':
+            raise ValueError('Usa questa verifica per un endpoint OpenAI compatibile')
+        base_url, key, _ = custom_credentials(value)
+        return {'models': models(base_url, key)}
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from None
+    except RuntimeError:
+        raise HTTPException(502, 'Elenco modelli non disponibile: inserisci l’ID manualmente.') from None
+
+
 def validated_deepseek(key, model):
     from .deepseek import models
     if not key or len(key) > 512 or any(ord(c) < 33 for c in key):
@@ -175,15 +205,8 @@ def save_team(value: TeamConfig, request: Request):
         connection_id, base_url = value.connection_id, value.base_url
         token_limit_param = 'max_tokens'
         if value.engine == 'openai':
-            from .state import custom_connection_path
-            from .openai_compatible import endpoint, validate
-            path = custom_connection_path(connection_id)
-            previous = json.loads(path.read_text()) if path.is_file() else {}
-            base_url = endpoint(base_url or previous.get('base_url', ''))
-            if not key:
-                if base_url != previous.get('base_url'):
-                    raise ValueError('Se cambi endpoint, inserisci nuovamente la chiave API')
-                key = previous.get('api_key')
+            from .openai_compatible import validate
+            base_url, key, previous = custom_credentials(value)
             base_url, chosen, available, token_limit_param = validate(base_url, key, chosen)
             connection_id = previous.get('connection_id') if (base_url, key, token_limit_param) == (previous.get('base_url'), previous.get('api_key'), previous.get('token_limit_param','max_tokens')) else None
         elif value.engine == 'deepseek':

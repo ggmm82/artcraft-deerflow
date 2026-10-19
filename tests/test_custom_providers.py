@@ -127,6 +127,16 @@ class CustomProviderTests(unittest.TestCase):
         self.assertEqual(listed.status_code,502)
         self.assertTrue(self.state.team()['ready'])
 
+    def test_model_discovery_before_save_never_activates_or_stores_credentials(self):
+        original=(self.root/'config.yaml').read_bytes()
+        response=self.client.post('/studio/api/team/models',json={'engine':'openai',
+            'base_url':self.base,'api_key':'fixture-private-key'},headers={'origin':'http://testserver'})
+        self.assertEqual(response.status_code,200,response.text)
+        self.assertEqual(response.json()['models'],['Acme/Model-X','Acme/Model-Y'])
+        self.assertEqual((self.root/'config.yaml').read_bytes(),original)
+        self.assertFalse(self.state.connection_status('openai'))
+        self.assertNotIn('fixture-private-key',response.text)
+
     def test_invalid_endpoint_key_origin_and_scope_do_not_change_profiles(self):
         self.assertEqual(self.save().status_code,200)
         original=(self.root/'config.yaml').read_bytes()

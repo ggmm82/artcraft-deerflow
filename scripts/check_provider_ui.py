@@ -18,7 +18,7 @@ with sync_playwright() as p:
         if '/studio/api/catalog' in url:
             value={'team':profiles['coordinator'],'profiles':profiles,'connections':connections,'agents':{},'applications':[],'skills':[]}
         elif '/studio/api/team/models' in url:
-            value={'models':['gpt-6.1-sol','deepseek-chat']}
+            value={'models':['Acme/Model-X','Acme/Model-Y'] if r.request.method=='POST' else ['gpt-6.1-sol','deepseek-chat']}
         elif url.endswith('/studio/api/team'):
             body=r.request.post_data_json;saved.append(body)
             profile={'engine':body['engine'],'model':body['model'],'ready':True}
@@ -42,6 +42,9 @@ with sync_playwright() as p:
     expect(page.locator('#account-fields')).to_be_hidden()
     page.locator('#openai-url').fill('https://provider.example/v1')
     page.locator('#openai-key').fill('fixture-private-browser-key')
+    page.locator('#refresh-models').click()
+    expect(page.locator('#team-model').locator('option',has_text='Acme/Model-X')).to_have_count(1)
+    assert not saved
     page.locator('#custom-model').fill('Acme/Model-X')
     page.locator('#team-save').click()
     expect(page.locator('#status')).to_contain_text('la sola squadra')
@@ -55,7 +58,10 @@ with sync_playwright() as p:
     page.locator('#team-scope').select_option('squad')
     expect(page.locator('#openai-url')).to_have_value('https://provider.example/v1')
     expect(page.locator('#custom-model')).to_have_value('Acme/Model-X')
-    page.locator('#custom-model').fill('Acme/Model-Y')
+    page.locator('#refresh-models').click()
+    expect(page.locator('#status')).to_contain_text('Elenco aggiornato')
+    page.locator('#team-model').select_option('Acme/Model-Y')
+    expect(page.locator('#custom-model')).to_have_value('')
     page.locator('#team-save').click()
     expect(page.locator('#status')).to_contain_text('la sola squadra')
     assert 'api_key' not in saved[-1]

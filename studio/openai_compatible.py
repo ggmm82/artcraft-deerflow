@@ -65,10 +65,15 @@ def models(base_url, key):
         if isinstance(m, dict) and isinstance(m.get('id'), str) and m['id'].strip()))
 
 
-def validate(base_url, key, model):
-    base_url = endpoint(base_url)
+def validate_key(key):
     if not isinstance(key, str) or not key or len(key) > 4096 or any(ord(c) < 33 for c in key):
         raise ValueError('Chiave API non valida')
+    return key
+
+
+def validate(base_url, key, model):
+    base_url = endpoint(base_url)
+    validate_key(key)
     available = []
     if not model:
         try:

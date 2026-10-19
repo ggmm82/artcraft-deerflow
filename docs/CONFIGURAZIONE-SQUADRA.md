@@ -19,7 +19,7 @@ Il servizio deve supportare **Chat Completions e function calling**. Al salvatag
 
 La prova riconosce anche i provider che richiedono `max_completion_tokens` al posto di `max_tokens`, con un solo secondo tentativo in caso di HTTP 400. Il parametro riuscito viene conservato per i worker; non occorre configurarlo in un altro punto.
 
-**ID del modello** permette l'inserimento manuale, inclusi identificatori con maiuscole o nomi come `organizzazione/modello`. Non è obbligatorio che `/models` sia disponibile: con un ID esplicito viene provata direttamente l'API di completamento. Dopo il collegamento puoi usare **Aggiorna elenco modelli** se il provider lo offre.
+**ID del modello** permette l'inserimento manuale, inclusi identificatori con maiuscole o nomi come `organizzazione/modello`. Non è obbligatorio che `/models` sia disponibile: con un ID esplicito viene provata direttamente l'API di completamento. Dopo aver inserito URL e chiave puoi usare **Aggiorna elenco modelli** prima di salvare, se il provider lo offre. Il caricamento dell’elenco non salva credenziali e non cambia i profili attivi. Scegliere un elemento dell’elenco prevale sull’eventuale ID manuale precedente.
 
 Le credenziali vengono conservate nel volume privato `studio-state`, separate dalla configurazione dei modelli. Il catalogo pubblico e le risposte del pannello non restituiscono la chiave; il campo viene svuotato dopo il salvataggio e non usa localStorage. Per cambiare soltanto modello non occorre reinserirla. Se cambi URL devi inserire nuovamente la chiave, così quella precedente non viene inviata per errore a un altro endpoint.
 
