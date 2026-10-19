@@ -12,7 +12,7 @@ import yaml
 from .state import STATE, ROOT, catalog
 
 
-def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, connection_id=None, token_limit_param='max_tokens', tool_choice='specified'):
+def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, connection_id=None, token_limit_param='max_tokens', tool_choice='specified', reasoning=False):
     """Apply a profile to coordinator, production workers, or both in one catalog."""
     from .state import LOCK, atomic_json, credential_dir, custom_connection_path, applications
     if engine not in ('codex', 'deepseek', 'gemini', 'openai') or scope not in ('both', 'coordinator', 'squad'):
@@ -60,7 +60,7 @@ def configure_team(engine, model, api_key=None, *, scope='both', base_url=None, 
             if engine == 'deepseek' and api_key is not None:
                 atomic_json(credential_dir('deepseek') / 'api.json', {'api_key': api_key})
             elif engine == 'openai':
-                credentials = {'api_key': api_key, 'base_url': base_url, 'connection_id': connection_id, 'token_limit_param': token_limit_param, 'tool_choice': tool_choice}
+                credentials = {'api_key': api_key, 'base_url': base_url, 'connection_id': connection_id, 'token_limit_param': token_limit_param, 'tool_choice': tool_choice, 'reasoning': bool(reasoning)}
                 atomic_json(custom_connection_path(connection_id), credentials)
                 atomic_json(custom_connection_path(), credentials)
             if scope in ('both', 'squad'):
