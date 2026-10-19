@@ -82,7 +82,7 @@ def submit_handoff(output_dir, value):
     finally:
         Path(temporary).unlink(missing_ok=True)
 
-def run(model, prompt, output_dir, timeout, progress=None, transport=None, provider_label='DeepSeek'):
+def run(model, prompt, output_dir, timeout, progress=None, transport=None, provider_label='DeepSeek', vision=None):
     key = json.loads(Path('/credentials/api.json').read_text())['api_key']
     if transport is None:
         transport = lambda path, payload, timeout: request(key, path, payload, timeout)
@@ -116,6 +116,12 @@ def run(model, prompt, output_dir, timeout, progress=None, transport=None, provi
                 '. Riporta i controlli già svolti con le loro evidenze; indica not_run per gli altri '
                 'e dichiara nei warnings eventuali requisiti incompleti. '
                 'I cataloghi, i batch e le prove sotto work/ non sostituiscono i prodotti richiesti.'})
+        if vision is not None and not force_handoff:
+            parts = vision(output_dir)
+            if parts:
+                messages.append({'role': 'user', 'content': [
+                    {'type': 'text', 'text': 'Anteprime aggiornate del lavoro nella cartella assegnata: esamina i difetti visivi e correggili con run_command prima di proseguire.'},
+                    *parts]})
         payload = {'model': model, 'messages': messages,
                    'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL, PROGRESS_TOOL], 'max_tokens': 6000}
         if provider_label == 'DeepSeek':

@@ -1,6 +1,8 @@
 """OpenAI Chat Completions transport shared by setup and sandbox workers."""
+import base64
 import json
 from pathlib import Path
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit
@@ -39,6 +41,12 @@ class ProviderHTTPError(RuntimeError):
 # Reasoning models consume completion tokens before the visible reply:
 # worker turns need a higher budget than the default tool-loop limit.
 REASONING_MIN_TOKENS = 16384
+
+# 1x1 PNG used to probe vision support without spending real image tokens.
+VISION_PROBE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+VISION_IMAGE_LIMIT = 4
+VISION_IMAGE_MAX_BYTES = 1536 * 1024
+TRANSPORT_ATTEMPTS = 3
 
 
 def request(base_url, key, path, payload=None, timeout=120):
@@ -134,7 +142,55 @@ def validate(base_url, key, model):
     message = response['choices'][0].get('message') or {}
     details = (response.get('usage') or {}).get('completion_tokens_details') or {}
     reasoning = bool(message.get('reasoning_content')) or bool(details.get('reasoning_tokens'))
-    return base_url, model, available, token_limit_param, tool_choice, reasoning
+    vision = supports_vision(base_url, key, model, token_limit_param)
+    return base_url, model, available, token_limit_param, tool_choice, reasoning, vision
+
+
+def supports_vision(base_url, key, model, token_limit_param):
+    """A text-only model usually rejects image parts with HTTP 400; vision is optional."""
+    payload = {'model': model, 'stream': False, token_limit_param: 1024,
+        'messages': [{'role': 'user', 'content': [
+            {'type': 'text', 'text': 'Describe this image in one word.'},
+            {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + VISION_PROBE_PNG}}]}]}
+    try:
+        response = request(base_url, key, '/chat/completions', payload, timeout=30)
+    except (ProviderHTTPError, RuntimeError, ValueError):
+        return False
+    choices = response.get('choices') if isinstance(response, dict) else None
+    if not isinstance(choices, list) or not choices:
+        return False
+    message = choices[0].get('message') or {}
+    return bool((message.get('content') or '').strip())
+
+
+def preview_vision(output_dir):
+    """Collect newly produced raster previews as image parts, once per file."""
+    seen = set()
+    def collect(folder):
+        fresh = []
+        try:
+            candidates = sorted((p for p in Path(folder).rglob('*') if p.is_file()),
+                                key=lambda p: p.stat().st_mtime, reverse=True)
+        except OSError:
+            return fresh
+        for path in candidates:
+            suffix = path.suffix.lower()
+            if suffix not in ('.png', '.jpg', '.jpeg', '.webp') or path in seen:
+                continue
+            try:
+                if not 0 < path.stat().st_size <= VISION_IMAGE_MAX_BYTES:
+                    continue
+                data = base64.b64encode(path.read_bytes()).decode()
+            except OSError:
+                continue
+            seen.add(path)
+            media = 'jpeg' if suffix in ('.jpg', '.jpeg') else suffix[1:]
+            fresh.append({'type': 'image_url',
+                          'image_url': {'url': f'data:image/{media};base64,{data}'}})
+            if len(fresh) == VISION_IMAGE_LIMIT:
+                break
+        return fresh
+    return collect
 
 
 def run(model, prompt, output_dir, timeout, progress=None):
@@ -157,7 +213,21 @@ def run(model, prompt, output_dir, timeout, progress=None):
                 payload['tool_choice'] = 'required'
             elif tool_choice == 'auto':
                 del payload['tool_choice']
-        return request(credentials['base_url'], credentials['api_key'], path, payload, timeout)
+        attempts, delay = TRANSPORT_ATTEMPTS, 5
+        while True:
+            try:
+                return request(credentials['base_url'], credentials['api_key'], path, payload, timeout)
+            except ProviderHTTPError as error:
+                if error.code != 429 and error.code < 500:
+                    raise
+            except RuntimeError:
+                pass  # Timeouts, resets and 429 quota pauses are transient: retry before failing the job.
+            attempts -= 1
+            if not attempts:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 20)
+    vision = preview_vision(output_dir) if credentials.get('vision') else None
     return tool_loop(model, prompt, output_dir, timeout, progress=progress,
         transport=transport,
-        provider_label='Provider OpenAI compatibile')
+        provider_label='Provider OpenAI compatibile', vision=vision)
