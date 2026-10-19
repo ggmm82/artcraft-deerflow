@@ -53,6 +53,7 @@ class CustomProviderTests(unittest.TestCase):
                 if 'completion-token' in self.path and 'max_tokens' in body:return self.respond({},400)
                 if 'required-choice' in self.path and isinstance(body.get('tool_choice'),dict):return self.respond({},400)
                 if 'auto-choice' in self.path and 'tool_choice' in body:return self.respond({},400)
+                if 'no-vision' in self.path and any(isinstance(m.get('content'),list) and any(isinstance(c,dict) and c.get('type')=='image_url' for c in m['content']) for m in body.get('messages',[])):return self.respond({},400)
                 if self.headers.get('Authorization') == 'Bearer rejected': return self.respond({'error':'reflected rejected'},401)
                 if body.get('stream'):
                     self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
@@ -219,6 +220,46 @@ class CustomProviderTests(unittest.TestCase):
         profile=self.state.team()
         credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
         self.assertTrue(credentials['reasoning'])
+
+    def test_vision_support_is_probed_and_saved_in_connection_credentials(self):
+        self.assertEqual(self.save().status_code,200)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertTrue(credentials['vision'])
+        response=self.save(api_key='fixture-novision-key',base_url=self.base+'/no-vision');self.assertEqual(response.status_code,200,response.text)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertFalse(credentials['vision'])
+
+    def worker_run_with_previews(self, credentials):
+        from studio import deepseek,openai_compatible
+        from studio.handoff import validate_handoff
+        import base64,test_deepseek
+        output=self.root/'output';(output/'work').mkdir(parents=True)
+        previews=output/'previews';previews.mkdir()
+        (previews/'pagina-01.png').write_bytes(base64.b64decode(openai_compatible.VISION_PROBE_PNG))
+        self.worker_manifest={'task':'Report','source_files':[],'output_files':[str(output/'report.txt')],
+            'checks':[{'name':'Content','status':'passed','evidence':'Verified report'}],'warnings':[],
+            'delivery':test_deepseek.report_delivery(output/'report.txt')}
+        creds=self.root/'api.json';creds.write_text(json.dumps(credentials))
+        def path(value):return creds if value=='/credentials/api.json' else Path(value)
+        with patch.object(openai_compatible,'Path',side_effect=path),patch.object(deepseek,'Path',side_effect=path),patch.object(deepseek,'validate_handoff',side_effect=lambda folder,workspace,**kwargs:validate_handoff(folder,self.root,**kwargs)):
+            message=openai_compatible.run('Acme/Model-X','Produce report',output,30)
+        self.assertIn('Consegna registrata',message)
+        return [r[2] for r in self.requests if r[0]=='POST']
+
+    @staticmethod
+    def has_image_parts(payload):
+        return any(isinstance(m.get('content'),list) and any(isinstance(c,dict) and c.get('type')=='image_url' for c in m['content']) for m in payload['messages'])
+
+    def test_worker_shows_new_previews_to_vision_models(self):
+        posts=self.worker_run_with_previews({'api_key':'fixture-private-key','base_url':self.base,'vision':True})
+        self.assertTrue(any(self.has_image_parts(p) for p in posts))
+
+    def test_worker_without_vision_never_sends_images(self):
+        posts=self.worker_run_with_previews({'api_key':'fixture-private-key','base_url':self.base,'vision':False})
+        self.assertTrue(posts)
+        self.assertTrue(all(not self.has_image_parts(p) for p in posts))
 
     def test_worker_raises_token_budget_for_reasoning_models(self):
         from studio import deepseek,openai_compatible
