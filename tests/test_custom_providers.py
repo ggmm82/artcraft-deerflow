@@ -70,9 +70,13 @@ class CustomProviderTests(unittest.TestCase):
                     arguments = owner.worker_manifest if name=='submit_handoff' else {'command':'printf verified > report.txt'}
                     message={'role':'assistant','content':None,'tool_calls':[{'id':'call-'+name,'type':'function',
                         'function':{'name':name,'arguments':json.dumps(arguments)}}]}
+                usage={'prompt_tokens':1,'completion_tokens':1,'total_tokens':2}
+                if 'reasoning' in self.path:
+                    message['reasoning_content']='pensiero'
+                    usage['completion_tokens_details']={'reasoning_tokens':1}
                 self.respond({'id':'fixture','object':'chat.completion','model':body['model'],
                     'choices':[{'index':0,'message':message,'finish_reason':'tool_calls' if message.get('tool_calls') else 'stop'}],
-                    'usage':{'prompt_tokens':1,'completion_tokens':1,'total_tokens':2}})
+                    'usage':usage})
         self.worker_manifest = None
         self.tools_supported = True
         self.server = ThreadingHTTPServer(('127.0.0.1',0),Handler)
@@ -205,6 +209,33 @@ class CustomProviderTests(unittest.TestCase):
         checks=[r[2] for r in self.requests if r[0]=='POST' and any(t.get('function',{}).get('name')=='artcraft_connection_check' for t in r[2].get('tools',[]))]
         self.assertEqual(len(checks),5)
         self.assertNotIn('tool_choice',checks[-1])
+
+    def test_reasoning_model_is_detected_and_saved_in_connection_credentials(self):
+        self.assertEqual(self.save().status_code,200)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertFalse(credentials['reasoning'])
+        response=self.save(api_key='fixture-reasoning-key',base_url=self.base+'/reasoning');self.assertEqual(response.status_code,200,response.text)
+        profile=self.state.team()
+        credentials=json.loads(self.state.custom_connection_path(profile['connection_id']).read_text())
+        self.assertTrue(credentials['reasoning'])
+
+    def test_worker_raises_token_budget_for_reasoning_models(self):
+        from studio import deepseek,openai_compatible
+        from studio.handoff import validate_handoff
+        import test_deepseek
+        output=self.root/'output';(output/'work').mkdir(parents=True)
+        self.worker_manifest={'task':'Report','source_files':[],'output_files':[str(output/'report.txt')],
+            'checks':[{'name':'Content','status':'passed','evidence':'Verified report'}],'warnings':[],
+            'delivery':test_deepseek.report_delivery(output/'report.txt')}
+        creds=self.root/'api.json';creds.write_text(json.dumps({'api_key':'fixture-private-key','base_url':self.base,'reasoning':True}))
+        def path(value):return creds if value=='/credentials/api.json' else Path(value)
+        with patch.object(openai_compatible,'Path',side_effect=path),patch.object(deepseek,'Path',side_effect=path),patch.object(deepseek,'validate_handoff',side_effect=lambda folder,workspace,**kwargs:validate_handoff(folder,self.root,**kwargs)):
+            message=openai_compatible.run('Acme/Model-X','Produce report',output,30)
+        self.assertIn('Consegna registrata',message)
+        posts=[r[2] for r in self.requests if r[0]=='POST']
+        self.assertTrue(posts)
+        self.assertTrue(all(p.get('max_tokens',0)>=16384 for p in posts))
 
     def test_worker_downgrades_forced_tool_choice_for_thinking_only_providers(self):
         from studio import deepseek,openai_compatible

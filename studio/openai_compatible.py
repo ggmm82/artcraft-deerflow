@@ -36,6 +36,11 @@ class ProviderHTTPError(RuntimeError):
         super().__init__(f'Provider OpenAI compatibile HTTP {code}')
 
 
+# Reasoning models consume completion tokens before the visible reply:
+# worker turns need a higher budget than the default tool-loop limit.
+REASONING_MIN_TOKENS = 16384
+
+
 def request(base_url, key, path, payload=None, timeout=120):
     req = urllib.request.Request(endpoint(base_url) + path,
         data=None if payload is None else json.dumps(payload).encode(),
@@ -126,7 +131,10 @@ def validate(base_url, key, model):
         valid = False
     if not valid:
         raise ValueError('Il modello non ha eseguito la chiamata di strumenti: scegli un modello con function calling')
-    return base_url, model, available, token_limit_param, tool_choice
+    message = response['choices'][0].get('message') or {}
+    details = (response.get('usage') or {}).get('completion_tokens_details') or {}
+    reasoning = bool(message.get('reasoning_content')) or bool(details.get('reasoning_tokens'))
+    return base_url, model, available, token_limit_param, tool_choice, reasoning
 
 
 def run(model, prompt, output_dir, timeout, progress=None):
@@ -139,6 +147,10 @@ def run(model, prompt, output_dir, timeout, progress=None):
         payload = dict(payload)
         if credentials.get('token_limit_param') == 'max_completion_tokens' and 'max_tokens' in payload:
             payload['max_completion_tokens'] = payload.pop('max_tokens')
+        if credentials.get('reasoning'):
+            for param in ('max_tokens', 'max_completion_tokens'):
+                if type(payload.get(param)) is int:
+                    payload[param] = max(payload[param], REASONING_MIN_TOKENS)
         tool_choice = credentials.get('tool_choice')
         if isinstance(payload.get('tool_choice'), dict):
             if tool_choice == 'required':
