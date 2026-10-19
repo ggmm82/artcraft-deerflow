@@ -54,6 +54,8 @@ class CustomProviderTests(unittest.TestCase):
                 if 'required-choice' in self.path and isinstance(body.get('tool_choice'),dict):return self.respond({},400)
                 if 'auto-choice' in self.path and 'tool_choice' in body:return self.respond({},400)
                 if 'no-vision' in self.path and any(isinstance(m.get('content'),list) and any(isinstance(c,dict) and c.get('type')=='image_url' for c in m['content']) for m in body.get('messages',[])):return self.respond({},400)
+                if 'flaky' in self.path and owner.flaky<2:
+                    owner.flaky+=1;return self.respond({'error':'transient'},500)
                 if self.headers.get('Authorization') == 'Bearer rejected': return self.respond({'error':'reflected rejected'},401)
                 if body.get('stream'):
                     self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
@@ -80,6 +82,7 @@ class CustomProviderTests(unittest.TestCase):
                     'usage':usage})
         self.worker_manifest = None
         self.tools_supported = True
+        self.flaky = 0
         self.server = ThreadingHTTPServer(('127.0.0.1',0),Handler)
         threading.Thread(target=self.server.serve_forever,daemon=True).start()
         self.addCleanup(self.server.server_close);self.addCleanup(self.server.shutdown)
@@ -260,6 +263,11 @@ class CustomProviderTests(unittest.TestCase):
         posts=self.worker_run_with_previews({'api_key':'fixture-private-key','base_url':self.base,'vision':False})
         self.assertTrue(posts)
         self.assertTrue(all(not self.has_image_parts(p) for p in posts))
+
+    def test_worker_retries_transient_provider_failures_before_completing(self):
+        posts=self.worker_run_with_previews({'api_key':'fixture-private-key','base_url':self.base+'/flaky'})
+        self.assertEqual(self.flaky,2)
+        self.assertTrue(any('/flaky/' in r[1] for r in self.requests if r[0]=='POST'))
 
     def test_worker_raises_token_budget_for_reasoning_models(self):
         from studio import deepseek,openai_compatible

@@ -2,6 +2,7 @@
 import base64
 import json
 from pathlib import Path
+import time
 import urllib.error
 import urllib.request
 from urllib.parse import urlsplit, urlunsplit
@@ -44,7 +45,8 @@ REASONING_MIN_TOKENS = 16384
 # 1x1 PNG used to probe vision support without spending real image tokens.
 VISION_PROBE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 VISION_IMAGE_LIMIT = 4
-VISION_IMAGE_MAX_BYTES = 4 * 1024 * 1024
+VISION_IMAGE_MAX_BYTES = 1536 * 1024
+TRANSPORT_ATTEMPTS = 3
 
 
 def request(base_url, key, path, payload=None, timeout=120):
@@ -211,7 +213,20 @@ def run(model, prompt, output_dir, timeout, progress=None):
                 payload['tool_choice'] = 'required'
             elif tool_choice == 'auto':
                 del payload['tool_choice']
-        return request(credentials['base_url'], credentials['api_key'], path, payload, timeout)
+        attempts, delay = TRANSPORT_ATTEMPTS, 5
+        while True:
+            try:
+                return request(credentials['base_url'], credentials['api_key'], path, payload, timeout)
+            except ProviderHTTPError as error:
+                if error.code != 429 and error.code < 500:
+                    raise
+            except RuntimeError:
+                pass  # Timeouts, resets and 429 quota pauses are transient: retry before failing the job.
+            attempts -= 1
+            if not attempts:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 20)
     vision = preview_vision(output_dir) if credentials.get('vision') else None
     return tool_loop(model, prompt, output_dir, timeout, progress=progress,
         transport=transport,
