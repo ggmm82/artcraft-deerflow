@@ -6,7 +6,7 @@ import threading
 import uuid
 from pathlib import Path
 
-from .state import STATE, effective_agent, credential_dir, connection_status
+from .state import STATE, effective_agent, credential_dir, connection_status, custom_connection_path
 from .progress import clean_summary, create_job, read_status, update
 from .work_results import failure_info, partial_files
 
@@ -175,7 +175,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             raise ValueError('Ricompila il ruolo per la richiesta corrente prima della delega')
         settings = {**settings, 'skills': list(dict.fromkeys([*settings['skills'], *['artcraft-' + t for t in role['tools']]]))}
     engine = settings['engine']
-    if not connection_status(engine):
+    if not connection_status(engine, settings.get('connection_id')):
         raise ValueError(f'Collega {engine} nel pannello Studio prima di usare lo specialista')
     workspace = Path(workspace).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
@@ -212,7 +212,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name, resources) + ['--label', f'org.artcraft.studio.installation={installation}',
             '--mount', mount(workspace, '/mnt/user-data'),
-            '--mount', mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek'),
+            '--mount', (mount(custom_connection_path(settings.get('connection_id')), '/credentials/api.json', True)
+                        if engine == 'openai' else mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek')),
             '--mount', mount(job, '/job.json', True),
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
         completed = subprocess.run(['docker', *args], capture_output=True, text=True,

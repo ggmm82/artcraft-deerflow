@@ -1,25 +1,32 @@
-# Una configurazione per tutta la squadra
+# Un pannello per coordinatore e squadra
 
-Apri **La tua squadra** nella barra laterale. Al primo accesso la nuova chat porta automaticamente qui finché non è stato collegato un servizio.
+Apri **La tua squadra** nella barra laterale. Provider, account, modelli e ambiti si configurano qui; le skills non contengono copie delle impostazioni o delle chiavi.
 
-1. Scegli **DeepSeek** e incolla la chiave API, oppure **Codex** e completa l’accesso ufficiale.
-2. Lascia **Automatico** e premi **Salva e attiva la squadra**. Con DeepSeek vengono controllati chiave e modelli disponibili prima di modificare le impostazioni.
-3. Premi **Risolvi un problema**, allega eventuali file e descrivi il risultato desiderato. La squadra sceglie i ruoli utili, esegue gli incarichi e consegna i file nella chat.
+1. Scegli **Applica a**: **Solo coordinatore**, **Solo squadra** oppure **Coordinatore e squadra · entrambi**.
+2. Seleziona il servizio: **DeepSeek API**, **Codex con account OpenAI**, **Antigravity con account Google** oppure **OpenAI compatibile con URL e chiave API**.
+3. Scegli il modello dall'elenco o lascia Automatico dove disponibile. Salva la configurazione.
+4. Controlla il riepilogo: mostra distintamente il provider e modello attivi per coordinatore e squadra. Poi apri una chat con **Risolvi un problema**.
 
-Esempio: «Ho queste vendite e devo condividerle con un cliente. Prepara un foglio con i totali e una breve relazione in Word e PDF».
+**Solo coordinatore** conserva la scelta della squadra, anche se prima il modello era condiviso. **Solo squadra** cambia tutti gli specialisti, inclusi i ruoli professionali compilati dinamicamente, conservando il coordinatore. **Entrambi** torna a un profilo condiviso. Le scelte restano dopo il riavvio; skills, preferenze e file dei progetti vengono conservati. I nuovi incarichi usano il profilo corrente, mentre quelli già avviati continuano con la configurazione iniziale.
 
-Non occorre indicare agenti, skills o strumenti. Il modello condiviso coordina il lavoro; ciascuno dei 13 specialisti mantiene la propria procedura, i comandi del programma e i controlli sul formato. Gli incarichi vengono eseguiti uno alla volta per il profilo VPS da 4 GB.
+I collegamenti agli account Codex e Antigravity e la chiave del servizio DeepSeek restano gestiti centralmente: cambiare account/chiave di uno di questi servizi riguarda chi utilizza quel collegamento. L'ambito seleziona quale provider e modello assegnare, senza duplicare la configurazione nei singoli specialisti.
 
-Per cambiare modello torna nello stesso riquadro. **Aggiorna elenco modelli** legge quelli disponibili nel servizio già collegato; non richiede di reinserire la chiave. Premi **Salva modifiche**: il salvataggio aggiorna coordinatore e specialisti. **Risolvi un problema** si trova accanto al pulsante di salvataggio. **Impostazioni → Modelli** rimanda a questo stesso pannello.
+## Endpoint OpenAI compatibile
 
-Le schede degli specialisti sono chiuse per impostazione iniziale: puoi consultarne i ruoli e, facoltativamente, aggiungere preferenze o competenze. Non contengono selettori di motore o modello.
+Inserisci **URL base dell'API**, **chiave API** e **ID modello**. Esempi di forma dell'URL: `https://provider.example/v1` o `https://provider.example/api/v1`. Un URL senza percorso viene normalizzato a `/v1`; un URL che termina con `/chat/completions` o `/models` viene ricondotto al relativo URL base. HTTP è utilizzabile anche per servizi privati raggiungibili dall'installazione. Sono rifiutati credenziali nell'URL, query, frammenti e schemi diversi da HTTP/HTTPS. L'endpoint deve essere raggiungibile dai componenti che lo utilizzano.
 
-## Installazioni precedenti
+Il servizio deve supportare **Chat Completions e function calling**. Al salvataggio una breve richiesta verifica che il modello esegua una chiamata di strumento; la prova può consumare credito del provider. Una risposta testuale generica non basta ad attivare un modello incapace di usare gli strumenti. Il controllo verifica il collegamento, non la qualità professionale di un lavoro.
 
-Il primo salvataggio della squadra sostituisce le vecchie scelte di motore/modello dei 13 specialisti con l’ereditarietà. Conserva istruzioni, skills aggiuntive e stato attivo. Gli identificatori dei vecchi profili Studio restano utilizzabili dalle conversazioni salvate, ma seguono la nuova scelta condivisa. I vecchi endpoint di configurazione del coordinatore e di collegamento DeepSeek aggiornano anch’essi la squadra.
+La prova riconosce anche i provider che richiedono `max_completion_tokens` al posto di `max_tokens` e i modelli con ragionamento attivo (ad esempio Kimi K3 e K2.6) che rifiutano una `tool_choice` forzata su una funzione specifica o qualsiasi `tool_choice` esplicita: in caso di HTTP 400 la verifica riprova in sequenza con `max_completion_tokens`, con la richiesta di uno qualsiasi degli strumenti offerti e infine senza `tool_choice`. I parametri riusciti vengono conservati per i worker; non occorre configurarli in un altro punto.
 
-La configurazione del profilo nel volume `studio-state` è la fonte del modello effettivo: le skills non contengono copie del modello o delle credenziali. La chiave viene custodita separatamente, non è restituita dal catalogo e il browser svuota il campo dopo il salvataggio. Non viene salvata in localStorage.
+**ID del modello** permette l'inserimento manuale, inclusi identificatori con maiuscole o nomi come `organizzazione/modello`. Non è obbligatorio che `/models` sia disponibile: con un ID esplicito viene provata direttamente l'API di completamento. Dopo aver inserito URL e chiave puoi usare **Aggiorna elenco modelli** prima di salvare, se il provider lo offre. Il caricamento dell’elenco non salva credenziali e non cambia i profili attivi. Scegliere un elemento dell’elenco prevale sull’eventuale ID manuale precedente.
 
-Il profilo condiviso supporta DeepSeek API, Codex e [Antigravity CLI](ANTIGRAVITY.md). Il collegamento Google usa il login remoto del binario ufficiale `agy` e termina dopo la verifica del catalogo, senza generazioni di prova. Coordinatore e specialisti ereditano lo stesso provider e modello, anche dopo il riavvio.
+Le credenziali vengono conservate nel volume privato `studio-state`, separate dalla configurazione dei modelli. Il catalogo pubblico e le risposte del pannello non restituiscono la chiave; il campo viene svuotato dopo il salvataggio e non usa localStorage. Per cambiare soltanto modello non occorre reinserirla. Se cambi URL devi inserire nuovamente la chiave, così quella precedente non viene inviata per errore a un altro endpoint.
 
-La configurazione condivisa e i collegamenti degli account sono riservati all’amministratore DeerFlow. Gli utenti ordinari lavorano dalla chat usando la squadra configurata.
+Ogni collegamento personalizzato salvato ha un selettore privato stabile. Cambiare endpoint o chiave del solo coordinatore conserva il collegamento precedente della squadra. Il worker riceve in sola lettura il solo file delle credenziali selezionate, senza ricevere gli altri collegamenti. Le immagini e il Compose non contengono chiavi.
+
+## Compatibilità e limiti
+
+Le installazioni esistenti continuano con il profilo condiviso finché non viene scelta una separazione. Gli identificatori delle conversazioni restano validi e puntano al profilo del coordinatore; il catalogo dei modelli della chat continua a mostrare un solo ingresso di coordinamento, evitando un secondo punto di configurazione. Gli endpoint precedenti di collegamento DeepSeek e configurazione del coordinatore mantengono il comportamento condiviso per compatibilità; il nuovo selettore usa `PUT /studio/api/team` con `scope=coordinator|squad|both`.
+
+I provider CLI mantengono accesso ufficiale, modelli disponibili e quote dei rispettivi account. Il nuovo trasporto usa Chat Completions, non l'API Responses; non aggiunge un client OAuth o un programma CLI per i provider personalizzati. La compatibilità richiede uno schema OpenAI effettivo: campi specifici DeepSeek come `thinking` non vengono inviati al servizio custom. La valutazione visiva del trasporto custom rimane non certificata e l'ascolto non viene simulato. Gli errori di autenticazione, quota e rete vengono mostrati senza riportare corpi di risposta che potrebbero contenere credenziali.

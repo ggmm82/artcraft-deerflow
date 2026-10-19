@@ -158,7 +158,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
         return json.dumps({'ok': False, 'needs_briefing': True, 'error': issue,
                            'outcome': project.get('outcome'), 'instruction': 'Usa ask_clarification per le scelte decisive mancanti; aggiorna studio_plan(outcome_json) prima di riprovare. Non è un errore del provider e non richiede tentativi ripetuti.'}, ensure_ascii=False)
     from .state import team
-    profile = team()
+    profile = team('squad')
     request_id = interaction_id(runtime)
     sync_project_context(workspace)
     project = read_project(workspace) or {}
@@ -171,7 +171,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     result = json.loads(execute_step(workspace, agent, task, step_id,
         lambda instructions, started=None: delegate(agent, instructions, workspace,
             tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
-            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role), provider={'engine': profile['engine'], 'model': profile['model']},
+            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role), provider={k: profile[k] for k in ('engine', 'model', 'connection_id') if k in profile},
         purpose=purpose, request_id=request_id, role=role))
     handoff = result.get('handoff') or {}
     from .progress import clean_summary

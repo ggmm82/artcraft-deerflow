@@ -7,10 +7,10 @@ import { setSettingsDialogOpen } from "./settings-dialog-store";
 export function ModelSettingsPage() {
   return (
     <section className="space-y-4 p-4">
-      <h2 className="text-lg font-semibold">Un solo modello per la squadra</h2>
+      <h2 className="text-lg font-semibold">Modelli del coordinatore e della squadra</h2>
       <p>
         Servizio, account e modello si configurano in ArtCraft Studio. Le
-        impostazioni valgono per il coordinatore e tutti gli specialisti.
+        impostazioni si possono applicare al coordinatore, alla squadra oppure a entrambi.
       </p>
       <Link
         onClick={() => setSettingsDialogOpen(false)}

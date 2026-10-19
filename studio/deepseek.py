@@ -82,8 +82,10 @@ def submit_handoff(output_dir, value):
     finally:
         Path(temporary).unlink(missing_ok=True)
 
-def run(model, prompt, output_dir, timeout, progress=None):
+def run(model, prompt, output_dir, timeout, progress=None, transport=None, provider_label='DeepSeek'):
     key = json.loads(Path('/credentials/api.json').read_text())['api_key']
+    if transport is None:
+        transport = lambda path, payload, timeout: request(key, path, payload, timeout)
     messages = [{'role': 'system', 'content': prompt}, {'role': 'user', 'content':
         'Esegui adesso l’incarico del coordinatore con run_command. '
         'Scrivi realmente i file nella cartella assegnata dal sistema. '
@@ -102,7 +104,7 @@ def run(model, prompt, output_dir, timeout, progress=None):
     for turn in range(MAX_TURNS):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise TimeoutError('Timeout dello specialista DeepSeek')
+            raise TimeoutError('Timeout dello specialista ' + provider_label)
         finalizing = turn >= MAX_TURNS - 12 or remaining <= min(90, timeout / 5)
         force_handoff = turn == MAX_TURNS - 1 or remaining <= min(30, timeout / 10)
         if finalizing and not finalization_notice:
@@ -115,18 +117,19 @@ def run(model, prompt, output_dir, timeout, progress=None):
                 'e dichiara nei warnings eventuali requisiti incompleti. '
                 'I cataloghi, i batch e le prove sotto work/ non sostituiscono i prodotti richiesti.'})
         payload = {'model': model, 'messages': messages,
-                   'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL, PROGRESS_TOOL], 'max_tokens': 6000,
-                   'thinking': {'type': 'disabled'}}
+                   'tools': [HANDOFF_TOOL] if force_handoff else [*tools, HANDOFF_TOOL, PROGRESS_TOOL], 'max_tokens': 6000}
+        if provider_label == 'DeepSeek':
+            payload['thinking'] = {'type': 'disabled'}
         if force_handoff:
             payload['tool_choice'] = {'type': 'function', 'function': {'name': 'submit_handoff'}}
         if progress:
             progress.emit('finalizing' if finalizing else 'waiting_model', turn=turn + 1)
-        result = request(key, '/chat/completions', payload, timeout=min(remaining, 180))
+        result = transport('/chat/completions', payload, timeout=min(remaining, 180))
         usage.append(result.get('usage', {}))
-        (output_dir / 'work/deepseek-usage.json').write_text(json.dumps(usage))
+        (output_dir / ('work/deepseek-usage.json' if provider_label == 'DeepSeek' else 'work/openai-usage.json')).write_text(json.dumps(usage))
         choice = result['choices'][0]
         if choice.get('finish_reason') == 'length':
-            raise RuntimeError('Risposta DeepSeek troncata dal limite token')
+            raise RuntimeError('Risposta ' + provider_label + ' troncata dal limite token')
         message = choice['message']
         messages.append(message)
         calls = message.get('tool_calls', [])
@@ -168,7 +171,7 @@ def run(model, prompt, output_dir, timeout, progress=None):
                     raise ValueError('timeout_seconds deve essere un intero fra 1 e 1200')
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise TimeoutError('Timeout dello specialista DeepSeek')
+                    raise TimeoutError('Timeout dello specialista ' + provider_label)
                 if progress:
                     try:
                         from .progress import tool_label
@@ -187,4 +190,4 @@ def run(model, prompt, output_dir, timeout, progress=None):
                 response = {'error': str(error).replace(key, '[REDACTED]')}
             messages.append({'role': 'tool', 'tool_call_id': call['id'],
                              'content': json.dumps(response, ensure_ascii=False)})
-    raise RuntimeError('Limite dei turni DeepSeek raggiunto prima della conclusione')
+    raise RuntimeError('Limite dei turni ' + provider_label + ' raggiunto prima della conclusione')

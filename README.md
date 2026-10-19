@@ -15,7 +15,7 @@ DeerFlow con **ruoli compilati dal progetto e 15 strumenti: 13 ArtCraft, Blender
 - I file della conversazione restano nel volume persistente. Il coordinatore passa al successivo specialista i percorsi dei risultati.
 - Il profilo iniziale esegue **un solo specialista alla volta**, per la VPS da 4 GB. Non sono previsti modelli locali.
 
-La configurazione condivisa supporta **DeepSeek API**, **account Codex** e **account Google tramite Antigravity CLI**. La stessa scelta vale per coordinatore e specialisti. Per il nuovo collegamento Google vedi [Antigravity CLI in abbonamento](docs/ANTIGRAVITY.md). Antigravity usa il binario ufficiale `agy` per login Google e generazione in abbonamento; il coordinatore resta privo di strumenti CLI propri e affida i file agli specialisti.
+La configurazione supporta **DeepSeek API**, **account Codex**, **account Google tramite Antigravity CLI** ed **endpoint OpenAI compatibili con URL/API key**. Puoi applicare provider e modello al coordinatore, alla squadra oppure a entrambi, dallo stesso pannello. Per il collegamento Google vedi [Antigravity CLI in abbonamento](docs/ANTIGRAVITY.md). Antigravity usa il binario ufficiale `agy` per login Google e generazione in abbonamento; il coordinatore affida i file agli specialisti.
 
 Prima della produzione il coordinatore chiarisce le scelte mancanti sul risultato e sulla forma della consegna. La scheda **Progetto** mostra obiettivo, formato e punto attuale; **Squadra** espone competenze e incarichi dei ruoli. [Brief e orientamento del progetto](docs/PROGETTO-E-BRIEF.md).
 
@@ -61,7 +61,7 @@ Hostinger documenta Compose da URL e la gestione delle variabili nella [guida uf
 Non serve collegare account Codex/Antigravity per usare DeepSeek:
 
 1. Apri **La tua squadra**, incolla la chiave DeepSeek e premi **Salva e attiva la squadra**. **Automatico** sceglie tra i modelli effettivamente disponibili nell’account; una chiave o un modello rifiutati non cambiano la configurazione.
-2. Premi **Risolvi un problema**, carica i file e descrivi il risultato. Il coordinatore e tutti gli specialisti usano già il modello condiviso.
+2. Premi **Risolvi un problema**, carica i file e descrivi il risultato. Coordinatore e specialisti usano i profili selezionati nel pannello.
 3. Scarica i prodotti consegnati in chat. Per cambiare modello, torna allo stesso pannello: la chiave già collegata non va reinserita e le skills dei singoli ruoli restano attive.
 
 Il salvataggio della squadra rimuove le vecchie scelte di motore/modello dei singoli specialisti, preservando skills aggiuntive, istruzioni e stato attivo. Le conversazioni esistenti mantengono l’identificatore del profilo; il nome visibile diventa **Squadra ArtCraft**.
