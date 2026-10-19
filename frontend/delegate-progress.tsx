@@ -7,11 +7,13 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
+type RevisionAction = { requirement_id: string; action: string; reason?: string; priority: number; strategy: string };
+type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
 type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
 type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
-type Orientation = { total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
-type Project = { outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
+type Project = { outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -107,8 +109,12 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const current = jobs.find((job) => !terminalJob(job));
   const questions = project?.outcome?.questions ?? [];
   const clarifying = questions.length > 0 || project?.status === "clarifying";
-  const currentActivity = project?.steps.find(step => step.status === "running");
-  const planned = project?.steps.filter(step => step.status !== "skipped") ?? [];
+  const allSteps = project?.steps ?? [];
+  const activeStepIds = new Set(project?.orientation?.active_step_ids ?? allSteps.map(step => step.id));
+  const currentSteps = allSteps.filter(step => activeStepIds.has(step.id));
+  const otherSteps = allSteps.filter(step => !activeStepIds.has(step.id));
+  const currentActivity = currentSteps.find(step => step.status === "running");
+  const planned = currentSteps.filter(step => step.status !== "skipped");
   const completed = planned.filter(step => step.status === "completed").length;
   const working = !!current;
   const results = (project?.results ?? []).filter((r) => artifactURL(threadId, r.path));
@@ -238,7 +244,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         </section>}
         <section className="space-y-2 rounded-xl border border-blue-500/25 bg-blue-500/5 p-4" data-testid="project-position">
           <h4 className="font-semibold">Dove siamo</h4>
-          <p>{planned.length ? `${completed} di ${planned.length} incarichi conclusi` : "La squadra e le attività sono ancora da definire."}</p>
+          <p>{planned.length ? `${completed} di ${planned.length} incarichi conclusi nella squadra attuale` : "La squadra e le attività sono ancora da definire."}</p>
           {currentActivity && <p><strong>Traguardo in corso:</strong> {currentActivity.goal}</p>}
           {summary && <p><strong>Adesso:</strong> {summary}</p>}
           {!working && !clarifying && project.next_action && <p><strong>Prossima azione:</strong> {project.next_action}</p>}
@@ -249,6 +255,19 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <ul className="space-y-2">{planned.filter(step => step.status !== "completed").map(step => <li key={step.id} className="flex items-start gap-3 rounded-lg border p-3">
             <span className="shrink-0"><StatusBadge tone={stepTone(step.status)}>{stepLabels[step.status] ?? step.status}</StatusBadge></span><span>{step.goal}</span>
           </li>)}</ul>
+        </section>}
+        {otherSteps.length > 0 && <details className="space-y-2 rounded-xl border p-3" data-testid="project-history">
+          <summary className="cursor-pointer font-medium">Altre attività del progetto ({otherSteps.length})</summary>
+          <p className="text-muted-foreground">Queste attività appartengono a ruoli fuori dalla squadra attuale. Tentativi e file restano conservati; possono essere ripresi senza ricominciare.</p>
+          <ul className="space-y-2">{otherSteps.map(step => <li key={step.id}><StatusBadge tone={stepTone(step.status)}>{stepLabels[step.status] ?? step.status}</StatusBadge> {step.goal}</li>)}</ul>
+        </details>}
+        {!!project.revision_actions?.length && <section className="space-y-2 rounded-xl border border-amber-500/30 p-3" data-testid="revision-actions">
+          <h4 className="font-semibold">Correzioni dal controllo qualità</h4>
+          <ol className="list-inside list-decimal space-y-2">{project.revision_actions.map((action, i) => <li key={i}>{action.action}{action.strategy === "change_method" && <p className="text-muted-foreground text-xs">Serve provare un metodo diverso.</p>}</li>)}</ol>
+        </section>}
+        {project.comparison && <section className="space-y-2 rounded-xl border p-3" data-testid="quality-comparison">
+          <h4 className="font-semibold">Confronto con la versione precedente</h4>
+          <ul className="space-y-2">{project.comparison.criteria.map((item, i) => <li key={i}><strong>{item.status === "improved" ? "Migliorato" : item.status === "unchanged" ? "Invariato" : item.status === "regressed" ? "Peggiorato" : "Non verificato"}</strong> · {item.evidence}</li>)}</ul>
         </section>}
         {!!project.outcome?.constraints.length && <section><h4 className="font-semibold">Vincoli</h4><ul className="list-inside list-disc">{project.outcome.constraints.map((c, i) => <li key={i}>{c}</li>)}</ul></section>}
         {!!project.outcome?.assumptions.length && <section><h4 className="font-semibold">Ipotesi adottate</h4><ul className="list-inside list-disc">{project.outcome.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul></section>}
@@ -296,7 +315,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {tab === "team" && <div data-testid="team-plan" className="space-y-3">
         <p className="text-sm">La squadra si adatta al risultato: può riprendere, cambiare ordine e integrare i file già disponibili.</p>
         {(project?.roles ?? []).map(role => {
-          const activities = project?.steps.filter(step => step.role_id === role.id) ?? [];
+          const activities = currentSteps.filter(step => step.role_id === role.id);
           const live = jobs.find(job => job.role_id === role.id && !terminalJob(job));
           const usage = project?.orientation?.roles?.[role.id];
           const used = (usage?.attempts ?? jobs.filter(job => job.role_id === role.id).length) > 0;
@@ -317,7 +336,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
             </details>
           </article>;
         })}
-        {(project?.steps ?? []).filter(step => !(project?.roles ?? []).some(role => role.id === step.role_id)).map(step => <article className="rounded border p-3 text-sm" key={step.id}>
+        {currentSteps.filter(step => !(project?.roles ?? []).some(role => role.id === step.role_id)).map(step => <article className="rounded border p-3 text-sm" key={step.id}>
           <strong>{step.role_title || person(step.agent)}</strong> · {stepLabels[step.status] ?? step.status}
           <p>{step.goal}</p>{step.note && <p className="text-muted-foreground">{step.note}</p>}
         </article>)}

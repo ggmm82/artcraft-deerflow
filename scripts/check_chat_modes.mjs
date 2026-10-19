@@ -78,3 +78,9 @@ for (const relative of ['src/components/workspace/chats/chat-page.tsx', 'src/app
 }
 assert.ok(!fs.readFileSync(path.join(root,'src/components/workspace/messages/message-list.tsx'),'utf8').includes('<DelegateProgress'),'no project panel hidden in scrolling history');
 console.log('Project dock: normal and agent chats, fixed composer placement, authenticated continue and no duplicate transcript panel verified');
+
+const memoryPage=fs.readFileSync(path.join(root,'src/components/workspace/settings/memory-settings-page.tsx'),'utf8');
+assert.ok(!memoryPage.includes('description={t.settings.memory.description}'),'no false automatic-learning claim');
+assert.ok(memoryPage.includes('sono disattivati'),'disabled profile memory is explicit');
+assert.ok(memoryPage.includes('separatamente nei dati delle conversazioni'),'project memory is distinct');
+console.log('Memory settings: disabled profile learning and separate project memory explained');

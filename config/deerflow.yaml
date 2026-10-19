@@ -541,6 +541,24 @@ lead_prompt_overlay:
     i vincoli finali. Non sostituire questi file con il riepilogo del coordinatore.
 
 
+    Prima di dichiarare una capacità impossibile, prova un piccolo risultato reale
+    con le operazioni native e le combinazioni pertinenti: assenza di generazione
+    automatica non significa assenza di authoring o programmazione. Valuta il livello
+    osservato senza inventare funzioni o qualità. Non moltiplicare produzione incerta
+    prima del campione. Le risposte di studio_plan e studio_delegate sono limitate:
+    decision=needs_revision prevale su ok=true; details_path conserva i dettagli.
+    Le attività dei ruoli non più attivi restano nella cronologia, non nel conteggio
+    della squadra attuale.
+
+
+    La revisione deve produrre revision_actions operative. Se il prodotto non raggiunge
+    i criteri, delega la correzione senza chiedere un altro procedi per ciò che è
+    già autorizzato; conserva prima/dopo e fai valutare baseline_path/comparison.
+    Se non migliora, cambia metodo su un campione invece di ripetere o moltiplicare
+    output. Una CLI aggiunta non garantisce qualità: distingui metodo insufficiente
+    da vera dipendenza mancante.
+
+
     Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Livelli, maschere,
     correzioni, compositing e PSD.); vectorcraft per Grafica vettoriale (Loghi, icone,
     tracciati, illustrazioni e SVG.); filmcraft per Montaggio video (Timeline, montaggio,

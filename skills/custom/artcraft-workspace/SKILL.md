@@ -8,6 +8,8 @@ description: "Regole comuni per usare le CLI ArtCraft nella sandbox e scambiare 
 Il runtime applica il modello della squadra configurato una sola volta in Studio. Le skills definiscono competenze e verifiche, non credenziali o modelli: non richiedere configurazioni aggiuntive all’utente per eseguire l’incarico.
 
 - Python è disponibile come `/usr/bin/python3`, non come `python`. Le CLI native e `craft` sono in `/usr/local/bin`: verifica con `command -v NOME` e usa questi percorsi assoluti se la shell reimposta PATH. `/opt/artcraft/bin` non esiste; i binari originali sono sotto `/opt/artcraft/apps`.
+- Nelle verifiche di fattibilità distingui operazioni documentate, metodo realmente provato e qualità osservata. L'assenza di un comando automatico non dimostra che authoring, programmazione o composizione fra strumenti siano impossibili. Prova un campione pertinente quando autorizzato dall'incarico; non inventare funzioni AI o equiparare un campione minimo alla qualità richiesta. Per una revisione usa le CLI pertinenti alla riapertura prevista e dichiara cosa hai osservato direttamente.
+
 - Tutti i file di lavoro devono stare sotto `/mnt/user-data`. I file temporanei fuori da questo percorso possono scomparire alla chiusura della sandbox.
 - Il runtime assegna `/mnt/user-data/outputs/<specialista>/<run_id>` e la espone come `ARTCRAFT_OUTPUT_DIR`. Usa le sottocartelle `work/` e `previews/` già create qui; anche file di scoperta e batch devono essere distinti per incarico.
 - I file caricati dall'utente sono input: non sovrascriverli. Produci nuovi sorgenti modificabili ed export.
@@ -160,3 +162,9 @@ Prima di una produzione costosa misura un campione rappresentativo senza alterar
 `oom_kills` positivo conferma memoria esaurita nel worker; codice 137 da solo indica arresto forzato con causa da verificare. Dopo memoria esaurita non ripetere identico il lavoro negli stessi limiti: salva il checkpoint e segnala il budget da correggere. I lavori già attivi non cambiano risorse quando si salva il pannello. Un timeout interrompe la singola operazione, non autorizza a dichiarare il prodotto completato.
 
 Usa `ARTCRAFT_CPU_THREADS` per i parametri di threading delle CLI (per esempio FFmpeg `-threads`), senza assumere il numero di CPU fisiche. Il budget è un limite del worker, non una prenotazione di RAM né una garanzia di prestazioni del VPS.
+
+## Dalla revisione alla correzione
+
+Una revisione non termina con una lista di difetti. In `quality-review.json` aggiungi `revision_actions`: fino a 12 oggetti con `requirement_id` del criterio, `action` concreta, `reason`, `priority` 1–3 e `strategy` tra `revise`, `change_method`, `verify`, `missing_dependency`. Se non sai proporre una correzione affidabile, dichiara il limite; non inventare che un filtro risolva un problema strutturale. Il runtime conserva anche i precedenti `targeted_corrections`.
+
+Per una versione corretta leggi anche il precedente artefatto, includilo in `source_files` e indica `baseline_path`. Aggiungi `comparison`: lista di `requirement_id`, `status` tra `improved`, `unchanged`, `regressed`, `not_verified` ed `evidence` puntuale. Il runtime registra gli hash dei due file, rifiuta miglioramenti su byte identici e mantiene non verificato ciò che il collegamento non permette di osservare. Migliorato non significa necessariamente sufficiente: i criteri ancora falliti rimangono falliti.

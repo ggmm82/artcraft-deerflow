@@ -116,6 +116,22 @@ class ProjectSkillTests(unittest.TestCase):
         self.assertEqual(memory['nested']['token'], '[omesso]')
         self.assertEqual(memory['custom'], {'domain': 'arbitrario'})
 
+    def test_lessons_survive_role_changes_and_keep_prior_evidence(self):
+        lesson = {'problem': 'Dependency omitted', 'result': 'observed_on_one_case',
+                  'check': 'Reopen a copied package', 'evidence': '/mnt/user-data/outputs/review.json'}
+        p = self.compile('Brief', [role()], {'lesson_dependencies': lesson})
+        first_memory, first_role = p['memory'], p['roles'][0]
+        revised = role(); revised['checks'].append(lesson['check'])
+        projects.sync_project_context(self.root, [revised], {'lesson_comparison': {'result': 'not_verified'}})
+        current = projects.read_project(self.root)
+        memory = json.loads(read_document(self.root, current['memory']))
+        self.assertEqual(memory['lesson_dependencies'], lesson)
+        self.assertEqual(memory['lesson_comparison']['result'], 'not_verified')
+        self.assertIn(lesson['check'], load_compiled(self.root, current['roles'][0]))
+        self.assertNotIn(lesson['check'], load_compiled(self.root, first_role))
+        self.assertEqual(json.loads(read_document(self.root, first_memory))['lesson_dependencies'], lesson)
+        verify_project_context({'role': current['roles'][0]}, self.root)
+
     def test_skill_and_memory_integrity_and_scoped_paths(self):
         p = self.compile('Brief', [role()], {'decisione': 'Reale'})
         compiled = p['roles'][0]

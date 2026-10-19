@@ -47,6 +47,10 @@ def main():
             {'id': 'request_fidelity', 'requirement': 'Contenuto conforme alla richiesta originale', 'critical': True}]},
         'review_criteria': [{'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
             'status': 'failed', 'evidence': 'Il contenuto è stato sostituito con una variante non richiesta.'}],
+        'revision_actions': [{'requirement_id': 'request_fidelity', 'action': 'Correggere il contenuto usando il riferimento originale',
+            'strategy': 'change_method', 'priority': 1}],
+        'comparison': {'baseline_path': '/mnt/user-data/outputs/previous.txt', 'criteria': [
+            {'requirement_id': 'request_fidelity', 'status': 'unchanged', 'evidence': 'Il difetto osservato è ancora presente'}]},
         'deliveries': [{'id': 'final', 'title': 'Robot con musica — versione 2', 'agent': 'filmcraft', 'at': iso(now),
                        'current': True, 'technical_status': 'needs_revision', 'issues': ['Texture collegata mancante'], 'purpose': 'delivery'},
                       {'id': 'old', 'title': 'Prima prova muta', 'agent': 'effectcraft', 'at': iso(now-timedelta(hours=1)),
@@ -194,7 +198,23 @@ window.showThread();
                 expect(overview).to_contain_text('MP4 e progetto modificabile')
                 expect(overview).to_contain_text('1 di 4 incarichi conclusi')
                 expect(overview).to_contain_text('Traguardo in corso:')
+                expect(page.get_by_test_id('revision-actions')).to_contain_text('Correggere il contenuto usando il riferimento originale')
+                expect(page.get_by_test_id('revision-actions')).to_contain_text('Serve provare un metodo diverso')
+                expect(page.get_by_test_id('quality-comparison')).to_contain_text('Invariato')
+                expect(page.get_by_test_id('quality-comparison')).to_contain_text('Il difetto osservato è ancora presente')
                 expect(page.get_by_test_id('project-identity')).to_contain_text('Progetto dimostrativo')
+                # A change of live roles must not mix old context into today's remaining work.
+                state['project'] = {**state['project'], 'orientation': {'active_step_ids': ['motion', 'final'],
+                    'history_step_ids': ['visual', 'audio'], 'history_count': 2},
+                    'steps': [{**step, 'role_id': 'retired' if step['id'] in ('visual', 'audio') else step.get('role_id', '')} for step in state['project']['steps']]}
+                page.reload()
+                page.get_by_role('button', name='Progetto', exact=True).click()
+                expect(page.get_by_test_id('project-position')).to_contain_text('0 di 2 incarichi conclusi')
+                expect(page.get_by_test_id('project-history')).to_contain_text('Altre attività del progetto (2)')
+                page.get_by_test_id('project-history').locator('summary').click()
+                expect(page.get_by_test_id('project-history')).to_contain_text('Verifico il mix recuperato')
+                page.get_by_role('button', name='Squadra', exact=True).click()
+                expect(page.get_by_test_id('team-plan')).not_to_contain_text('Verifico il mix recuperato')
                 state['project'] = {**project, 'status': 'clarifying', 'outcome': {**project['outcome'], 'format': '', 'questions': ['Una proposta di lavoro o un prodotto pronto da distribuire?']}}
                 state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now)}
                 page.reload()

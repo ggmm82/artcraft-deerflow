@@ -114,6 +114,29 @@ class AdaptiveToolTests(unittest.TestCase):
                     studio_plan.func(runtime=runtime, status='ready',
                         product_path='/mnt/user-data/outputs/filmcraft/fixture/final.mp4', summary='Video pronto')
 
+    def test_large_handoff_keeps_early_failure_visible_in_actual_tool_wrapper(self):
+        from studio.project_skills import read_document
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request', content='Specific requested product')]})
+            checks = [{'name': 'Critical mismatch', 'status': 'failed', 'evidence': 'Actual constraint not met'}] + [
+                {'name': 'Passing check ' + str(i), 'status': 'passed', 'evidence': 'Fixture evidence'} for i in range(20)]
+            result = {'ok': True, 'handoff': {'checks': checks, 'delivery': {'source_status': 'included', 'files': [
+                {'path': '/mnt/user-data/outputs/wordcraft/item-' + str(i) + '.txt', 'role': 'editable_source',
+                 'open_with': 'Long native opening instructions ' * 100, 'reopen': {'status': 'passed', 'evidence': 'Evidence ' * 100}}
+                for i in range(20)]}}}
+            with patch('studio.tools.workspace_for', return_value=root), patch('studio.state.team', return_value={'engine': 'codex', 'model': 'shared'}), patch('studio.tools.delegate', return_value=json.dumps(result)):
+                studio_plan.func(runtime=runtime, brief='Requested result', outcome_json=json.dumps({'result': 'Actual product', 'format': 'Editable document'}))
+                text = studio_delegate.func(agent='wordcraft', task='Produce', runtime=runtime)
+            compact = json.loads(text)
+            self.assertLessEqual(len(text), 8000)
+            self.assertEqual(compact['decision'], 'needs_revision')
+            self.assertEqual(compact['check_counts']['failed'], 1)
+            self.assertEqual(compact['check_counts']['passed'], 20)
+            self.assertIn('Critical mismatch', text)
+            full = json.loads(read_document(root, {'path': compact['details_path'], 'sha256': compact['details_sha256']}))
+            self.assertEqual(full['outputs'][0]['reopen']['status'], 'passed')
+
     def test_one_user_turn_cannot_loop_on_quota_but_an_explicit_continue_can_retry(self):
         with tempfile.TemporaryDirectory() as directory:
             runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request-one')]})
