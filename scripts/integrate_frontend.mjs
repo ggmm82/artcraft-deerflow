@@ -31,6 +31,15 @@ function replaceRequired(text, before, after, label) {
   if(text.split(before).length !== 2)throw Error('DeerFlow '+label+' changed; review timer integration before building');
   return text.replace(before, after);
 }
+// The shipped configuration disables upstream profile-memory learning and
+// injection. Do not advertise automatic learning on an empty profile screen.
+const memoryFile=root+'/src/components/workspace/settings/memory-settings-page.tsx';
+let memoryPage=fs.readFileSync(memoryFile,'utf8');
+memoryPage=replaceRequired(memoryPage, 'title={t.settings.memory.title}',
+  'title="Memoria personale"', 'profile memory title');
+memoryPage=replaceRequired(memoryPage, 'description={t.settings.memory.description}',
+  'description="In questa versione l’apprendimento automatico e l’uso di questa memoria nelle risposte sono disattivati. Puoi conservare ed esportare annotazioni personali. La memoria dei progetti, le revisioni e le skills compilate sono conservate separatamente nei dati delle conversazioni: questa schermata vuota non indica che siano state perse."', 'profile memory explanation');
+fs.writeFileSync(memoryFile,memoryPage);
 hooks=replaceRequired(hooks, 'import { getMessageRunId } from "../messages/run-duration";',
   'import { getMessageRunId } from "../messages/run-duration";\nimport { getRunStartTime } from "../messages/run-start-time";', 'timer import');
 hooks=replaceRequired(hooks, '      submittedRunIdRef.current = meta.run_id;',

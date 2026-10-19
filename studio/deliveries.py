@@ -6,9 +6,11 @@ import subprocess
 try:
     from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
     from .acceptance import METHODS, evaluate
+    from .revision import actions, comparison
 except ImportError:
     from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
     from acceptance import METHODS, evaluate
+    from revision import actions, comparison
 
 
 def read_review(handoff, output_dir, workspace, engine, acceptance=None):
@@ -49,8 +51,12 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
             criteria.append({'criterion': 'Qualità del contenuto ' + method, 'method': method,
                              'status': 'not_run', 'evidence': 'Il rapporto contiene soltanto controlli di altre modalità.'})
     criteria, status = evaluate(criteria, acceptance, engine)
+    corrections = actions(value, criteria)
+    compared = comparison(value, criteria, handoff, workspace, target, digest, engine)
+    if compared:
+        reference_hashes[compared['baseline_path']] = compared['baseline_sha256']
     return {'product_path': str(target), 'sha256': digest(target), 'criteria': criteria,
-            'status': status, 'contract_hash': (acceptance or {}).get('hash'),
+            'status': status, 'revision_actions': corrections, 'comparison': compared, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
             'report_path': str(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
 

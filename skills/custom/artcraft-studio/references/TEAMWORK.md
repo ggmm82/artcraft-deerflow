@@ -2,13 +2,15 @@
 
 Compila i ruoli professionali dal brief con `studio_plan(roles_json=...)`, senza un elenco di professioni. Il catalogo contiene gli strumenti installati, non tutti i mestieri possibili: seleziona le CLI pertinenti oppure usa il workspace senza CLI. Esegui i ruoli compilati con `studio_delegate(agent="workspace", role_id=...)` e torna ai ruoli quando il prodotto lo richiede. La memoria delle attività non è una pipeline rigida: si può cambiare ordine, aggiungere un’integrazione di prova prima della produzione completa e far controllare a un collega i risultati incompleti.
 
-## Esempio: robot che balla
+## Capacità, prove e collaborazione
 
-Concorda stile, durata e ritmo; poi crea una breve prova coerente del soggetto, del movimento e della base musicale. PhotoCraft può preparare asset e texture, EffectCraft il movimento, SoundCraft un breve loop e FilmCraft una prima versione audiovisiva. Non attendere che ogni componente sia perfetto per controllare il risultato completo. Verifica inquadratura, proporzioni, pose riconoscibili, luce, ritmo e presenza di audio prima di estendere il render.
+La squadra nasce dai requisiti, non da una sequenza di app per settore. Individua la decisione o la capacità più incerta e fai produrre un campione rappresentativo prima di moltiplicare la lavorazione. Può essere un modello, una pagina, una funzione eseguibile, un calcolo o qualunque altro output pertinente: non sono tipi di progetto predefiniti.
 
-Un ordine utile può essere concept → breve prova di movimento → ritmo di prova → primo montaggio → revisione di camera/materiali → musica definitiva → montaggio finale. Se gli asset esistono già, parti dall’integrazione. Se il mix richiede una piccola attenuazione, falla correggere senza bloccare il video per una sessione non chiusa o uno ZIP mancante. Non promettere che una mesh procedurale sia fotorealistica soltanto perché è tecnicamente 3D.
+Verifica prima le operazioni native; considera composizione fra strumenti, authoring e programmazione quando adatti. L’assenza di un comando automatico non esclude tutte le alternative; una prova tecnicamente valida non dimostra da sola il livello qualitativo richiesto. Registra metodo provato, file, controlli falliti e limiti osservati nella memoria del progetto.
 
-Mantieni `summary` e `next_action` brevi e aggiornati tramite `studio_plan`. L’utente deve riconoscere dove guardare: il pannello è sopra la casella di scrittura. «Vedi risultato» apre una bozza o il prodotto finale, «Squadra» descrive le attività, «File e sorgenti» mantiene i download e «Attività» raccoglie dettagli e cronologia. Evita resoconti di cartelle e letture CLI nella conversazione.
+Assegna competenze concrete, input e verifiche ai ruoli dinamici. Ogni collaboratore deve ricevere le CLI necessarie alla propria verifica, anche se non produce il file originale. Il revisore osserva il risultato esatto, identifica difetti e confronta la correzione con la versione precedente. Un programma in più non equivale automaticamente a un risultato migliore.
+
+Mantieni `summary` e `next_action` brevi. Il pannello Progetto mostra risultato e lavoro della squadra attuale; le attività degli altri contesti restano espandibili. I file e le versioni rimangono disponibili senza imporre una sequenza rigida.
 
 ## Recupero
 
@@ -17,22 +19,6 @@ Mantieni `summary` e `next_action` brevi e aggiornati tramite `studio_plan`. L�
 - Una quota esaurita richiede pausa e azione sul servizio condiviso. Conserva i file e mostra il problema in chiaro; non continuare a chiamare lo stesso provider.
 - Un controllo GUI non disponibile va dichiarato, non aggirato inventando un passed e non usato come motivo per ricominciare tutto.
 - Un risultato utile ma provvisorio può diventare input di una verifica. Per la consegna finale restano necessari sorgenti, risorse, riapertura e requisiti reali del prodotto.
-
-## Comporre altre squadre
-
-| Bisogno | Collaborazione tipica |
-| --- | --- |
-| Report con dati | GridCraft → WordCraft → PdfCraft per il controllo PDF richiesto |
-| Brochure | WordCraft + PhotoCraft/VectorCraft → DesignCraft → PdfCraft |
-| Presentazione | GridCraft + WordCraft + PhotoCraft/VectorCraft → DeckCraft |
-| Foto RAW per catalogo | LightCraft → PhotoCraft → DesignCraft |
-| Logo o identità | VectorCraft → PhotoCraft per mockup e varianti raster se utili |
-| Interfaccia/prototipo | WordCraft/contenuti + VectorCraft/PhotoCraft → FigCraft |
-| Tavola tecnica | CadCraft → DesignCraft/WordCraft per manuale, PdfCraft per PDF se richiesto |
-| Video con effetti e musica | PhotoCraft/VectorCraft → EffectCraft + SoundCraft → FilmCraft |
-| Semplice ritocco o taglio audio | Un solo specialista pertinente, senza piano complesso |
-
-Adatta ruoli e controlli al brief; gli esempi non autorizzano sostituzioni silenziose, conteggi di tool decorativi o capacità inesistenti.
 
 ## Accettazione della consegna
 

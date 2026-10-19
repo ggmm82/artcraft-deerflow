@@ -116,7 +116,8 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         # used to overflow tool context and hide the actual product/brief.
         value = {**value, 'results': value.get('results', [])[:8],
                  'deliveries': value.get('deliveries', [])[:5]}
-    return json.dumps({'project': value}, ensure_ascii=False)
+    from .control_memory import reply
+    return reply(workspace, {'project': value}, 'plan')
 
 
 @tool('studio_delegate', parse_docstring=True)
@@ -182,7 +183,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
                   'limitations': [clean_summary(s) for s in f.get('limitations', [])[:3]]}
                  for f in handoff.get('delivery', {}).get('files', [])[:20]],
         checks=[{'name': clean_summary(c.get('name')), 'status': c.get('status'),
-                 'evidence': clean_summary(c.get('evidence'))} for c in handoff.get('checks', [])[-10:]],
+                 'evidence': clean_summary(c.get('evidence'))} for c in sorted(handoff.get('checks', []), key=lambda c: c.get('status') == 'passed')[:10]],
         warnings=[clean_summary(w) for w in handoff.get('warnings', [])[:5]],
         review_notes=result.get('review_notes', [])[:8])
     if result.get('output_dir') and handoff:
@@ -192,4 +193,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     compact['quality_review'] = result.get('quality_review')
     from .acceptance import capabilities
     compact['verification_capabilities'] = capabilities(profile['engine'])
-    return json.dumps(compact, ensure_ascii=False)
+    from .control_memory import reply, counts
+    compact['check_counts'] = counts(handoff.get('checks', []))
+    compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))
+    return reply(workspace, compact, 'delegate')

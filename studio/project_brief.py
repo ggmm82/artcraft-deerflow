@@ -39,12 +39,18 @@ def briefing_issue(outcome):
 
 def orientation(value):
     """Actual activity counts, not an invented percentage or fixed production pipeline."""
-    steps = value.get('steps', [])
+    all_steps = value.get('steps', [])
+    active_roles = {r['id'] for r in value.get('roles', [])}
+    # Retired roles stay in history; a live worker stays visible even if the
+    # coordinator changes the role set while it is running. No activity is deleted.
+    steps = [s for s in all_steps if not active_roles or not s.get('role_id')
+             or s['role_id'] in active_roles or s['status'] == 'running']
+    history = [s for s in all_steps if s not in steps]
     counts = {state: sum(s['status'] == state for s in steps)
-              for state in ('pending', 'running', 'completed', 'paused', 'review', 'skipped')}
+              for state in ('pending', 'running', 'completed', 'paused', 'review', 'needs_revision', 'skipped')}
     current = []
     roles = {}
-    for step in steps:
+    for step in all_steps:
         for index, attempt in enumerate(step.get('attempts', [])):
             rid = attempt.get('role_id')
             if not rid:
@@ -58,7 +64,8 @@ def orientation(value):
         attempt = (step.get('attempts') or [{}])[-1]
         current.append({'id': step['id'], 'goal': clean_summary(step['goal']), 'role_id': attempt.get('role_id') or step.get('role_id', ''),
                         'task': clean_summary(attempt.get('task', step['goal']), 1500)})
-    return {'counts': counts, 'total': len(steps) - counts['skipped'], 'current': current, 'roles': roles,
+    return {'active_step_ids': [s['id'] for s in steps], 'history_step_ids': [s['id'] for s in history],
+            'history_count': len(history), 'counts': counts, 'total': len(steps) - counts['skipped'], 'current': current, 'roles': roles,
             'remaining': [{'id': s['id'], 'goal': clean_summary(s['goal']), 'status': s['status']} for s in steps
-                          if s['status'] in ('pending', 'paused', 'review')],
+                          if s['status'] in ('pending', 'paused', 'review', 'needs_revision')],
             'needs_briefing': bool(briefing_issue(value.get('outcome')))}

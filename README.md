@@ -180,3 +180,5 @@ Il [budget comune per i lavori pesanti](docs/LAVORI-PESANTI.md) si imposta in La
 ### Calibre e capacità dinamiche
 
 **Calibre 9.16.0** è una capacità selezionabile da qualunque ruolo di progetto, con il modello condiviso. Non introduce una squadra o un processo specifico per gli ebook. [Comandi, sorgenti, verifiche e limiti](docs/CALIBRE.md). Progetto, ruoli, attività e consegne usano la stessa interfaccia per tutti gli ambiti.
+
+Il [controllo del progetto e delle decisioni](docs/CONTROLLO-PROGETTO.md) distingue esecuzione riuscita, qualità da correggere e attività della squadra attuale, mantenendo accessibili dettagli e cronologia.

@@ -285,6 +285,8 @@ def read_project(workspace):
             matches = not value.get('acceptance') or review.get('contract_hash') == value['acceptance']['hash']
             result['quality_status'] = review['status'] if matches else 'needs_review'
             result['review_criteria'] = review.get('criteria', []) if matches else []
+            result['revision_actions'] = review.get('revision_actions', []) if matches else []
+            result['comparison'] = review.get('comparison') if matches else None
             break
     accepted = value.get('user_acceptance') or {}
     if accepted.get('product_path') == value.get('product_path') and accepted.get('status') == 'passed':
@@ -591,6 +593,9 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             value.update(summary='Revisione del risultato completata.' if review['status'] == 'passed' else 'Versione disponibile; qualità ancora da valutare o correggere.',
                 next_action='Confermare la consegna della versione revisionata.' if review['status'] == 'passed'
                 else 'Consulta il rapporto: correggi solo i difetti osservati. Se manca visione/ascolto, valuta la versione disponibile senza rigenerarla.')
+            corrections = review.get('revision_actions', [])
+            if review['status'] != 'passed' and corrections:
+                value['next_action'] = clean_summary(corrections[0]['action'])
         atomic_json(folder / 'project.json', value)
     result.update(activity={'id': sid, 'status': step['status']}, review_notes=notes)
     if attention:
