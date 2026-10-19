@@ -20,6 +20,8 @@ Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal r
 
 Per illustrazioni nuove composte da forme, tracciati, gruppi e gradienti puoi scrivere un SVG XML originale con Python o heredoc come input. Non è un export binario fittizio: importalo subito con `vectorcraft-cli convert` nel sorgente `.vectorcraft`, poi usa la CLI per SVG finale e PNG. Evita di tradurre ogni singola forma in decine di chiamate MCP quando non devi modificare un documento preesistente. La ricetta contiene il flusso verificato. Realizza prima il soggetto completo, poi le verifiche; non fermarti a un rettangolo di prova.
 
+Questa tecnica di authoring non è una garanzia di qualità figurativa. Per soggetti complessi verifica composizione, pose, proporzioni e riferimenti prima di moltiplicare tracciati e dettagli. Se il campione resta insufficiente, comunica il limite del metodo concreto e una diversa costruzione praticabile; non dedurre l'impossibilità dell'illustrazione o la necessità di asset esterni dal solo insuccesso di coordinate SVG generate. Uno stile scelto dalla squadra può essere rivalutato mantenendo qualità e contenuto richiesti; uno stile imposto dall'utente richiede il suo accordo per essere cambiato.
+
 ## Avvio e scoperta
 
 1. Leggi la skill comune `artcraft-workspace`.

@@ -61,7 +61,7 @@ def user_requests(runtime):
 def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
                 project_type: str = '', omissions_json: str = '{}', revise_step_id: str = '',
                 archive: bool = False, summary: str = '', next_action: str = '', status: str = '',
-                product_path: str = '', requirements_json: str = '', criteria_json: str = '', roles_json: str = '', memory_json: str = '', outcome_json: str = '') -> str:
+                product_path: str = '', requirements_json: str = '', criteria_json: str = '', roles_json: str = '', memory_json: str = '', outcome_json: str = '', strategy_json: str = '') -> str:
     """Maintain a concise, adaptive production workspace and visible user status.
 
     Read without arguments. Update the brief, activity board or current status as
@@ -88,7 +88,8 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         roles_json: JSON roles compiled for this project: id, title, mission, expertise, procedure, checks, deliverables, tools (installed IDs, optional), inputs and risks. No fixed profession list.
         memory_json: JSON object with project-specific decisions, facts, questions and asset references; merge top-level keys, keep evidence and uncertainty explicit.
         outcome_json: JSON intended result with title, result, format (delivery form, not necessarily a file extension), use, quality, constraints, assumptions, questions. Questions are at most three decisive missing user choices; ask them with ask_clarification, then replace the object with the real answers and questions empty before delegating. Do not ask again for choices already explicit in the brief.
-        criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Preserve requested references; no invented substitutions.
+        strategy_json: Optional method selection, especially after a failed sample: method, reason, state (exploring/selected/needs_user), up to three alternatives with method, reason, tools, status (candidate/tested/unavailable) and evidence_paths (existing workspace files required for tested). To pause for user help include stop_reason (missing_input/capability_limit/user_choice/budget) and concrete user_action. A quality failure alone cannot establish an external blocker. Revisit team assumptions before requesting assets; changing method does not authorize lowering user requirements.
+        criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Optional origin=user requires source_quote copied from actual user messages; origin=proposal identifies team choices. Proposals remain checked until explicitly revised; never weaken user requirements to pass. Preserve requested references; no invented substitutions.
     """
     workspace = workspace_for(runtime)
     requests = user_requests(runtime)
@@ -100,7 +101,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = archive_plan(workspace, brief)
     elif revise_step_id:
         value = revise_step(workspace, revise_step_id, brief or summary or next_action)
-    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json, roles_json, memory_json, outcome_json)):
+    elif any((brief, steps_json, summary, next_action, status, product_path, requirements_json, project_type, criteria_json, roles_json, memory_json, outcome_json, strategy_json)):
         value = create_plan(workspace, brief, json.loads(steps_json or '[]'), project_type,
             json.loads(omissions_json), summary=summary, next_action=next_action, status=status,
             product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None,
@@ -109,6 +110,8 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = read_project(workspace)
     if value and not value.get('archived'):
         sync_acceptance(workspace, requests, json.loads(criteria_json) if criteria_json else None)
+        if strategy_json:
+            create_plan(workspace, '', [], strategy=json.loads(strategy_json), status='blocked' if status == 'blocked' else '')
         sync_project_context(workspace, json.loads(roles_json) if roles_json else None, json.loads(memory_json) if memory_json else None)
         value = read_project(workspace)
     if value and not value.get('archived'):

@@ -7,13 +7,14 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
+type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
 type RevisionAction = { requirement_id: string; action: string; reason?: string; priority: number; strategy: string };
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
 type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
 type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
-type Project = { outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Project = { strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -261,6 +262,22 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <p className="text-muted-foreground">Queste attività appartengono a ruoli fuori dalla squadra attuale. Tentativi e file restano conservati; possono essere ripresi senza ricominciare.</p>
           <ul className="space-y-2">{otherSteps.map(step => <li key={step.id}><StatusBadge tone={stepTone(step.status)}>{stepLabels[step.status] ?? step.status}</StatusBadge> {step.goal}</li>)}</ul>
         </details>}
+        {(project.strategy || project.method_recovery) && <section className="space-y-2 rounded-xl border p-3" data-testid="project-method">
+          <h4 className="font-semibold">Metodo e alternative</h4>
+          {project.method_recovery && <p className="text-amber-700 dark:text-amber-300">{project.method_recovery.message}</p>}
+          {project.strategy && <>
+            <p><strong>{project.strategy.state === "selected" ? "Metodo scelto" : project.strategy.state === "needs_user" ? "Decisione necessaria" : "Metodo in valutazione"}:</strong> {project.strategy.method}</p>
+            <p>{project.strategy.reason}</p>
+            <ul className="space-y-2">{project.strategy.alternatives.map((item, index) => <li key={index} className="rounded-lg border p-2">
+              <p><strong>{item.method}</strong> · {item.status === "candidate" ? "Da provare" : item.status === "tested" ? "Prova disponibile" : "Valutato non disponibile"}</p>
+              <p>{item.reason}</p>
+              {!!item.tools.length && <p className="text-muted-foreground text-xs">Strumenti: {item.tools.join(", ")}</p>}
+              {item.evidence.map((proof, i) => { const href = artifactURL(threadId, proof.path); return href ? <a key={i} href={href} target="_blank" rel="noreferrer" className="mr-3 underline">Prova {i + 1}</a> : null; })}
+            </li>)}</ul>
+            {project.strategy.state === "needs_user" && <p><strong>Per proseguire:</strong> {project.strategy.user_action}</p>}
+          </>}
+          {!!project.outcome?.assumptions.length && <div><h5 className="font-medium">Scelte provvisorie della squadra</h5><ul className="list-inside list-disc">{project.outcome.assumptions.map((item, i) => <li key={i}>{item}</li>)}</ul><p className="text-muted-foreground text-xs">Si possono rivedere mantenendo il risultato e i vincoli richiesti.</p></div>}
+        </section>}
         {!!project.revision_actions?.length && <section className="space-y-2 rounded-xl border border-amber-500/30 p-3" data-testid="revision-actions">
           <h4 className="font-semibold">Correzioni dal controllo qualità</h4>
           <ol className="list-inside list-decimal space-y-2">{project.revision_actions.map((action, i) => <li key={i}>{action.action}{action.strategy === "change_method" && <p className="text-muted-foreground text-xs">Serve provare un metodo diverso.</p>}</li>)}</ol>
@@ -301,6 +318,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <ul className="space-y-2">{project.acceptance.criteria.map((rule) => {
             const observed = project.review_criteria?.find((c) => c.requirement_id === rule.id);
             return <li key={rule.id}><strong>{observed?.status === "passed" ? "Verificato" : observed?.status === "failed" ? "Da correggere" : "Da verificare"}</strong> · {rule.requirement}
+              {rule.origin === "proposal" && <p className="text-muted-foreground text-xs">Criterio proposto dalla squadra, rivedibile nel rispetto della richiesta.</p>}
+              {rule.origin === "user" && rule.source_quote && <p className="text-muted-foreground text-xs">Dalla tua richiesta: «{rule.source_quote}»</p>}
               {observed && <p className="text-muted-foreground">{observed.evidence}</p>}</li>;
           })}</ul>
           {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}

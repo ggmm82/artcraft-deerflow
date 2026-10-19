@@ -165,6 +165,8 @@ Usa `ARTCRAFT_CPU_THREADS` per i parametri di threading delle CLI (per esempio F
 
 ## Dalla revisione alla correzione
 
+Le assunzioni del coordinatore non diventano automaticamente vincoli dell'utente. Prima di dichiarare un metodo incapace, confronta le richieste originali e le scelte delegate alla squadra. Descrivi cosa hai realmente provato, quale capacità manca e un'alternativa operativa pertinente. Un ritocco degli stessi elementi non dimostra che sia stato tentato un metodo differente; un titolo professionale non è una prova di competenza. Nella revisione giudica le evidenze indipendentemente dal giudizio suggerito nell'incarico. Non abbassare i criteri per autorizzare la produzione.
+
 Una revisione non termina con una lista di difetti. In `quality-review.json` aggiungi `revision_actions`: fino a 12 oggetti con `requirement_id` del criterio, `action` concreta, `reason`, `priority` 1–3 e `strategy` tra `revise`, `change_method`, `verify`, `missing_dependency`. Se non sai proporre una correzione affidabile, dichiara il limite; non inventare che un filtro risolva un problema strutturale. Il runtime conserva anche i precedenti `targeted_corrections`.
 
 Per una versione corretta leggi anche il precedente artefatto, includilo in `source_files` e indica `baseline_path`. Aggiungi `comparison`: lista di `requirement_id`, `status` tra `improved`, `unchanged`, `regressed`, `not_verified` ed `evidence` puntuale. Il runtime registra gli hash dei due file, rifiuta miglioramenti su byte identici e mantiene non verificato ciò che il collegamento non permette di osservare. Migliorato non significa necessariamente sufficiente: i criteri ancora falliti rimangono falliti.

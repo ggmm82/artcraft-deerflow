@@ -31,8 +31,16 @@ def contract(requests, criteria=None):
                 or any(not isinstance(p, str) for p in item.get('reference_paths', []))):
             raise ValueError('Ogni requisito richiede id unico, requirement, method e reference_paths opzionali')
         seen.add(item['id'])
+        origin = item.get('origin', 'unspecified')
+        quote = item.get('source_quote', '')
+        if origin not in ('user', 'proposal', 'unspecified') or not isinstance(quote, str) or len(quote) > 600:
+            raise ValueError('Origine del criterio: user, proposal o unspecified; source_quote entro 600 caratteri')
+        if origin == 'user' and (not quote.strip() or not any(quote in text for text in requests)):
+            raise ValueError('Un vincolo attribuito all’utente richiede source_quote presente nei suoi messaggi reali')
         rules.append({'id': item['id'], 'requirement': item['requirement'][:1000], 'method': item['method'],
                       'critical': item.get('critical', True) is not False, 'reference_paths': item.get('reference_paths', [])[:10]})
+        if 'origin' in item or 'source_quote' in item:
+            rules[-1].update(origin=origin, source_quote=quote)
     value = {'user_requests': requests[:1] + requests[-8:] if len(requests) > 9 else requests,
              'criteria': rules}
     return {**value, 'hash': fingerprint(value)}

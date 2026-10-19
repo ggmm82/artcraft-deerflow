@@ -17,6 +17,46 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def test_failed_sample_replans_and_new_method_reaches_worker(self):
+        from studio.projects import read_project
+        from studio.project_skills import read_document
+        from studio.run_agent import verify_project_context
+        from test_project_skills import role
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof = root / 'sample-review.json'; proof.write_text('{"defect":"observed"}')
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request',
+                content='Create the complete result; choose the method yourself')]})
+            failed = {'ok': True, 'quality_review': {'status': 'needs_revision', 'product_path': str(proof)},
+                      'handoff': {'output_files': [str(proof)], 'checks': []}}
+            with patch('studio.tools.workspace_for', return_value=root), \
+                 patch('studio.state.team', return_value={'engine': 'codex', 'model': 'shared-fixture'}), \
+                 patch('studio.tools.delegate', return_value=json.dumps(failed)) as worker:
+                studio_plan.func(runtime=runtime, brief='Complete product', roles_json=json.dumps([role()]),
+                    outcome_json=json.dumps({'result': 'Complete product', 'format': 'Editable document',
+                        'assumptions': ['Method chosen by the team']}))
+                studio_delegate.func(agent='workspace', role_id='design', task='Review sample', purpose='review', runtime=runtime)
+                response = json.loads(studio_plan.func(runtime=runtime, status='blocked'))['project']
+                self.assertEqual(response['status'], 'review')
+                self.assertEqual(response['method_recovery']['code'], 'method_selection_required')
+                strategy = {'method': 'Different construction', 'reason': 'Addresses the observed limitation', 'state': 'selected',
+                    'alternatives': [{'method': 'Prior construction', 'reason': 'Sample insufficient', 'tools': [],
+                                      'status': 'tested', 'evidence_paths': ['/mnt/user-data/sample-review.json']}]}
+                studio_plan.func(runtime=runtime, status='working', strategy_json=json.dumps(strategy))
+                current = read_project(root)
+                self.assertEqual(current['strategy']['request_hash'], current['acceptance']['hash'])
+                worker.return_value = json.dumps({'ok': True})
+                studio_delegate.func(agent='workspace', role_id='design', task='Try the new method', runtime=runtime)
+                self.assertIn('Scelte provvisorie', worker.call_args.args[1])
+                compiled = worker.call_args.kwargs['role']
+                memory = json.loads(read_document(root, compiled['memory']))
+                self.assertEqual(memory['method_selection'], current['strategy']['record'])
+                verify_project_context({'role': compiled}, root)
+                saved = root / Path(memory['method_selection']['path']).relative_to('/mnt/user-data')
+                saved.write_text('Changed method after compilation')
+                with self.assertRaisesRegex(ValueError, 'modificato'):
+                    verify_project_context({'role': compiled}, root)
+
     def test_contract_uses_gateway_user_input_instead_of_synthetic_agent_message(self):
         from studio.projects import read_project
         with tempfile.TemporaryDirectory() as directory:
