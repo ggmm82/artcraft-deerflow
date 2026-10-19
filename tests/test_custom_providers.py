@@ -24,7 +24,9 @@ class CustomProviderTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        self.env = patch.dict(os.environ, {'STUDIO_STATE': self.temp.name, 'STUDIO_PASSWORD': 'fixture-private-password-123456'})
+        self.env = patch.dict(os.environ, {'STUDIO_STATE': self.temp.name, 'STUDIO_PASSWORD': 'fixture-private-password-123456',
+            'DEER_FLOW_CONFIG_PATH': str(self.root/'config.yaml'),
+            'DEER_FLOW_EXTENSIONS_CONFIG_PATH': str(self.root/'extensions_config.json')})
         self.env.start(); self.addCleanup(self.env.stop)
         from studio import state, bootstrap, router, docker_runtime
         self.state = importlib.reload(state); self.bootstrap = importlib.reload(bootstrap)
