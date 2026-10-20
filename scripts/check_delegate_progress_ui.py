@@ -439,6 +439,14 @@ window.showThread();
                 expect(page.get_by_text('Aggiornamenti non disponibili:', exact=False)).to_be_visible(timeout=7000)
                 expect(page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$'))).to_be_enabled()
                 state['unavailable'] = False
+                state['project'] = {**project, 'user_control':{'paused':True}}
+                state['job'] = {**job,'phase':'failed','resources_reclaimed':True,'finished_at':iso(now)}
+                page.reload(); page.evaluate("window.showThread('fixture',false,false,false)")
+                expect(page.get_by_test_id('studio-status')).to_have_text('Progetto in pausa')
+                page.get_by_role('button',name='Riprendi lavoro',exact=True).click()
+                page.wait_for_function('window.continued === 1')
+                expect(page.get_by_text('In pausa. I file salvati sono conservati.',exact=True)).to_have_count(0)
+                assert state['project']['user_control']['paused'] is False
                 state['project'] = {**project, 'status': 'ready', 'product_path': video_path, 'quality_status': 'passed',
                     'deliveries': [{**d, 'technical_status': 'passed', 'issues': []} for d in project['deliveries']]}
                 page.evaluate("window.showThread('fixture',false,false,false)")

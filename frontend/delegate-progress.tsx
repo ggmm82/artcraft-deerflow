@@ -270,6 +270,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     try {
       if (paused) { await pause(); await control(false); }
       await onContinue?.();
+      if (resumeOwner.current === owner && resumeSequence.current === sequence) setControlNotice("");
     }
     catch {
       if (paused && resumeOwner.current === owner) { try { await control(true); } catch { /* Report submission failure below. */ } }
