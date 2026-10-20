@@ -99,7 +99,15 @@ def update(path, phase=None, summary=None, **fields):
             if summary and phase in {'planning', 'creating', 'exporting', 'checking', 'finalizing'}:
                 value['work_summary'] = clean_summary(summary)
             summary = clean_summary(summary or LABELS[phase])
+            if value.get('phase') != phase:
+                value['phase_started_at'] = now
             value.update(phase=phase, summary=summary, last_activity_at=now)
+            if phase == 'running_tool':
+                value.update(execution_state='tool', execution_started_at=now)
+            elif phase == 'waiting_model':
+                value.update(execution_state='model', execution_started_at=now)
+            elif phase in TERMINAL:
+                value['execution_state'] = 'finished'
             if phase in TERMINAL:
                 value['finished_at'] = now
             history = value.setdefault('events', [])
@@ -182,8 +190,11 @@ class Reporter:
         self.thread = None
         self.last_cli_event = None
         self.last_signal = 0
+        self.execution_state = 'model'
 
     def emit(self, phase, summary=None, **fields):
+        if phase in ('running_tool', 'waiting_model'):
+            self.execution_state = 'tool' if phase == 'running_tool' else 'model'
         try:
             update(self.path, phase, summary, **fields)
         except (OSError, ValueError):
@@ -205,6 +216,7 @@ class Reporter:
                 now = utcnow()
                 if value.get('files') != files:
                     value['last_activity_at'] = now
+                    value['last_file_change_at'] = now
                 value.update(heartbeat_at=now, updated_at=now, files=files, files_count=len(files))
                 try:
                     from .resource_usage import snapshot
@@ -238,9 +250,17 @@ class Reporter:
             self.thread.join(timeout=3)
         self.pulse()
 
+    def model_signal(self):
+        # A provider event is distinct from the monitor heartbeat and file changes.
+        try:
+            update(self.path, last_model_event_at=utcnow())
+        except (OSError, ValueError):
+            pass
+
     def cli_event(self, engine, event):
         if not isinstance(event, dict):
             return
+        self.model_signal()
         kind = event.get('type') if engine == 'codex' else event.get('event')
         if engine == 'codex' and kind not in ('item.started', 'item.completed', 'turn.started', 'turn.completed'):
             return
@@ -292,7 +312,7 @@ def public_status(value):
     """Allowlist every returned field even if a worker modified its own file."""
     result = {key: clean_summary(value.get(key)) for key in (
         'job_id', 'agent', 'role_id', 'role_title', 'role_version', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
-        'started_at', 'finished_at', 'deadline_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
+        'started_at', 'finished_at', 'deadline_at', 'phase_started_at', 'execution_state', 'execution_started_at', 'last_model_event_at', 'last_file_change_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}
@@ -306,7 +326,7 @@ def public_status(value):
             return {}
         return {k: source.get(k) for k in keys if type(source.get(k)) in (int, float) and math.isfinite(source[k]) and source[k] >= 0}
     result['resources'] = numbers(value.get('resources') or {}, ('memory_bytes', 'memory_peak_bytes', 'memory_limit_bytes', 'oom_kills', 'cpu_seconds'))
-    result['limits'] = numbers(value.get('limits') or {}, ('cpus', 'memory_mib', 'tmp_mib'))
+    result['limits'] = numbers(value.get('limits') or {}, ('cpus', 'memory_mib', 'tmp_mib', 'model_wait_seconds'))
     result['operations'] = []
     for op in value.get('operations', [])[:8]:
         if not isinstance(op, dict):

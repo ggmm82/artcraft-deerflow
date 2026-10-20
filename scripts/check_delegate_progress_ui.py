@@ -114,7 +114,18 @@ window.showThread();
                 self.send_header('Content-Type', 'application/json'); self.end_headers()
                 self.wfile.write(json.dumps({'project': state['project']}).encode())
 
+            def do_PUT(self):
+                body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+                state['experience_excluded'] = body['excluded']
+                self.do_GET()
+
             def do_GET(self):
+                if '/studio-experience' in self.path:
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'total':1,'excluded':int(state.get('experience_excluded',False)), 'observations':[{
+                        'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
+                        'observation':{'criterion':'Risorse portabili','status':'failed','method':'functional','evidence':'Risorsa collegata mancante',
+                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
                     self.send_header('Content-Type', 'application/json'); self.end_headers()
@@ -141,7 +152,7 @@ window.showThread();
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(f'http://127.0.0.1:{server.server_port}')
                 dock = page.get_by_test_id('delegate-progress')
-                expect(page.get_by_test_id('studio-status')).to_have_text('Effectcraft sta lavorando')
+                expect(page.get_by_test_id('studio-status')).to_have_text('Avanzamento da verificare')
                 expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
                 expect(page.get_by_test_id('studio-health')).to_contain_text('Nessun nuovo avanzamento')
                 expect(page.get_by_test_id('delegate-job')).to_have_count(0)  # no wall of technical detail
@@ -173,6 +184,13 @@ window.showThread();
                     page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                page.get_by_role('button', name='Esperienza', exact=True).click()
+                experience_panel = page.get_by_test_id('experience-panel')
+                expect(experience_panel).to_contain_text('1 osservazioni conservate')
+                expect(experience_panel).to_contain_text('Risorsa collegata mancante')
+                page.get_by_role('button', name='Escludi dal riutilizzo', exact=True).click()
+                expect(page.get_by_role('button', name='Riattiva il riutilizzo')).to_be_visible()
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 page.get_by_role('button', name='Attività', exact=True).click()
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
                 expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
@@ -185,7 +203,7 @@ window.showThread();
                     {'id': 'verify', 'title': 'Revisore indipendente', 'mission': 'Verificare la consegna', 'expertise': ['Verifiche indipendenti'], 'checks': ['Raccogliere evidenze'], 'tools': [], 'version': 'fedcba0123456789'}],
                     'steps': [{**step, 'role_id': 'coherence' if step['id'] == 'motion' else 'verify' if step['id'] == 'final' else '', 'attempt_count': 1 if step['id'] == 'motion' else 0} for step in project['steps']]}
                 page.reload()
-                expect(page.get_by_test_id('studio-status')).to_have_text('Responsabile della coerenza sta lavorando')
+                expect(page.get_by_test_id('studio-status')).to_have_text('Avanzamento da verificare')
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 compiled = page.get_by_test_id('compiled-role').first
                 expect(compiled).to_contain_text('Al lavoro')

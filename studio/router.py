@@ -280,6 +280,7 @@ class RuntimeConfig(BaseModel):
     mode: str = Field(default='auto', pattern='^(auto|manual)$')
     cpus: float = Field(default=1.5, ge=.5, le=32)
     memory_mib: int = Field(default=1536, ge=512, le=65536)
+    model_wait_seconds: int = Field(default=600, ge=60, le=1500)
 
 
 @router.get('/api/runtime')

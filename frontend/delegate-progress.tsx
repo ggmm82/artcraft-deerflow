@@ -5,6 +5,8 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
+import { ExperiencePanel } from "./experience-panel";
+
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
@@ -12,7 +14,7 @@ type RevisionAction = { requirement_id: string; action: string; reason?: string;
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
 type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
-type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
+type ProjectRole = { experience?: { count: number; ids: string[] }; id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
 type Project = { strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
@@ -61,9 +63,13 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
     {job.work_summary && job.work_summary !== job.summary && <p className="text-sm">{job.work_summary}</p>}
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
     {!terminal && <div className="text-muted-foreground space-y-1 text-xs">
-      <p>Ultima attività: {duration(secondsSince(job.last_activity_at, now))} fa</p>
+      <p>Ultimo avanzamento osservato: {duration(secondsSince(job.last_activity_at, now))} fa</p>
+      {job.execution_started_at && <p>{job.execution_state === "model" ? "Attesa del modello" : "Comando in esecuzione"}: {duration(secondsSince(job.execution_started_at, now))}</p>}
+      {job.last_model_event_at && <p>Ultimo evento ricevuto dal modello: {duration(secondsSince(job.last_model_event_at, now))} fa</p>}
+      {job.last_file_change_at && <p>Ultima modifica dei file: {duration(secondsSince(job.last_file_change_at, now))} fa</p>}
       {remaining !== null && remaining > 0 && <p>Limite di esecuzione tra {duration(remaining)}. Non è una stima di consegna.</p>}
-      {heartbeat !== null && heartbeat <= 15 && <p>Worker raggiungibile</p>}
+      {job.limits?.model_wait_seconds && ["codex", "gemini"].includes(job.engine) && <p>Budget senza eventi del modello: {duration(job.limits.model_wait_seconds)}; poi il coordinatore può ripianificare.</p>}
+      {heartbeat !== null && heartbeat <= 15 && <p>Monitor della sandbox presente · non conferma l’avanzamento del modello</p>}
     </div>}
     {health && <p className="rounded-md border border-amber-500/50 p-2 text-sm" role="status">{health}</p>}
     {job.files.length > 0 && <div className="text-xs">
@@ -134,7 +140,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
-  const title = working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
+  const title = working && jobHealth(current, now) ? "Avanzamento da verificare" : working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
@@ -226,7 +232,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   return <section ref={dock} className="bg-background relative mb-2 rounded-2xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
     {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 flex flex-col overflow-hidden rounded-2xl border shadow-xl" style={{ maxHeight: "min(60dvh, var(--studio-panel-space, 60dvh))" }} data-testid="studio-drawer">
       <div className="bg-background flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
-        <h3 className="text-sm font-semibold">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra del progetto" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
+        <h3 className="text-sm font-semibold">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra del progetto" : tab === "files" ? "File e sorgenti" : tab === "experience" ? "Esperienza conservata" : "Attività e verifiche"}</h3>
         <button type="button" className="hover:bg-muted rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </div>
       <div className="min-h-0 overflow-y-auto p-4" data-testid="studio-drawer-content">
@@ -342,6 +348,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           return <article key={role.id} className="bg-muted/20 space-y-3 rounded-xl border p-4 text-sm" data-testid="compiled-role">
             <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-base">{role.title}</strong><StatusBadge tone={live || usage?.running ? "active" : state === "In pausa" ? "attention" : "neutral"}>{state}</StatusBadge></div>
             <p>{role.mission}</p>
+            {role.experience && <p>{role.experience.count} osservazioni pertinenti incluse nella skill compilata.</p>}
             <h4 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Competenze assegnate</h4>
             <ul className="list-inside list-disc">{role.expertise.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
             <div className="space-y-2"><p className="text-muted-foreground text-xs font-semibold">Strumenti assegnati</p><div className="flex flex-wrap gap-1.5">{role.tools.length ? role.tools.map(tool => <StatusBadge key={tool}>{person(tool)}</StatusBadge>) : <span>Strumenti di base del progetto</span>}</div></div>
@@ -372,6 +379,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
+      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} />}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
       </div>
     </div>}
@@ -400,6 +408,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       <button type="button" className={tabStyle} aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
       <button type="button" className={tabStyle} aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
       <button type="button" className={tabStyle} aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
+      <button type="button" className={tabStyle} aria-expanded={tab === "experience"} onClick={() => toggle("experience")}>Esperienza</button>
       {!active && !working && !ready && !waitingForReview && !questions.length && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : clarifying ? "Definisci risultato" : "Riprendi lavoro"}</button>}
     </nav>
   </section>;

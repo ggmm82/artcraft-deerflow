@@ -563,6 +563,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
         attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'task': clean_summary(task, 1500), 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
+        if role and role.get('scope'):
+            attempt['role_scope'] = role['scope']
         history = step['attempts'][-(MAX_HISTORY - 3):]
         last_usable = next((a for a in reversed(step['attempts']) if a.get('status') == 'completed'), None)
         if last_usable and last_usable not in history:
@@ -651,7 +653,7 @@ def read_results(value, workspace=None):
     return sorted(results, key=lambda r: (value.get('product_path') in r['files'], r['at']), reverse=True)[:20]
 
 
-def sync_project_context(workspace, roles=None, memory=None):
+def sync_project_context(workspace, roles=None, memory=None, experience_root=None):
     """Persist project memory and compile only the skills needed by its live roles."""
     apps = applications()
     specs = validate_roles(roles, apps) if roles is not None else None
@@ -673,7 +675,12 @@ def sync_project_context(workspace, roles=None, memory=None):
             raise ValueError('Memoria troppo grande: conserva testi e asset nei file e indica i riferimenti')
         memo = scoped_file(workspace, 'memory/' + fingerprint(current) + '.json', serialized)
         specs = specs if specs is not None else value.get('role_specs', [])
-        compiled = [compile_role(workspace, spec, value.get('acceptance'), memo, apps) for spec in specs]
+        if experience_root is not None:
+            from .experience import snapshot
+            experiences = {spec['id']: snapshot(workspace, experience_root, [spec], apps) for spec in specs}
+        else:
+            experiences = {}
+        compiled = [compile_role(workspace, spec, value.get('acceptance'), memo, apps, experiences.get(spec['id'])) for spec in specs]
         if value.get('roles') == compiled and value.get('memory') == memo:
             return
         value.update(role_specs=specs, roles=compiled, memory=memo)

@@ -17,6 +17,11 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
+        fixture = patch('studio.tools.experience_root', return_value=Path(directory.name) / 'library')
+        fixture.start(); self.addCleanup(fixture.stop)
+
     def test_failed_sample_replans_and_new_method_reaches_worker(self):
         from studio.projects import read_project
         from studio.project_skills import read_document

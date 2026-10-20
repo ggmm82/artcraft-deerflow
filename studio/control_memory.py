@@ -45,7 +45,7 @@ def project_view(project):
     active = set(orientation.get('active_step_ids', [s['id'] for s in project.get('steps', [])]))
     value['steps'] = [{k: s.get(k) for k in ('id', 'agent', 'role_id', 'status')} |
             {'goal': clean_summary(s.get('goal'), 180)} for s in project.get('steps', []) if s['id'] in active][:16]
-    value['roles'] = [{k: r.get(k) for k in ('id', 'title', 'tools', 'skill')} |
+    value['roles'] = [{k: r.get(k) for k in ('id', 'title', 'tools', 'skill', 'experience')} |
             {'mission': clean_summary(r.get('mission'), 160)} for r in project.get('roles', [])][:12]
     value['results'] = [{k: r.get(k) for k in ('path', 'role', 'delivery_id')} for r in project.get('results', [])[:4]]
     value['deliveries'] = [{k: d.get(k) for k in ('id', 'title', 'technical_status', 'current')} for d in project.get('deliveries', [])[:3]]
@@ -132,7 +132,7 @@ def reply(workspace, payload, kind):
         # All exceptions survive in the addressed full result; counters signal
         # that an omitted list is not evidence of success.
         keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'review_counts',
-                'attention', 'retry_blocked', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
+                'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
         if kind == 'plan':
             p = value.get('project') or {}
             value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention', 'method_recovery', 'presentation')}}

@@ -19,7 +19,7 @@ La configurazione supporta **DeepSeek API**, **account Codex**, **account Google
 
 Prima della produzione il coordinatore chiarisce le scelte mancanti sul risultato e sulla forma della consegna. La scheda **Progetto** mostra obiettivo, formato e punto attuale; **Squadra** espone competenze e incarichi dei ruoli. [Brief e orientamento del progetto](docs/PROGETTO-E-BRIEF.md).
 
-Le competenze di progetto non dipendono da un elenco di professioni: una procedura può usare più CLI o soltanto gli strumenti di base del workspace. Brief integrale, memoria versionata e controlli restano comuni. [Come funzionano le skill dinamiche](docs/SKILL-DINAMICHE.md).
+Le competenze di progetto non dipendono da un elenco di professioni: una procedura può usare più CLI o soltanto gli strumenti di base del workspace. Brief integrale, memoria versionata e controlli restano comuni. [Come funzionano le skill dinamiche](docs/SKILL-DINAMICHE.md). La scheda **Esperienza** conserva osservazioni delle revisioni tra progetti e le seleziona nelle nuove skills: [esperienza e stato dei lavori](docs/ESPERIENZA-E-STATO-LAVORI.md).
 
 ## Stato della verifica
 

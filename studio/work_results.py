@@ -19,6 +19,10 @@ def failure_info(error):
         return {'code': 'provider_auth', 'retryable': False,
                 'message': 'Il collegamento al servizio AI richiede un controllo.',
                 'action': 'Apri La tua squadra e verifica il collegamento del servizio.'}
+    if 'budget di attesa del modello' in text:
+        return {'code': 'provider_wait_limit', 'retryable': True,
+                'message': 'Il modello non ha inviato nuovi eventi entro il budget di attesa.',
+                'action': 'Conserva e ispeziona i file prodotti; valuta una continuazione mirata o un altro modello. Non ricominciare tutto.'}
     if any(s in text for s in ('turni', 'turn limit', 'timeout', 'tempo massimo', 'limite della singola', 'tempo esaurito')):
         return {'code': 'work_limit', 'retryable': True,
                 'message': 'Questo incarico si è fermato; puoi riusare i file prodotti.',

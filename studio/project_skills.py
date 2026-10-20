@@ -95,9 +95,9 @@ def validate_roles(roles, apps):
     return result
 
 
-def compile_role(root, spec, acceptance, memory, apps):
+def compile_role(root, spec, acceptance, memory, apps, experience=None):
     tools = [{k: a[k] for k in ('id', 'version', 'executable')} for a in apps if a['id'] in spec['tools']]
-    basis = {'spec': spec, 'request_hash': (acceptance or {}).get('hash'), 'memory': memory, 'tools': tools}
+    basis = {'spec': spec, 'request_hash': (acceptance or {}).get('hash'), 'memory': memory, 'tools': tools, 'experience': experience}
     version = fingerprint(basis)
     parts = ['---', 'name: artcraft-project-' + spec['id'],
              'description: ' + json.dumps(spec['title'], ensure_ascii=False), '---',
@@ -115,9 +115,12 @@ def compile_role(root, spec, acceptance, memory, apps):
                   'Leggi il manifest e i documenti pertinenti prima di produrre o approvare; le anteprime sono soltanto orientative.',
                   '## Memoria del progetto', json.dumps(memory, ensure_ascii=False),
                   'Conserva decisioni e risorse in file verificabili. Usa handoff.json e le verifiche comuni; non dichiarare controlli non eseguiti.'])
+    if experience:
+        parts.extend(['## Esperienza pertinente conservata', read_document(root, experience)])
     document = '\n\n'.join(parts) + '\n'
     saved = scoped_file(root, f'roles/{spec["id"]}/{version}/SKILL.md', document)
-    return {**spec, 'version': version, 'request_hash': basis['request_hash'], 'memory': memory, 'skill': saved}
+    scope = scoped_file(root, f'roles/{spec["id"]}/{version}/scope.json', json.dumps({'id': spec['id'], 'version': version, 'procedure': spec['procedure'], 'tools': spec['tools'], 'tool_versions': {t['id']: t['version'] for t in tools}}, ensure_ascii=False, sort_keys=True))
+    return {**spec, 'scope': scope, 'version': version, 'request_hash': basis['request_hash'], 'memory': memory, 'skill': saved, 'tool_versions': {t['id']: t['version'] for t in tools}, 'experience': experience}
 
 
 def load_compiled(root, role):

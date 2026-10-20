@@ -119,6 +119,9 @@ def verify_project_context(job, workspace=Path('/mnt/user-data')):
         manifest = read(acceptance['request_manifest'])
         for document in json.loads(manifest.read_text()):
             read(document)
+    experience = (job.get('role') or {}).get('experience')
+    if experience:
+        read(experience)
     memory = (job.get('role') or {}).get('memory')
     if memory:
         memory_path = read(memory)
@@ -254,7 +257,9 @@ def main():
             result = run_cli(command(engine, job['model'], prompt, final), cwd=output_dir,
                                 input=(json.dumps({'event': 'user', 'message': {'content': prompt}}) + '\n') if engine == 'gemini' else prompt,
                                 env={**(cli_env() if engine == 'gemini' else os.environ), 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
-                                timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event))
+                                timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event),
+                                model_wait_seconds=(job.get('resources') or {}).get('model_wait_seconds', 600),
+                                waiting_model=lambda: reporter.execution_state == 'model')
             if result.returncode:
                 reporter.emit('failed')
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],

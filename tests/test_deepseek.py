@@ -89,7 +89,7 @@ class DeepSeekTests(unittest.TestCase):
         ]
         events = []
         from types import SimpleNamespace
-        progress = SimpleNamespace(emit=lambda *args, **kwargs: events.append(args))
+        progress = SimpleNamespace(model_signal=lambda: None, emit=lambda *args, **kwargs: events.append(args))
         import subprocess
         with patch.object(deepseek, 'Path', side_effect=path), \
              patch.object(deepseek, 'request', side_effect=responses) as request, \

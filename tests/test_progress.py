@@ -133,3 +133,45 @@ print(json.dumps({'type':'turn.completed'}),flush=True)
 
 if __name__ == '__main__':
     unittest.main()
+
+class SignalSeparationTests(unittest.TestCase):
+    def test_wait_clock_provider_event_and_file_changes_are_separate_from_heartbeat(self):
+        with tempfile.TemporaryDirectory() as root:
+            output=Path(root)/'outputs/workspace/artcraft-job-123456abcdef';output.mkdir(parents=True)
+            reporter=progress.Reporter(output,{'run_id':output.name,'agent':'workspace','engine':'codex','model':'fixture'})
+            reporter.emit('running_tool')
+            reporter.emit('waiting_model')
+            before=progress.read_status(reporter.path)
+            with patch.object(progress,'utcnow',return_value='2099-01-01T00:00:00Z'):
+                reporter.pulse()
+                reporter.cli_event('codex',{'type':'item.updated','item':{'type':'reasoning','text':'private thinking sk-private-secret-value'}})
+            after=progress.list_jobs(Path(root))[0]
+            self.assertEqual(after['execution_state'],'model')
+            self.assertEqual(after['execution_started_at'],before['execution_started_at'])
+            self.assertEqual(after['last_activity_at'],before['last_activity_at'])
+            self.assertEqual(after['last_model_event_at'],'2099-01-01T00:00:00Z')
+            self.assertNotIn('private thinking',json.dumps(after))
+            self.assertNotIn('sk-private',json.dumps(after))
+            reporter.emit('completed');self.assertEqual(progress.list_jobs(Path(root))[0]['execution_state'],'finished')
+
+class ProviderWaitBudgetTests(unittest.TestCase):
+    def test_silent_model_returns_control_and_preserves_partial_files(self):
+        from studio.cli_runner import ProviderSilence
+        from studio.work_results import failure_info
+        with tempfile.TemporaryDirectory() as folder:
+            marker=Path(folder)/'partial.txt'
+            code="import pathlib,time;pathlib.Path('partial.txt').write_text('saved');time.sleep(5)"
+            with self.assertRaises(ProviderSilence) as error:
+                run_cli([sys.executable,'-c',code],cwd=folder,input='',env=None,timeout=4,
+                        on_event=lambda event: None,model_wait_seconds=.05,waiting_model=lambda: True)
+            self.assertEqual(marker.read_text(),'saved')
+            self.assertEqual(failure_info(str(error.exception))['code'],'provider_wait_limit')
+
+    def test_long_native_command_is_not_killed_by_model_wait_budget(self):
+        mode={'waiting':False}
+        code="import json,time;print(json.dumps({'type':'command.started'}),flush=True);time.sleep(.5);print(json.dumps({'type':'command.completed'}),flush=True)"
+        def event(value): mode['waiting']=value['type']=='command.completed'
+        with tempfile.TemporaryDirectory() as folder:
+            result=run_cli([sys.executable,'-c',code],cwd=folder,input='',env=None,timeout=3,
+                           on_event=event,model_wait_seconds=.05,waiting_model=lambda:mode['waiting'])
+            self.assertEqual(result.returncode,0)

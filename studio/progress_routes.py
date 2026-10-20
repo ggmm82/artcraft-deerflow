@@ -35,3 +35,43 @@ async def accept_version(thread_id: ThreadId, body: DeliveryAcceptance, request:
         return {'project': await run_in_threadpool(accept_delivery, workspace, body.delivery_id)}
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+
+
+class ExperienceSelection(BaseModel):
+    id: str = Field(pattern='^[a-f0-9]{64}$')
+    excluded: bool
+
+
+def experience_root():
+    return get_paths().user_dir(get_effective_user_id()) / 'artcraft-experience'
+
+
+@router.get('/api/threads/{thread_id}/studio-experience')
+@require_permission('threads', 'read', owner_check=True, require_existing=True)
+async def experience_list(thread_id: ThreadId, request: Request, response: Response, export: bool = False):
+    from .experience import summary
+    response.headers['Cache-Control'] = 'no-store'
+    return await run_in_threadpool(summary, experience_root(), export)
+
+
+@router.post('/api/threads/{thread_id}/studio-experience/collect')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def experience_collect(thread_id: ThreadId, request: Request, response: Response):
+    from .experience import collect, summary
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    try:
+        await run_in_threadpool(collect, workspace, experience_root(), str(thread_id))
+        return await run_in_threadpool(summary, experience_root())
+    except (OSError, ValueError) as error:
+        raise HTTPException(409, 'Recupero esperienza non completato') from error
+
+
+@router.put('/api/threads/{thread_id}/studio-experience')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def experience_select(thread_id: ThreadId, body: ExperienceSelection, request: Request, response: Response):
+    from .experience import exclude, summary
+    try:
+        await run_in_threadpool(exclude, experience_root(), body.id, body.excluded)
+        return await run_in_threadpool(summary, experience_root())
+    except (OSError, ValueError) as error:
+        raise HTTPException(409, 'Esperienza non disponibile') from error
