@@ -133,6 +133,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest='action', required=True)
     subs.add_parser('list')
+    p = subs.add_parser('capabilities'); p.add_argument('app', nargs='?'); p.add_argument('--all-commands', action='store_true')
     for name in ('help', 'commands'):
         p = subs.add_parser(name)
         p.add_argument('app')
@@ -143,6 +144,18 @@ def main():
     apps = {a['id']: a for a in json.loads((ROOT / 'versions.lock.json').read_text())['applications']}
     if args.action == 'list':
         save_json([{k: a[k] for k in ('id', 'role', 'version', 'executable')} for a in apps.values()], None)
+        return 0
+    if args.action == 'capabilities':
+        records = json.loads((ROOT / 'tool-capabilities.json').read_text())['applications']
+        if ({r['id'] for r in records} != set(apps) or any(r['version'] != apps[r['id']]['version'] for r in records)):
+            parser.error('Mappa capacità non allineata agli strumenti installati')
+        if args.app:
+            record = next((r for r in records if r['id'] == args.app), None)
+            if record is None or record['version'] != apps.get(args.app, {}).get('version'):
+                parser.error('Mappa capacità assente o non allineata alla release installata')
+            save_json({k:v for k,v in record.items() if k != 'catalog_ids' or args.all_commands}, None)
+        else:
+            save_json([{k:r[k] for k in ('id','version','choose_for','sources')} for r in records], None)
         return 0
     if args.app not in apps:
         parser.error('Applicazione sconosciuta: ' + args.app)

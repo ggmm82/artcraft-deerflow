@@ -1,12 +1,16 @@
 ---
 name: artcraft-photocraft
-description: "Livelli, maschere, correzioni, compositing e PSD. Usa questa skill per lavorare con photocraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Ritocco, compositing raster e texture con livelli e maschere. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Immagini e ritocco
 
 Specialista: `photocraft` per `studio_delegate`; nome della skill: `artcraft-photocraft`.
 CLI: `photocraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Ritocco, compositing raster e texture con livelli e maschere. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities photocraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

@@ -52,16 +52,26 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
                              'status': 'not_run', 'evidence': 'Il rapporto contiene soltanto controlli di altre modalità.'})
     criteria, status = evaluate(criteria, acceptance, engine)
     corrections = actions(value, criteria)
-    compared = comparison(value, criteria, handoff, workspace, target, digest, engine)
+    comparison_warning = ''
+    if value.get('baseline_path') and not value.get('comparison'):
+        # Keep independently validated criteria, never invent a before/after
+        # claim when a first review supplies an unused or mistaken baseline.
+        compared = None
+        comparison_warning = 'Confronto non verificato: baseline indicata senza osservazioni prima/dopo. Conservati i criteri sul prodotto esaminato.'
+        if status == 'passed':
+            status = 'needs_review'
+    else:
+        compared = comparison(value, criteria, handoff, workspace, target, digest, engine)
     if compared:
         reference_hashes[compared['baseline_path']] = compared['baseline_sha256']
     return {'product_path': str(target), 'sha256': digest(target), 'criteria': criteria,
-            'status': status, 'revision_actions': corrections, 'comparison': compared, 'contract_hash': (acceptance or {}).get('hash'),
+            'status': status, 'revision_actions': corrections, 'comparison': compared,
+            'comparison_warning': comparison_warning, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
             'report_path': str(path), 'report_sha256': digest(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
 
 
-def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=()):
+def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=(), require_components=False, require_timing=False, workspace=None):
     root = Path(output_dir)
     delivery = handoff['delivery']
     issues, files, packages = [], [], []
@@ -139,10 +149,22 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
                     issues.append(Path(item['path']).name + ': il render dei sorgenti non corrisponde al video consegnato (durata, dimensioni o tre fotogrammi)')
             except (OSError, ValueError, StopIteration, subprocess.SubprocessError) as error:
                 issues.append('Confronto sorgente/video non completato: ' + str(error)[:300])
+    try:
+        from .component_sources import inspect_components
+        from .timing import check_timing
+    except ImportError:
+        from component_sources import inspect_components
+        from timing import check_timing
+    coverage=inspect_components(handoff, files, required=require_components and delivery['source_status'] != 'not_applicable', workspace=workspace)
+    timing=check_timing(handoff, required=require_timing)
+    issues.extend(coverage['issues'])
+    if timing['status'] == 'failed':
+        issues.extend(timing['issues'])
     issues.extend(c['name'] + ': ' + c['evidence'][:300] for c in handoff['checks'] if c['status'] == 'failed')
     value = {'id': root.name, 'title': handoff['task'][:200], 'purpose': purpose,
              'technical_status': 'passed' if not issues else 'needs_revision',
              'issues': issues[:20], 'files': files, 'source_status': delivery['source_status'],
+             'source_coverage':coverage, 'timing':timing,
              'source_note': delivery['source_note'][:1000],
              'quality_status': 'not_reviewed',
              'note': 'I controlli tecnici non certificano qualità visiva, musicale o aderenza creativa al brief.'}

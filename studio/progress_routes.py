@@ -94,6 +94,8 @@ async def experience_collect(thread_id: ThreadId, request: Request, response: Re
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     try:
         await run_in_threadpool(collect, workspace, experience_root(), str(thread_id))
+        from .lessons import propose_findings
+        await run_in_threadpool(propose_findings, experience_root(), str(thread_id))
         return await run_in_threadpool(summary, experience_root())
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Recupero esperienza non completato') from error

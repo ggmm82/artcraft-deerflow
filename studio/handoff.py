@@ -23,6 +23,21 @@ DELIVERY_SCHEMA = {
             'additionalProperties': False}}},
     'required': ['source_status', 'source_note', 'files'], 'additionalProperties': False}
 
+SOURCE_REF = {'type':'object','properties':{'path':{'type':'string'},'member':{'type':'string'}},
+              'required':['path'],'additionalProperties':False}
+DELIVERY_SCHEMA['properties']['components'] = {'type':'array','minItems':1,'maxItems':12,'items':{
+    'type':'object','properties':{'name':{'type':'string'},'tool':{'type':'string'},
+        'artifacts':{'type':'array','minItems':1,'maxItems':64,'items':SOURCE_REF},
+        'sources':{'type':'array','minItems':1,'maxItems':24,'items':SOURCE_REF},
+        'provided_inputs':{'type':'array','maxItems':64,'items':{'type':'string'}}},
+    'required':['name','tool','artifacts','sources'],'additionalProperties':False}}
+DELIVERY_SCHEMA['properties']['timing'] = {'type':'object','properties':{
+    'master':{'type':'string'},'cues':{'type':'array','minItems':1,'maxItems':12,'items':{
+        'type':'object','properties':{'name':{'type':'string'},'visual_seconds':{'type':'number'},
+            'tolerance_seconds':{'type':'number','minimum':.01,'maximum':.25}},
+        'required':['name','visual_seconds'],'additionalProperties':False}}},
+    'required':['master','cues'],'additionalProperties':False}
+
 
 def validate_delivery(value):
     """Validate claims and downloadable sources, not actual application compatibility."""
@@ -93,6 +108,24 @@ def validate_handoff(output_dir, workspace, *, require_delivery=False):
     value = json.loads(manifest.read_text(encoding='utf-8'))
     if not isinstance(value, dict) or not isinstance(value.get('task'), str) or not value['task'].strip():
         raise ValueError('handoff.json: task obbligatorio')
+    # Model-authored bookkeeping is retained in work/, never advertised as a
+    # creative output. Normalize only known report files; sources and arbitrary
+    # work files still go through all the original checks below.
+    delivery = value.get('delivery')
+    if isinstance(delivery, dict) and isinstance(delivery.get('files'), list) and isinstance(value.get('output_files'), list):
+        bookkeeping = {str(output_dir / 'work' / name) for name in
+                       ('method.json', 'checkpoint.json', 'tool-events.json', 'tool-lessons.json')}
+        removed = {item.get('path') for item in delivery['files'] if isinstance(item, dict)
+                   and item.get('role') == 'report' and isinstance(item.get('path'), str) and item['path'] in bookkeeping
+                   and not Path(item['path']).is_symlink() and Path(item['path']).is_file()
+                   and Path(item['path']).resolve().is_relative_to(output_dir)}
+        if removed:
+            value['output_files'] = [p for p in value['output_files'] if not isinstance(p, str) or p not in removed]
+            delivery['files'] = [item for item in delivery['files'] if not isinstance(item, dict)
+                                 or not isinstance(item.get('path'), str) or item['path'] not in removed]
+            value['normalization'] = {'technical_reports_retained': sorted(removed)}
+            if isinstance(value.get('warnings'), list):
+                value['warnings'].append('Registri tecnici conservati in work/ e separati dai prodotti consegnati.')
     for field in ('source_files', 'output_files', 'previews'):
         paths = value.get(field, [] if field == 'previews' else None)
         if not isinstance(paths, list) or (field == 'output_files' and not paths):

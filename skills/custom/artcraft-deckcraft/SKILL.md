@@ -1,12 +1,16 @@
 ---
 name: artcraft-deckcraft
-description: "Struttura narrativa, slide, layout, grafici e PPTX. Usa questa skill per lavorare con deckcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Presentazioni editabili, sistemi di slide, diagrammi, media e animazioni. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Presentazioni
 
 Specialista: `deckcraft` per `studio_delegate`; nome della skill: `artcraft-deckcraft`.
 CLI: `deckcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Presentazioni editabili, sistemi di slide, diagrammi, media e animazioni. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities deckcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

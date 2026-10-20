@@ -1,12 +1,16 @@
 ---
 name: artcraft-effectcraft
-description: "Composizioni, keyframe, motion graphics ed effetti video. Usa questa skill per lavorare con effectcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Animazione ed effetti
 
 Specialista: `effectcraft` per `studio_delegate`; nome della skill: `artcraft-effectcraft`.
 CLI: `effectcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities effectcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

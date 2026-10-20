@@ -199,6 +199,9 @@ def main():
         'riaperto nell’app reale, con dipendenze necessarie. Un export o un viewer '
         'non dimostra compatibilità con l’app dello specialista. Se impossibile, '
         'dichiara source_status unavailable, motivo e limiti senza fingere un sorgente.',
+        'Prima della chiusura valuta singolarmente se hai appreso un metodo nuovo e trasferibile, anche dalla revisione o da una correzione. Usa work/tool-lessons.json con lo schema sotto: massimo tre lezioni generali documentate; tools vuoto per principi indipendenti dalle CLI. Se non emerge nulla di utile scrivi {"lessons":[],"reason":"Motivo della valutazione"}. Questo è un registro tecnico, non un output della consegna. Le proposte documentate saranno presentate automaticamente all’utente, mai accettate automaticamente. Non produrre lezioni di routine per riempire il registro.',
+        'Per purpose=delivery aggiungi delivery.components: massimo 12 componenti con name, tool effettivamente usato, artifacts e sources. Ogni riferimento è {"path":"file scaricabile","member":"file interno allo ZIP, solo se necessario"}. Per sequenze numerose artifacts può riferire member:"frames/", una cartella presente nello ZIP verificato; sources richiede file effettivi. Copri anche le risorse dentro i pacchetti: un progetto di montaggio non è sorgente di audio o immagini creati. Per SoundCraft servono sessione .scraft e media; per sintesi a codice conserva script e parametri scaricabili, dichiarando il metodo reale. provided_inputs è facoltativo e contiene solo originali caricati dall’utente, identici ai file riutilizzati. Un export WAV/PNG/MP4 da solo non documenta la costruzione. Per video con audio aggiungi delivery.timing:{master:percorso video,cues:[{name:evento,visual_seconds:istante osservato nel render,tolerance_seconds:0.12}]}. Il runtime verifica i transienti sul master: suono ambiguo resta non verificato, non inventare ascolto. Progetta i cue su una timeline condivisa e conserva clip/stem e sessione, non un solo mix.',
+        'Preferisci l’authoring negli strumenti professionali disponibili per la componente pertinente; usa scripting come supporto e conserva la ricetta se crea asset. Un campione deve dimostrare la finitura e il movimento previsti: riduci prima estensione o durata della prova; abbassare risoluzione non autorizza forme rudimentali, pose statiche o un diverso prodotto. Confronta la prova con il brief e i riferimenti prima di estenderla.',
         *selected, job['instructions'],
         'Incarico del coordinatore:\n' + job['task'],
         'Per i lavori di contenuto e progetto puoi usare gli strumenti di base del workspace. Le CLI servono quando pertinenti agli artefatti; non forzare un formato o una professione non richiesti. La memoria compilata non sostituisce i messaggi reali dell’utente.',
@@ -209,7 +212,7 @@ def main():
         'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
         'Prima della consegna salva work/method.json con approach (metodo realmente usato), steps (azioni concrete concluse, senza ragionamenti interni o credenziali), scripts (percorsi assoluti degli script riutilizzabili salvati) e limits (passaggi non riproducibili o non registrati). Per asset generati registra lo strumento effettivo e il riferimento al processo salvato; non inventare prompt, servizi o provenienza. Non includere chiavi, token o comandi con segreti. Questo registro serve ai progetti futuri e non sostituisce le evidenze dei controlli.',
-        'Se hai scoperto una lezione utile sull’uso degli strumenti (parametro, sequenza CLI, soluzione a un errore, gestione di risorse o riapertura), salva appena osservata, facoltativamente, work/tool-lessons.json (anche prima di finire il prodotto): {"lessons":[{"lesson":{"title":"Lezione generale","applies_when":"Condizioni","procedure":["Passo riutilizzabile"],"verification":["Come verificarlo"],"limits":"Limiti osservati","tools":["ID reale"]},"evidence":"Cosa hai osservato realmente, anche se il prodotto non è concluso","evidence_paths":["percorso assoluto di un file reale di prova in questa sandbox"]}]}. Puoi aggiungere impact:{level:major/minor/unknown,basis:measured/observed/hypothesis,reason:motivazione fondata sulle prove}. Per basis=measured aggiungi measurement:{before:percorso status.json dell’operazione precedente,after:percorso status.json dell’operazione migliorata} del supervisore work/operations, entrambe concluse con codice zero. Senza misure usa observed o hypothesis. Distingui grandi miglioramenti da piccoli ritocchi; non inventare tempi, percentuali o misure. Massimo tre singole lezioni, solo se nuove e utili: non riassumere tutto il lavoro. Nella lezione niente fatti del progetto, nomi, percorsi o segreti; restano nelle prove. Le proposte non vengono riutilizzate senza accettazione dell’utente. Non spacciare un comando riuscito per qualità del prodotto o prova indipendente.',
+        'Se hai scoperto una lezione utile sull’uso degli strumenti (parametro, sequenza CLI, soluzione a un errore, gestione di risorse o riapertura), valuta e salva appena osservata work/tool-lessons.json (anche prima di finire il prodotto): {"lessons":[{"lesson":{"title":"Lezione generale","applies_when":"Condizioni","procedure":["Passo riutilizzabile"],"verification":["Come verificarlo"],"limits":"Limiti osservati","tools":["ID reale"]},"evidence":"Cosa hai osservato realmente, anche se il prodotto non è concluso","evidence_paths":["percorso assoluto di un file reale di prova in questa sandbox"]}]}. Puoi aggiungere impact:{level:major/minor/unknown,basis:measured/observed/hypothesis,reason:motivazione fondata sulle prove}. Per basis=measured aggiungi measurement:{before:percorso status.json dell’operazione precedente,after:percorso status.json dell’operazione migliorata} del supervisore work/operations, entrambe concluse con codice zero. Senza misure usa observed o hypothesis. Distingui grandi miglioramenti da piccoli ritocchi; non inventare tempi, percentuali o misure. Massimo tre singole lezioni, solo se nuove e utili: non riassumere tutto il lavoro. Nella lezione niente fatti del progetto, nomi, percorsi o segreti; restano nelle prove. Le proposte non vengono riutilizzate senza accettazione dell’utente. Non spacciare un comando riuscito per qualità del prodotto o prova indipendente.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.',
         'Lavora per risultati visibili presto: se l’incarico è una prova, produci una piccola '
@@ -298,6 +301,8 @@ def main():
             if not isinstance(message, str) or not message.strip():
                 raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
         reporter.emit('checking')
+        learning_path = output_dir / 'work/tool-lessons.json'
+        learning_review = 'recorded' if learning_path.is_file() and not learning_path.is_symlink() else 'not_recorded'
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except ValueError as exc:
@@ -306,6 +311,8 @@ def main():
                               'output_dir': str(output_dir),
                               'error': handoff_error(output_dir, exc)}, ensure_ascii=False))
             return 1
+        if learning_review == 'not_recorded':
+            handoff['warnings'].append('Valutazione delle lezioni non registrata: le prove restano disponibili, nessun apprendimento automatico dichiarato.')
         verified_products = []
         if job.get('requirements'):
             candidates = [f for f in handoff['output_files'] if Path(f).suffix.lower() in
@@ -324,7 +331,10 @@ def main():
                 raise ValueError('Il prodotto finale non soddisfa i requisiti audio/video reali: '
                                  'non consegnare come definitivo un render muto o un file audio silenzioso')
         delivery_record = build_delivery(handoff, output_dir, purpose=job.get('purpose', 'work'), agent=job['agent'],
-                                         tools=(job.get('role') or {}).get('tools', []))
+                                         tools=(job.get('role') or {}).get('tools', []),
+                                         require_components=job.get('purpose')=='delivery',
+                                         require_timing=job.get('purpose')=='delivery' and all((job.get('requirements') or {}).get(k) for k in ('audio','video')),
+                                         workspace=Path('/mnt/user-data'))
         delivery_record.update(requirements=job.get('requirements') or {}, verified_products=verified_products)
         (output_dir / 'delivery-manifest.json').write_text(json.dumps(delivery_record, ensure_ascii=False, indent=2))
         quality_review = read_review(handoff, output_dir, Path('/mnt/user-data'), engine, job.get('acceptance')) if job.get('purpose') == 'review' else None
@@ -333,7 +343,7 @@ def main():
                           'output_dir': str(output_dir), 'handoff': handoff,
                           'product_verified': bool(verified_products), 'verified_products': verified_products,
                           'delivery_record': delivery_record, 'quality_review': quality_review,
-                          'response': message}, ensure_ascii=False))
+                          'learning_review': learning_review, 'response': message}, ensure_ascii=False))
         return 0
     except (TimeoutError, subprocess.TimeoutExpired):
         reporter.emit('timed_out')

@@ -367,6 +367,24 @@ lead_prompt_overlay:
     prevale sulla pianificazione: attendi la ripresa richiesta dall’utente.
     Una domanda semplice continua a ricevere una risposta diretta senza questo percorso.
 
+    Per scegliere gli strumenti consulta la mappa TOOL-SELECTION della skill studio
+    e craft capabilities ID: obiettivi, comandi della release, sorgenti e limiti.
+    Catalogo registrato, workflow eseguito e qualità osservata sono prove diverse.
+    SoundCraft offre MIDI, sintesi, sampler e automazioni: non ridurlo a import WAV.
+    Usa authoring pertinente e conserva i sorgenti di ogni componente, non soltanto
+    la timeline principale. La consegna finale richiede delivery.components secondo
+    artcraft-workspace. Per audio e video verifica cue sul master effettivo, con
+    origine e unità condivise; durata uguale non dimostra sincronismo. Il controllo
+    numerico dei transienti non equivale ad ascolto né identifica il suono.
+    Una prova breve deve conservare il livello di finitura previsto: riduci la
+    dimensione prima della qualità. Leggi correction_focus e aggiorna metodo e
+    competenze quando il difetto ricorre su prodotti distinti; conserva il valido.
+    Le attese del worker sono FIFO con posizione, senza errore dopo 120 secondi;
+    non duplicarle. Un riavvio del Gateway richiede ripresa esplicita, non replay.
+    Le sandbox propongono poche lezioni già generali e documentate, inattive fino
+    all’accettazione. Per valutare i fatti del progetto usa studio_lessons con
+    current_project_only=true: non svuotare tutto l’archivio né accettare per l’utente.
+
     L’esperienza include anche le scoperte operative delle sandbox: uso migliore
     delle CLI, parametri, sequenze, errori risolti, risorse e riapertura. Non soltanto
     la revisione del prodotto. Le osservazioni sandbox restano dichiarazioni con

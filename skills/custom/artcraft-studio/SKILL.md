@@ -19,6 +19,10 @@ Registra in `studio_plan(outcome_json=...)` un oggetto con `title`, `result`, `f
 
 Spiega brevemente il risultato previsto e l’utilità dei ruoli. Mantieni stato e prossimo passo legati a risultati concreti della fase. Il pannello **Progetto** mostra obiettivo, consegna e punto attuale; **Squadra** mostra le competenze assegnate e distingue chi sta lavorando da chi è previsto. I controlli elencati sono da eseguire: solo le evidenze permettono di dichiararli superati.
 
+## Scelta degli strumenti dal risultato
+
+Consulta [la mappa dei 15 strumenti](references/TOOL-SELECTION.md), poi le capacità della sola app pertinente. `craft capabilities ID` associa obiettivi, comandi reali, sorgenti e limiti; il catalogo completo resta una scoperta mirata, non migliaia di righe da caricare ad ogni turno. Le capacità sono distinte da ricette provate e qualità osservata. Usa authoring nativo quando pertinente: SoundCraft dispone di MIDI, sintetizzatori, sampler e automazioni; non ridurlo a importazione WAV né attribuirgli audio generato soltanto da Python. Per altri ambiti ragiona allo stesso modo, senza un minimo obbligatorio di app.
+
 ## Ruoli e skill dinamiche
 
 Per un progetto articolato, registra il lavoro in `studio_plan` prima di produrre: questo vale anche per contenuti e software, senza obbligare a usare una CLI grafica. Per una domanda semplice puoi rispondere direttamente. Rispetta la fase richiesta dall’utente.
@@ -42,7 +46,7 @@ Il revisore deve ricevere gli strumenti necessari al metodo richiesto: se deve r
 ## Ciclo di lavoro
 
 1. Conserva il brief e poche attività in `studio_plan`. Aggiorna `summary` e `next_action` con cosa stai facendo e quale risultato viene dopo. Le attività possono essere aggiunte, riassegnate, saltate e riprese; `depends_on` è un suggerimento per gli input, non un blocco automatico.
-2. Usa `studio_delegate` con incarichi piccoli e concreti e percorsi reali. `step_id` è facoltativo: il runtime registra anche il lavoro diretto. `purpose=preview` produce una prova piccola, `integration` combina risultati, `review` controlla/corregge un punto, `delivery` verifica il prodotto finale. Sul VPS da 4 GB gira un worker alla volta: è un vincolo di RAM, non una sequenza creativa obbligatoria.
+2. Usa `studio_delegate` con incarichi piccoli e concreti e percorsi reali. `step_id` è facoltativo: il runtime registra anche il lavoro diretto. `purpose=preview` produce una prova piccola, `integration` combina risultati, `review` controlla/corregge un punto, `delivery` verifica il prodotto finale. Sul VPS da 4 GB gira un worker alla volta: è un vincolo di RAM, non una sequenza creativa obbligatoria. Gli altri incarichi attendono in coda FIFO con posizione visibile, senza il precedente errore dopo 120 secondi; l’attesa non consuma i 25 minuti del worker. Non duplicare la delega in attesa. La chiusura del browser non cancella la coda; un riavvio del Gateway richiede una ripresa esplicita, conservando file e motivo.
 3. Guarda il risultato della prova prima di estendere la produzione. Se una capacità non esiste nella CLI reale, dichiara il limite e adatta la soluzione mantenendo il brief; non cambiare un robot 3D in un disegno isometrico senza dirlo. Non promettere miglioramenti estetici che non hai ancora visto.
 4. Riusa i file prodotti anche se un processo non ha chiuso `handoff.json` o ha esaurito turni/quota. `available_files` indica file da verificare; i risultati dei colleghi sono nel workspace condiviso. Fai verificare e integrare ciò che esiste, senza rigenerare l’intero asset per un limite facoltativo, uno ZIP mancante o una piccola correzione di volume.
 5. Le revisioni creative non hanno un contatore permanente di tre tentativi e non invalidano tutti i colleghi. Il runtime interrompe i retry identici senza risultati e le chiamate ripetute a un provider senza quota. Una nuova istruzione dell’utente o un cambio della configurazione condivisa consente di riprovare consapevolmente. Non cambiare automaticamente servizio, non reiterare errori di quota e non scaricare il recupero sull’utente con lunghe istruzioni tecniche.
@@ -71,6 +75,8 @@ Blender è lo specialista per modellazione 3D, materiali, rigging, animazione e 
 
 ## Chiudere il ciclo sul risultato
 
+Il controllo `correction_focus` mantiene fino a tre difetti prioritari e segnala il ripetersi su versioni distinte, senza contare doppie recensioni dello stesso file. Se chiede `reassess_role`, aggiorna metodo, competenze e verifiche del ruolo sul difetto reale; non basta rinominare la stessa missione. Riduci l’estensione del campione prima della sua finitura.
+
 Quando una revisione restituisce `needs_revision`, usa `revision_actions` per compilare l'incarico di correzione e i relativi strumenti. Procedi autonomamente entro la richiesta già autorizzata: non trasferire all'utente la regia chiedendo un altro «procedi» per ogni difetto. Conserva il prodotto precedente, modifica solo ciò che serve e assegna il confronto indipendente con `baseline_path` e `comparison` sul nuovo prodotto.
 
 Osserva se la correzione migliora realmente i criteri. Se resta invariata o peggiora, cambia metodo o competenze e prova di nuovo su un campione rappresentativo, prima di estendere la produzione. Non reiterare lo stesso tentativo senza nuove evidenze. Una dipendenza realmente mancante richiede una spiegazione precisa, non promesse; un limite del metodo va distinto da un limite del formato. Il runtime lega le osservazioni ai file, ma non crea abilità professionali o certificazioni.
@@ -79,7 +85,7 @@ Un requisito può avere più osservazioni: un `passed` locale non annulla un `fa
 
 ## Conservare l'esperienza
 
-Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Con `studio_lessons()` leggi poche fonti, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.
+Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Il runtime propone automaticamente poche lezioni già generalizzate e documentate dalle sandbox, lasciandole inattive. Non generalizza automaticamente i fatti delle recensioni. Il pulsante **Valuta le osservazioni** avvia una richiesta del coordinatore quando il lavoro è terminato; con `studio_lessons(current_project_only=true)` leggi poche fonti di questo progetto, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.
 
 Considera anche le scoperte sull’uso degli strumenti prodotte dalle sandbox in `work/tool-lessons.json`, non soltanto le revisioni finali. Nei pending leggi suggested_lesson, producer_method, evidence_files e limiti. Distingui fonti operative dichiarate, misure del supervisore e verifiche indipendenti. Non salvare ogni azione come lezione.
 

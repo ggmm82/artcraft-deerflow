@@ -205,6 +205,16 @@ class StudioTests(unittest.TestCase):
             self.runtime.EXECUTION_LOCK.release()
             CURRENT.reset(token)
 
+    def test_stop_of_owned_queued_job_never_inspects_or_stops_the_active_container(self):
+        from studio.progress import create_job, read_status
+        workspace=Path(self.temp.name)/'queued-chat'
+        progress=create_job(workspace,'artcraft-job-123456abcdef','workspace','codex','test')
+        with patch.object(self.runtime,'docker') as docker:
+            result=self.runtime.request_stop(workspace,'artcraft-job-123456abcdef')
+        self.assertTrue(result['queued'])
+        self.assertTrue(read_status(progress)['cancel_requested'])
+        docker.assert_not_called()
+
     def test_run_cancellation_stops_its_label_checked_docker_worker_and_reclaims_resources(self):
         import asyncio, threading
         from types import SimpleNamespace

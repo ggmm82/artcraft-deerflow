@@ -15,6 +15,8 @@ RUN npm install -g @openai/codex@0.162.1 \
 COPY scripts/install_antigravity.py scripts/antigravity.lock.json /opt/artcraft/
 RUN python3 /opt/artcraft/install_antigravity.py "$TARGETARCH" && agy --version
 COPY versions.lock.json /opt/artcraft/versions.lock.json
+COPY config/tool-capabilities.json /opt/artcraft/tool-capabilities.json
+COPY scripts/capability_catalog.py scripts/check_tool_capabilities.py /opt/artcraft/
 COPY scripts/install_artcraft.py scripts/craft.py scripts/smoke.py scripts/acceptance.py /opt/artcraft/
 COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
 COPY studio/operations.py studio/resource_usage.py /opt/artcraft/
@@ -34,6 +36,7 @@ COPY studio/antigravity_cli.py studio/terminal_text.py /opt/studio/
 COPY studio/progress.py studio/cli_runner.py studio/work_results.py studio/operations.py studio/resource_usage.py /opt/studio/
 COPY studio/codex_native.py /opt/studio/
 COPY studio/source_packages.py studio/deliveries.py studio/acceptance.py studio/revision.py /opt/studio/
+COPY studio/component_sources.py studio/timing.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
 WORKDIR /mnt/user-data
 CMD ["python3", "/opt/artcraft/smoke.py", "--mcp", "--output", "/tmp/smoke.json"]

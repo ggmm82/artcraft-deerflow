@@ -10,7 +10,7 @@ type Observation = { id: string; at: string; excluded: boolean; observation: {
 type Impact = { level: "major" | "minor" | "unknown"; basis: "measured" | "observed" | "hypothesis"; reason: string };
 type Lesson = { id: string; accepted: boolean; excluded: boolean; basis: { tool_versions?: Record<string,string>; impact?: Impact; source_ids: string[]; source_statuses?: string[]; lesson: { title: string; applies_when: string; procedure: string[]; verification: string[]; limits: string; tools: string[] } } };
 type Library = { total: number; excluded: number; pending?: number; lessons?: Lesson[]; observations: Observation[] };
-export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
+export function ExperiencePanel({ threadId, deliveries = [], onCurate }: { onCurate?: () => Promise<void>; threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
   const [library, setLibrary] = useState<Library | null>(null);
   const [error, setError] = useState("");
   const [delivery, setDelivery] = useState(deliveries.find(d => d.purpose !== "review")?.id ?? "");
@@ -78,6 +78,7 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
     {error && <p role="alert">{error}</p>}
     {!library && !error && <p role="status">Carico proposte e lezioni accettate…</p>}
     {library && <p>{library.lessons?.filter(lesson => !lesson.accepted).length ?? 0} proposte da valutare · {library.lessons?.filter(lesson => lesson.accepted).length ?? 0} lezioni accettate</p>}
+    {!!library?.pending && <div className="space-y-2"><p className="text-xs">{library.pending} osservazioni archiviate ancora da valutare. Non sono lezioni apprese.</p><button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !onCurate} onClick={() => { setBusy(true); setError(""); void onCurate?.().catch(() => { if (alive.current) setError("Valutazione non avviata: le fonti restano conservate."); }).finally(() => { if (alive.current) setBusy(false); }); }}>Valuta le osservazioni</button>{!onCurate && <p className="text-xs text-muted-foreground">Disponibile quando termina la lavorazione in corso.</p>}</div>}
     {proposals.slice(0, 3).map(lessonCard)}
     {proposals.length > 3 && <details className="rounded-xl border p-3"><summary className="cursor-pointer font-medium">Altre proposte ({proposals.length - 3})</summary><div className="mt-3 space-y-3">{proposals.slice(3).map(lessonCard)}</div></details>}
     {approved.length > 0 && <details className="rounded-xl border p-3" data-testid="accepted-lessons"><summary className="cursor-pointer font-medium">Lezioni accettate ({approved.length})</summary><div className="mt-3 space-y-3">{approved.map(lessonCard)}</div></details>}

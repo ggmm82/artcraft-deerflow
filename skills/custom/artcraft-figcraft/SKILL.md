@@ -1,12 +1,16 @@
 ---
 name: artcraft-figcraft
-description: "Layout UI, componenti, variabili, frame e prototipi. Usa questa skill per lavorare con figcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Design di interfacce, componenti, layout adattivi e prototipi. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Interfacce e prototipi
 
 Specialista: `figcraft` per `studio_delegate`; nome della skill: `artcraft-figcraft`.
 CLI: `figcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Design di interfacce, componenti, layout adattivi e prototipi. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities figcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

@@ -9,6 +9,52 @@ except ImportError:
 STRATEGIES = {'revise', 'change_method', 'verify', 'missing_dependency'}
 
 
+def correction_focus(project):
+    """Keep unresolved defects from the latest review visible to the next worker.
+
+    Count distinct products, not repeated reviews of the same bytes. A different
+    contract cannot establish a plateau on the current user's requirements.
+    """
+    try:
+        from .acceptance import requirement_verdicts
+    except ImportError:
+        from acceptance import requirement_verdicts
+    contract = (project.get('acceptance') or {}).get('hash')
+    reviews = [(a.get('finished_at', ''), a['quality_review']) for s in project.get('steps', [])
+               for a in s.get('attempts', []) if a.get('validated') and a.get('quality_review')
+               and (not contract or a['quality_review'].get('contract_hash') == contract)]
+    reviews.sort(key=lambda item: item[0])
+    if not reviews:
+        return []
+    latest = reviews[-1][1]
+    result = []
+    for verdict in requirement_verdicts(latest.get('criteria', [])):
+        rid = verdict['requirement_id']
+        if verdict['status'] != 'failed':
+            continue
+        products = set()
+        chain = {latest.get('sha256')}
+        for _, review in reversed(reviews):
+            if review.get('sha256') not in chain:
+                continue  # Different contributions are not successive versions.
+            state = next((v['status'] for v in requirement_verdicts(review.get('criteria', [])) if v['requirement_id'] == rid), None)
+            if state != 'failed':
+                break
+            if review.get('sha256'):
+                products.add(review['sha256'])
+            baseline = (review.get('comparison') or {}).get('baseline_sha256')
+            if baseline:
+                chain.add(baseline)
+        action = next((a for a in latest.get('revision_actions', []) if a.get('requirement_id') == rid), {})
+        criterion = next(c for c in latest['criteria'] if c.get('requirement_id') == rid and c.get('status') == 'failed')
+        result.append({'requirement_id': rid, 'criterion': criterion['criterion'][:200],
+                       'action': action.get('action', 'Ispeziona il difetto e verifica una correzione mirata.')[:500],
+                       'priority': action.get('priority', 2), 'failed_products': len(products),
+                       'reassess_role': len(products) >= 2 or action.get('strategy') == 'change_method',
+                       'report_path': latest.get('report_path', '')})
+    return sorted(result, key=lambda r: (not r['reassess_role'], r['priority']))[:3]
+
+
 def actions(value, criteria):
     raw = value.get('revision_actions')
     legacy = raw is None

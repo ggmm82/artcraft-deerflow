@@ -1,12 +1,16 @@
 ---
 name: artcraft-designcraft
-description: "Brochure, pubblicazioni, layout multipagina e stampa. Usa questa skill per lavorare con designcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Impaginazione multipagina, libri, riviste, fumetti e prestampa. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Impaginazione editoriale
 
 Specialista: `designcraft` per `studio_delegate`; nome della skill: `artcraft-designcraft`.
 CLI: `designcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Impaginazione multipagina, libri, riviste, fumetti e prestampa. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities designcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

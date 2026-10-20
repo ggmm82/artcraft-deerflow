@@ -1,6 +1,6 @@
 ---
 name: artcraft-soundcraft
-description: "Montaggio, mix, tracce, elaborazione e bounce audio. Usa questa skill per lavorare con soundcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Composizione MIDI, sintesi, sound design, montaggio e mix modificabile. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Produzione audio
@@ -8,9 +8,13 @@ description: "Montaggio, mix, tracce, elaborazione e bounce audio. Usa questa sk
 Specialista: `soundcraft` per `studio_delegate`; nome della skill: `artcraft-soundcraft`.
 CLI: `soundcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
 
+## Scelta dello strumento e capacità
+
+Composizione MIDI, sintesi, sound design, montaggio e mix modificabile. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities soundcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
+
 ## Quando usarla
 
-Usa SoundCraft per montaggio audio, mix, tracce e bounce. Il sincronismo finale con immagini e montaggio video appartiene a FilmCraft.
+Usa SoundCraft per composizione MIDI, sintesi strumentale, sampler, sound design, montaggio, automazioni, mix e stem. Crea una sessione nativa modificabile: un WAV generato con codice non dimostra authoring SoundCraft. Il sincronismo è condiviso con animazione e montaggio: concorda cue, origine e unità, poi verifica gli eventi sul master finale.
 
 ## Ricetta operativa collaudata
 

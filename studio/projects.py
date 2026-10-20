@@ -138,6 +138,7 @@ def delivery_summary(record):
     if not record:
         return None
     return {**{k: record.get(k) for k in ('id', 'title', 'purpose', 'technical_status', 'requirements', 'verified_products', 'source_status')},
+        **{k:record[k] for k in ('source_coverage','timing') if record.get(k)},
         'issues': [clean_summary(s) for s in record.get('issues', [])[:8]],
         'files': [{**{k: f.get(k) for k in ('path', 'sha256', 'role')},
                    **{k: clean_summary(f.get(k, '')) for k in ('open_with', 'editability')},
@@ -268,6 +269,10 @@ def read_project(workspace):
     result['outcome'] = value.get('outcome')
     result['user_direction'] = value.get('user_direction')
     result['user_control'] = value.get('user_control')
+    from .revision import correction_focus
+    focus = correction_focus(value)
+    if focus:
+        result['correction_focus'] = focus
     result['strategy'] = value.get('strategy')
     result['method_recovery'] = value.get('method_recovery')
     result['orientation'] = orientation(value)
@@ -312,6 +317,11 @@ def read_project(workspace):
                 'issues': [clean_summary(s) for s in record.get('issues', [])[:5]],
                 'current': value.get('product_path') in attempt.get('output_files', []),
                 'purpose': attempt.get('context', {}).get('purpose', 'work')})
+            coverage=record.get('source_coverage')
+            if coverage:
+                result['deliveries'][-1]['source_coverage']=coverage
+            if record.get('timing'):
+                result['deliveries'][-1]['timing']=record['timing']
             for filename in (available_paths(workspace, attempt) + attempt.get('previews', []))[:40]:
                 meta = metadata.get(filename, {})
                 candidates.append({'path': filename, 'agent': step['agent'], 'activity': step['id'],
@@ -622,6 +632,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'riduci l’incarico o integra i file recuperati. Le altre attività restano disponibili.',
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
+        from .revision import correction_focus
+        focus = correction_focus(value)
         contract_text = ('\n\nPiano del coordinatore (non sostituisce la richiesta utente): ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
                     '\nScelta esplicita corrente dell’utente; prevale su ipotesi e metodi preferiti precedenti:\n' + json.dumps(value.get('user_direction'), ensure_ascii=False) +
                     '\nRisultato e forma della consegna concordati (le richieste originali prevalgono):\n' + json.dumps(value.get('outcome'), ensure_ascii=False) +
@@ -629,6 +641,12 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
                     '\nScegli e ispeziona gli input pertinenti. Riusa quanto valido; segnala i limiti senza '
                     'rifare tutto per un controllo facoltativo o una chiusura formale mancante.')
+        if focus and purpose != 'review':
+            contract_text += ('\nDifetti aperti verificati: ' + json.dumps(focus, ensure_ascii=False) +
+                '\nCorreggi il difetto pertinente al tuo incarico su un campione rappresentativo prima di estendere. '
+                'Un miglioramento parziale non chiude un requisito ancora fallito. Conserva gli elementi validi. '
+                'Se reassess_role è true, il metodo o la competenza vanno rivalutati: verifica una modifica sostanziale '
+                'oppure segnala precisamente al coordinatore la competenza mancante. Nessuna riduzione del brief.')
         contract_text += ('\nScelte provvisorie della squadra, rivedibili se non funzionano: ' +
                          json.dumps((value.get('outcome') or {}).get('assumptions', []), ensure_ascii=False) +
                          '\nNon trasformarle in requisiti dell’utente, anche se ripetute nell’incarico. '

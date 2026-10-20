@@ -1,12 +1,16 @@
 ---
 name: artcraft-filmcraft
-description: "Timeline, montaggio, transizioni, colore ed esportazione video. Usa questa skill per lavorare con filmcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Montaggio, sequenze, composizione di contributi, colore e master audiovisivo. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Montaggio video
 
 Specialista: `filmcraft` per `studio_delegate`; nome della skill: `artcraft-filmcraft`.
 CLI: `filmcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Montaggio, sequenze, composizione di contributi, colore e master audiovisivo. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities filmcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

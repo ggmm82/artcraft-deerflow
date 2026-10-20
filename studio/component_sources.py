@@ -1,0 +1,95 @@
+"""Trace editable component sources, including media inside portable ZIPs.
+
+An editable parent timeline does not establish editability of its ingredients.
+This checks inventory/claims; it never executes a delivered regeneration script.
+"""
+from pathlib import Path, PurePosixPath
+import hashlib
+import zipfile
+
+FLAT = {'.wav','.mp3','.m4a','.ogg','.flac','.aac','.mp4','.mov','.webm','.mkv','.png','.jpg','.jpeg','.webp'}
+ASSETS = FLAT | {'.svg','.obj','.glb','.gltf'}
+NATIVE_TOOL = {'.scraft':'soundcraft','.ecproj':'effectcraft','.fcproj':'filmcraft','.blend':'blender'}
+
+
+def inspect_components(handoff, files, *, required=False, workspace=None):
+    declared = (handoff.get('delivery') or {}).get('components')
+    if declared is None:
+        return {'status':'not_recorded','components':[], 'issues':
+                ['Mappa dei sorgenti delle componenti non registrata; il progetto principale non ne dimostra la modificabilità.'] if required else []}
+    if not isinstance(declared,list) or not 1 <= len(declared) <= 12:
+        return {'status':'incomplete','components':[],'issues':['Componenti: specificare da 1 a 12 componenti reali.']}
+    downloaded={f['path']:f for f in files}
+    indexes={}
+    for path,item in downloaded.items():
+        if item.get('role')=='source_archive' and item.get('verification',{}).get('status')=='passed':
+            with zipfile.ZipFile(path) as archive:
+                indexes[path]={i.filename for i in archive.infolist() if not i.is_dir()}
+    def ref(value):
+        if not isinstance(value,dict) or set(value)-{'path','member'} or value.get('path') not in downloaded:
+            raise ValueError('riferimento non scaricabile')
+        path=value['path'];member=value.get('member')
+        if member is not None:
+            if (not isinstance(member,str) or (member not in indexes.get(path,set())
+                    and not (member.endswith('/') and any(n.startswith(member) for n in indexes.get(path,set()))))):
+                raise ValueError('file non presente nel pacchetto verificato')
+            return (path,member),member
+        if Path(path).suffix.lower()=='.zip':
+            raise ValueError('indicare il file interno allo ZIP, non soltanto l’archivio')
+        return (path,''),path
+    covered=set();result=[];issues=[]
+    for component in declared:
+        try:
+            if not isinstance(component,dict):raise ValueError('componente non valida')
+            name,tool=component.get('name'),component.get('tool')
+            if not isinstance(name,str) or not 1<=len(name)<=140 or not isinstance(tool,str) or not 1<=len(tool)<=48:
+                raise ValueError('nome e strumento effettivo obbligatori')
+            tool=tool.lower()
+            artifacts,sources=component.get('artifacts'),component.get('sources')
+            if not isinstance(artifacts,list) or not 1<=len(artifacts)<=64 or not isinstance(sources,list) or not 1<=len(sources)<=24:
+                raise ValueError('artefatti e sorgenti effettivi obbligatori')
+            artifact_refs=[ref(v) for v in artifacts];source_refs=[ref(v) for v in sources]
+            source_names=[v[1] for v in source_refs]
+            if any(n.endswith('/') for n in source_names):
+                raise ValueError('indicare un sorgente effettivo, non soltanto una cartella')
+            provided=component.get('provided_inputs',[])
+            if provided:
+                if not workspace or not isinstance(provided,list) or len(provided)>64:
+                    raise ValueError('originali caricati non verificabili')
+                hashes=set()
+                for filename in provided:
+                    p=Path(filename)
+                    if filename not in handoff.get('source_files',[]) or not p.resolve().is_relative_to(Path(workspace).resolve()/'uploads'):
+                        raise ValueError('originale non presente tra gli input caricati dall’utente')
+                    with p.open('rb') as stream:hashes.add(hashlib.file_digest(stream,'sha256').hexdigest())
+                for (path,member),_ in artifact_refs+source_refs:
+                    if member:
+                        with zipfile.ZipFile(path) as archive, archive.open(member) as stream:value=hashlib.file_digest(stream,'sha256').hexdigest()
+                    else:
+                        with Path(path).open('rb') as stream:value=hashlib.file_digest(stream,'sha256').hexdigest()
+                    if value not in hashes:raise ValueError('la componente non coincide con l’originale fornito')
+            if not provided and not any(Path(n).suffix.lower() not in FLAT for n in source_names):
+                raise ValueError('sono presenti solo file appiattiti; manca progetto o ricetta modificabile')
+            expected=next((suffix for suffix,app in NATIVE_TOOL.items() if app==tool),None)
+            if not provided and expected and not any(Path(n).suffix.lower()==expected for n in source_names):
+                raise ValueError('manca il progetto '+expected+' dello strumento dichiarato')
+            for (path,member),_ in artifact_refs:
+                if member.endswith('/'):
+                    covered.update((path,n) for n in indexes[path] if n.startswith(member))
+                else:
+                    covered.add((path,member))
+            result.append({'name':name,'tool':tool,'status':'documented',
+                           'sources':[{'path':r[0][0],**({'member':r[0][1]} if r[0][1] else {})} for r in source_refs]})
+        except (ValueError,TypeError,KeyError) as error:
+            label=component.get('name','Componente') if isinstance(component,dict) else 'Componente'
+            issues.append(str(label)[:140]+': '+str(error))
+            result.append({'name':str(label)[:140],'tool':str(component.get('tool',''))[:48] if isinstance(component,dict) else '',
+                           'status':'incomplete','sources':[]})
+    expected={(p,'') for p,f in downloaded.items() if f.get('role')=='export'
+              or f.get('role')=='dependency' and Path(p).suffix.lower() in ASSETS}
+    expected.update((p,n) for p,names in indexes.items() for n in names if PurePosixPath(n).suffix.lower() in ASSETS)
+    missing=expected-covered
+    if missing:
+        issues.append('Componenti prive di sorgenti associati: '+', '.join(PurePosixPath(n or p).name for p,n in sorted(missing)[:6]))
+    return {'status':'incomplete' if issues else 'documented','components':result,'issues':issues[:12],
+            'notice':'Inventario dei sorgenti; non prova da solo che una ricetta rigeneri gli stessi risultati o che una GUI li apra.'}
