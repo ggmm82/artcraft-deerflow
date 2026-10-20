@@ -67,7 +67,10 @@ def png_info(data):
 def export_image(item, output, codex_home):
     """Copy one reported PNG byte-for-byte, preserving embedded C2PA metadata."""
     if item.get('status') != 'completed' or item.get('failure'):
-        raise RuntimeError('Generazione nativa non completata; verifica quota e disponibilità del servizio')
+        failure = item.get('failure') or {}
+        if failure.get('type') == 'usageLimitExceeded':
+            raise RuntimeError('Quota della generazione nativa esaurita; i file già salvati sono conservati')
+        raise RuntimeError('Generazione nativa non completata; i file già salvati sono conservati')
     source = item.get('savedPath')
     if not isinstance(source, str):
         raise ValueError('Codex non ha restituito il percorso dell’immagine generata')
@@ -224,7 +227,10 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
                     turn = params.get('turn') or {}
                     if turn.get('status') != 'completed':
                         error = turn.get('error') or {}
-                        raise RuntimeError('Codex: ' + str(error.get('message') or turn.get('status') or 'turno non concluso')[:1000])
+                        kind = error.get('codexErrorInfo')
+                        category = {'unauthorized': 'Authentication required: ',
+                                    'usageLimitExceeded': 'Usage limit exceeded: '}.get(kind, '') if isinstance(kind, str) else ''
+                        raise RuntimeError('Codex: ' + category + str(error.get('message') or turn.get('status') or 'turno non concluso')[:1000])
                     return '\n'.join(messages[-4:])
         finally:
             stop.set()

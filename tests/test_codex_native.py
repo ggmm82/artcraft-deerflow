@@ -40,6 +40,11 @@ class NativeAssetTests(unittest.TestCase):
     def test_invalid_or_incomplete_images_are_rejected(self):
         for data in (b'not png', PNG[:-4], PNG[:40] + b'BAD!' + PNG[44:], PNG + b'junk'):
             with self.assertRaises(ValueError): png_info(data)
+        from studio.work_results import failure_info
+        for failure, code in ((None, 'work_error'), ({'type': 'usageLimitExceeded'}, 'provider_quota')):
+            with self.assertRaises(RuntimeError) as error:
+                export_image({'status': 'failed', 'failure': failure}, Path('/unused'), Path('/unused'))
+            self.assertEqual(failure_info(error.exception)['code'], code)
 
 
 BINARY = os.getenv('CODEX_TEST_BINARY') or shutil.which('codex')
