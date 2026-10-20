@@ -170,7 +170,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const results = (project?.results ?? []).filter((r) => artifactURL(threadId, r.path));
   const deliveries = project?.deliveries ?? [];
   const selectedDelivery = deliveries.find((d) => d.current);
-  const versions = deliveries.filter(d => d.category === "version" || (!d.category && (d.purpose === "delivery" || d.current)));
+  const versions = deliveries.filter(d => d.category === "version" || (!d.category && (d.purpose === "delivery" || d.current)))
+    .sort((a, b) => Number(b.execution_status === "running") - Number(a.execution_status === "running") || Number(b.current) - Number(a.current) || (b.version ?? 0) - (a.version ?? 0));
   const supporting = deliveries.filter(d => !versions.includes(d));
   const editing = versions.find(d => d.execution_status === "running");
   const versionName = (delivery: Delivery) => delivery.version ? `Versione ${delivery.version}` : delivery.current ? "Versione selezionata" : "Tentativo di consegna";

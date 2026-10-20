@@ -49,6 +49,8 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
   }
   return <div className="space-y-3 text-sm" data-testid="experience-panel">
     <p>Solo le lezioni che accetti singolarmente entrano nelle skills. Le altre restano proposte. Le evidenze del singolo progetto restano separate.</p>
+    {error && <p role="alert">{error}</p>}
+    {!library && !error && <p role="status">Carico proposte e lezioni accettate…</p>}
     {library && <p>{library.lessons?.filter(lesson => !lesson.accepted).length ?? 0} proposte da valutare · {library.lessons?.filter(lesson => lesson.accepted).length ?? 0} lezioni accettate</p>}
     {library?.lessons?.map(record => <article key={record.id} className="space-y-3 rounded-xl border p-4" data-testid="general-lesson">
       <h4 className="font-semibold">{record.basis.lesson.title}</h4>
@@ -75,7 +77,6 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
       <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !delivery || note.trim().length < 5} onClick={() => void change("/prefer", { delivery_id: delivery, note })}>Conserva questo metodo</button>
       <p className="text-xs text-muted-foreground">Conserva una fonte per la successiva generalizzazione del coordinatore. Non entra direttamente nelle skills.</p>
     </div>
-    {error && <p role="alert">{error}</p>}
     {library?.total === 0 && <p>Nessuna revisione utilizzabile ancora registrata. I soli comandi riusciti non diventano buone pratiche.</p>}
     {library?.observations.map(record => <article className="space-y-2 rounded border p-3" key={record.id}>
       <p className="font-medium">{record.observation.criterion}</p>

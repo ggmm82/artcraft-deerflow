@@ -136,6 +136,8 @@ window.showThread();
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     self.wfile.write(json.dumps({'user_control':body}).encode()); return
                 if self.path.endswith('/studio-experience/lesson'):
+                    if state.get('fail_accept'):
+                        self.send_response(409);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b'{}');return
                     state['lesson_accepted'] = body['accepted']
                     self.do_GET(); return
                 state['experience_excluded'] = body['excluded']
@@ -235,6 +237,11 @@ window.showThread();
                 if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'lezioni-mobile.png'))
                 experience_panel = page.get_by_test_id('experience-panel')
                 expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
+                state['fail_accept'] = True
+                experience_panel.get_by_role('button',name='Accetta questa lezione',exact=True).click()
+                expect(experience_panel.get_by_role('alert')).to_be_visible()
+                expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
+                state['fail_accept'] = False
                 experience_panel.get_by_role('button',name='Accetta questa lezione',exact=True).click()
                 expect(experience_panel).to_contain_text('Accettata per il riutilizzo')
                 experience_panel.get_by_role('button',name='Rimuovi dalle skills',exact=True).click()
