@@ -216,7 +216,11 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     compact['experience'] = experience
     compact['verification_capabilities'] = capabilities(profile['engine'])
     from .acceptance import generation_capabilities
-    compact['generation_capabilities'] = generation_capabilities(profile['engine'], project.get('user_direction'))
+    current_direction = (read_project(workspace) or {}).get('user_direction')
+    compact['user_direction'] = current_direction
+    if current_direction != project.get('user_direction'):
+        compact['direction_changed'] = 'L’utente ha cambiato le scelte durante questo incarico: rileggi studio_plan e ripianifica prima di produrre o approvare. Conserva i file validi.'
+    compact['generation_capabilities'] = generation_capabilities(profile['engine'], current_direction)
     from .control_memory import reply, counts
     compact['check_counts'] = counts(handoff.get('checks', []))
     compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))
