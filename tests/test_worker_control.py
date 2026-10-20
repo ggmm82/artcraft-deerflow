@@ -28,3 +28,28 @@ class WorkerControlTests(unittest.TestCase):
                 self.assertEqual(docker.call_count,1)
             self.assertFalse(failure_info('Interruzione della fase richiesta dall’utente')['retryable'])
             with self.assertRaises(ValueError):docker_runtime.request_stop(workspace,'../another-job')
+
+    def test_stop_signal_unwinds_cleanup_instead_of_abandoning_refreshed_credentials(self):
+        import subprocess,sys,time
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);marker=root/'ready';cleanup=root/'cleaned'
+            code="""import signal,time,pathlib,sys
+from studio.run_agent import handle_stop,WorkerCancelled
+signal.signal(signal.SIGTERM,handle_stop)
+try:
+ pathlib.Path(sys.argv[1]).write_text('ready')
+ time.sleep(10)
+except WorkerCancelled:
+ pass
+finally:
+ pathlib.Path(sys.argv[2]).write_text('cleanup')
+"""
+            process=subprocess.Popen([sys.executable,'-c',code,str(marker),str(cleanup)])
+            try:
+                until=time.monotonic()+5
+                while not marker.exists() and time.monotonic()<until:time.sleep(.01)
+                self.assertTrue(marker.exists())
+                process.terminate();process.wait(timeout=5)
+                self.assertEqual(cleanup.read_text(),'cleanup')
+            finally:
+                if process.poll() is None:process.kill();process.wait()

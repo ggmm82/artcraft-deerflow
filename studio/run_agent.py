@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -130,7 +131,17 @@ def verify_project_context(job, workspace=Path('/mnt/user-data')):
             read(method)
 
 
+class WorkerCancelled(Exception):
+    pass
+
+
+def handle_stop(signum, frame):
+    # Unwind through run_cli's process cleanup and the credential refresh finally.
+    raise WorkerCancelled('Interruzione della fase richiesta dall’utente; i file salvati sono conservati.')
+
+
 def main():
+    signal.signal(signal.SIGTERM, handle_stop)
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
     auth = Path('/root') / ('.' + engine)
