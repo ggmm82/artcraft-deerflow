@@ -215,3 +215,25 @@ Un requisito può avere più controlli: se almeno uno fallisce, il riepilogo res
 non diventa approvazione. La stessa sintesi aggregata è visibile al coordinatore.
 I campioni devono essere scelti rispetto ai rischi e alla varietà del progetto:
 un miglioramento locale non prova che l’intero prodotto soddisfi il brief.
+
+## Apprendere l’uso migliore delle CLI senza accumulare rumore
+
+Anche una sandbox può proporre una singola lezione: parametro utile, sequenza di
+comandi, errore risolto, gestione di risorse o compatibilità dei sorgenti. Il registro
+facoltativo `work/tool-lessons.json` conserva al massimo tre proposte con file di prova
+e versioni reali; può essere recuperato anche da una lavorazione parziale. Non copia
+la sessione intera e non considera ogni comando riuscito una buona pratica. Per i
+vecchi lavori il coordinatore può ispezionare il procedimento già registrato nelle
+fonti; ciò che non è stato registrato non viene inventato.
+
+Le proposte sono ordinate per significatività, distinguendo miglioramenti rilevanti,
+perfezionamenti minori e impatto da valutare. Le prime tre sono visibili; le altre e
+le lezioni già accettate sono espandibili. Un beneficio piccolo ma osservato precede
+un grande beneficio soltanto ipotizzato. L’impatto viene motivato, non ricavato dal
+numero di comandi o di file. Le misure richiedono due stati reali del supervisore,
+con tempi e hash registrati; senza misure si parla di osservazione o ipotesi, senza
+percentuali inventate. Input comparabili e qualità dell’output rimangono da verificare.
+
+Anche queste proposte restano inattive fino all’accettazione individuale. Nelle skills
+entrano condizioni, procedura, verifiche e limiti; tempi e fatti del vecchio progetto
+restano nell’archivio delle fonti, non diventano promesse per il progetto successivo.

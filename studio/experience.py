@@ -144,6 +144,7 @@ def collect(workspace, root, source_thread=None):
     from .projects import locked as project_lock, load, artifact_path
     from .state import applications
     records = []
+    captured = {r['observation'].get('capture_key') for r in entries(root)}
     with project_lock(workspace) as folder:
         project = load(folder, workspace)
         if not project:
@@ -152,6 +153,12 @@ def collect(workspace, root, source_thread=None):
         apps = {a['id']: a['version'] for a in applications()}
         for step in project['steps']:
             for attempt in step['attempts']:
+                from .sandbox_lessons import observations as sandbox_observations
+                try:
+                    role = producer_role(workspace, attempt, roles)
+                except (OSError, ValueError, KeyError):
+                    role = {}
+                records.extend(sandbox_observations(workspace, attempt, role, source_thread, captured))
                 review = attempt.get('quality_review') or {}
                 target = artifact_path(workspace, review.get('product_path', ''))
                 report = artifact_path(workspace, review.get('report_path', ''))
@@ -203,13 +210,14 @@ def collect(workspace, root, source_thread=None):
 
 def select(root, specs, apps):
     """Select only generalized lessons; raw project facts never enter future skills."""
-    from .lessons import entries as lessons, accepted
+    from .lessons import entries as lessons, accepted, rank
     approved = accepted(root)
     excluded = disabled(root)
     versions = {a['id']: a['version'] for a in apps}
     selected, covered = [], set()
     vocabulary = set(re.findall(r'\w{5,}', ' '.join(str(s) for s in specs).lower()))
     role_tools = {t for s in specs for t in s.get('tools', [])}
+    candidates = []
     for record in lessons(root):
         if record['id'] not in approved:
             continue
@@ -221,6 +229,9 @@ def select(root, specs, apps):
         covered.update(sources)
         if record['id'] in excluded or sources & excluded:
             continue
+        candidates.append(record)
+    for record in sorted(candidates, key=rank):
+        basis = record['basis']
         lesson = basis['lesson']
         tools = basis['tool_versions']
         if tools and (not set(tools).intersection(role_tools) or any(versions.get(t) != v for t, v in tools.items())):
@@ -229,7 +240,8 @@ def select(root, specs, apps):
         if not tools and len(words & vocabulary) < 2:
             continue
         portable = {'id': record['id'], 'lesson': lesson, 'tool_versions': tools,
-                    'source_ids': basis['source_ids'], 'source_statuses': basis.get('source_statuses', []), 'notice': record['notice']}
+                    'source_ids': basis['source_ids'], 'source_statuses': basis.get('source_statuses', []),
+                    'notice': 'Lezione accettata singolarmente dall’utente: verifica condizioni, limiti e pertinenza; le misure del vecchio caso non sono una promessa per questo progetto.'}
         if sum(len(json.dumps(r)) for r in selected) + len(json.dumps(portable)) > 14000:
             continue
         selected.append(portable)
@@ -248,12 +260,12 @@ def snapshot(workspace, root, specs, apps):
 
 
 def summary(root, export=False):
-    from .lessons import entries as lessons, pending, accepted
+    from .lessons import entries as lessons, pending, accepted, rank
     excluded = disabled(root)
     records, generalized = entries(root), lessons(root)
     approved = accepted(root)
     return {'total': len(records), 'excluded': len(excluded), 'pending': len(pending(root, limit=1000000)),
-            'lessons': [{**r, 'accepted': r['id'] in approved, 'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in generalized],
+            'lessons': [{**r, 'accepted': r['id'] in approved, 'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in sorted(generalized, key=rank)],
             'observations': [{**r, 'excluded': r['id'] in excluded} for r in (records if export else records[:200])]}
 
 

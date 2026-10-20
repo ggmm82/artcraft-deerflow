@@ -193,3 +193,93 @@ class ExperienceTests(unittest.TestCase):
         self.assertNotIn(source, [r['id'] for r in lessons.pending(self.library)])
         self.assertEqual(len(experience.entries(self.library)),2)
         self.assertEqual(experience.select(self.library,[self.spec],projects.applications()), [])
+
+    def sandbox_note(self, impact=None, measurement=None):
+        data=json.loads(self.state.read_text())
+        data['steps'][1]['attempts'][0]['validated']=False
+        # A partial delivery may still contain a useful CLI finding.
+        data['steps'][0]['status']='paused'
+        data['steps'][0]['attempts'][0].update(status='paused',validated=False)
+        self.state.write_text(json.dumps(data))
+        work=self.product.parent/'work';work.mkdir(exist_ok=True)
+        note={'lesson':{'title':'Riaprire le dipendenze prima dell’esportazione',
+            'applies_when':'Quando il documento contiene risorse esterne da distribuire',
+            'procedure':['Risolvere i collegamenti prima di esportare'],
+            'verification':['Riaprire il progetto da una cartella diversa'],
+            'limits':'Non prova la qualità visiva del prodotto', 'tools':['vectorcraft']},
+            'evidence':'Il file esportato è stato riaperto dopo aver risolto i collegamenti',
+            'evidence_paths':[str(self.product)], 'impact':impact or {'level':'major','basis':'observed','reason':'Evita una consegna con risorse mancanti'}}
+        if measurement:note['measurement']=measurement
+        path=work/'tool-lessons.json';path.write_text(json.dumps({'lessons':[note]}))
+        return path,note
+
+    def test_sandbox_tool_use_is_retained_without_a_finished_product_but_requires_acceptance(self):
+        path,note=self.sandbox_note()
+        self.assertEqual(experience.collect(self.workspace,self.library,'thread-a'),1)
+        with patch('studio.sandbox_lessons.digest', wraps=digest) as hashing:
+            self.assertEqual(experience.collect(self.workspace,self.library,'thread-a'),0)
+            self.assertFalse(any(call.args[0] == self.product for call in hashing.call_args_list))
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['status'],'sandbox_observation')
+        self.assertEqual(record['observation']['evidence_files'][0]['sha256'],digest(self.product))
+        pending=lessons.pending(self.library)[0]
+        self.assertEqual(pending['suggested_lesson']['tools'],['vectorcraft'])
+        proposal=lessons.learn(self.library,[record['id']],note['lesson'],note['impact'])
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()),[])
+        lessons.accept(self.library,proposal)
+        selected=experience.select(self.library,[self.spec],projects.applications())[0]
+        self.assertEqual(selected['source_statuses'],['sandbox_observation'])
+        self.assertNotIn('evidence_files',selected)
+        self.assertNotIn('impact',selected) # Project measurements are not procedural knowledge.
+
+    def test_measured_impact_requires_real_distinct_supervisor_records(self):
+        before=self.product.parent/'work/operations'/('a'*24)/'status.json'
+        after=self.product.parent/'work/operations'/('b'*24)/'status.json'
+        for path,seconds in [(before,20),(after,5)]:
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text(json.dumps({'state':'completed','returncode':0,'elapsed_seconds':seconds}))
+        impact={'level':'major','basis':'measured','reason':'Esportazione più rapida sul campione di prova; qualità da verificare'}
+        path,note=self.sandbox_note(impact,{'before':str(before),'after':str(after)})
+        self.assertEqual(experience.collect(self.workspace,self.library),1)
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['measurement']['before']['seconds'],20)
+        lessons.learn(self.library,[record['id']],note['lesson'],impact)
+        path.write_text(json.dumps({'lessons':[{**note,'measurement':{'before':str(before),'after':str(before)}}]}))
+        self.assertEqual(experience.collect(self.workspace,self.root/'bad-measurement'),0)
+
+    def test_significance_is_ordered_and_unmeasured_gains_cannot_claim_measurement(self):
+        experience.collect(self.workspace,self.library)
+        source=experience.entries(self.library)[0]['id']
+        lesson={'title':'Controllare le risorse collegate','applies_when':'Per documenti con dipendenze esterne',
+                'procedure':['Verificare i collegamenti'],'verification':['Riaprire il pacchetto'],
+                'limits':'Non verifica qualità estetica','tools':['vectorcraft']}
+        minor=lessons.learn(self.library,[source],lesson,{'level':'minor','basis':'observed','reason':'Riduce un piccolo passaggio manuale'})
+        major=lessons.learn(self.library,[source],{**lesson,'title':'Evitare sorgenti incompleti'},
+                            {'level':'major','basis':'observed','reason':'Evita una consegna inutilizzabile'})
+        self.assertEqual([r['id'] for r in experience.summary(self.library)['lessons']],[major,minor])
+        with self.assertRaises(ValueError):lessons.learn(self.library,[source],lesson,{'level':'major','basis':'measured','reason':'Presunto miglioramento non misurato'})
+
+    def test_invalid_or_unscoped_worker_notes_never_break_delivery_or_become_lessons(self):
+        path,note=self.sandbox_note()
+        outside=self.root/'other-project.txt';outside.write_text('Other project')
+        path.write_text(json.dumps({'lessons':[{**note,'evidence_paths':[str(outside)]}]}))
+        self.assertEqual(experience.collect(self.workspace,self.library),0)
+        path.write_text('invalid')
+        self.assertEqual(experience.collect(self.workspace,self.library),0)
+        self.assertEqual(experience.summary(self.library)['lessons'],[])
+
+    def test_auxiliary_cli_learning_uses_the_job_environment_not_the_current_catalog(self):
+        from studio.project_skills import scoped_file
+        path,note=self.sandbox_note()
+        data=json.loads(self.state.read_text())
+        data['steps'][0]['attempts'][0]['tool_environment']=scoped_file(self.workspace,'tool-environments/fixture.json',json.dumps({'vectorcraft':'saved-vector','pdfcraft':'saved-pdf'}))
+        self.state.write_text(json.dumps(data))
+        note['lesson']['tools']=['pdfcraft']
+        path.write_text(json.dumps({'lessons':[note]}))
+        self.assertEqual(experience.collect(self.workspace,self.library),1)
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['tools'],{'pdfcraft':'saved-pdf'})
+        proposal=lessons.learn(self.library,[record['id']],note['lesson'],note['impact'])
+        lessons.accept(self.library,proposal)
+        spec={**self.spec,'tools':['pdfcraft']}
+        self.assertEqual(experience.select(self.library,[spec],projects.applications()),[]) # Version mismatch is not silently promoted.

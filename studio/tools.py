@@ -79,16 +79,41 @@ def user_requests(runtime):
     return result
 
 
+def lesson_reply(runtime, value):
+    """Keep learning reports below upstream synopsis limits, with full private detail."""
+    text = json.dumps(value, ensure_ascii=False)
+    if len(text) <= 8000:
+        return text
+    from .acceptance import fingerprint
+    from .project_skills import scoped_file
+    document = scoped_file(workspace_for(runtime), 'learning-results/' + fingerprint(value) + '.json', text)
+    compact = [{k: source.get(k) for k in ('id', 'status', 'tools', 'impact')} |
+               {'criterion': str(source.get('criterion', ''))[:160], 'evidence': str(source.get('evidence', ''))[:300]}
+               for source in value.get('pending_sources', [])[:6]]
+    result = {'saved_lesson': value.get('saved_lesson'), 'decision': value.get('decision'),
+              'pending_sources': compact, 'source_count': len(value.get('pending_sources', [])),
+              'details_path': document['path'], 'details_sha256': document['sha256'],
+              'instruction': 'Leggi details_path prima di generalizzare: contiene le procedure e le prove complete, non trasferirne i fatti specifici nelle skills.'}
+    while compact and len(json.dumps(result, ensure_ascii=False)) > 8000:
+        compact.pop()
+    return json.dumps(result, ensure_ascii=False)
+
+
 @tool('studio_lessons', parse_docstring=True)
-def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str = '', dismiss_reason: str = '') -> str:
+def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str = '', dismiss_reason: str = '', impact_json: str = '') -> str:
     """Generalize saved evidence into conditional reusable lessons, never project facts.
 
     Read without arguments to inspect up to six pending evidence records. Extract
-    the transferable cause, procedure, verification and limits, omitting names,
+    the transferable cause, procedure, verification and limits, including CLI usage
+    findings reported by sandboxes. Inspect suggested_lesson, evidence_files and
+    producer_method; distinguish reported operations from independent verification.
+    Omit names,
     story content, file paths and project choices. Group related observations.
     A user preference is not technical verification; preserve that distinction.
     Save only individual lessons with a useful transferable insight, not every
-    observation. Dismiss unhelpful sources with a reason; keep their evidence.
+    observation. Prioritize substantial improvements, not trivial tips. Distinguish
+    measured gains from observations and hypotheses; never invent percentages.
+    Dismiss unhelpful sources with a reason; keep their evidence.
     New lessons are proposals: only the owner can accept each one in the Lessons
     panel. Never approve them yourself or claim a proposal is already reused.
     Accepted lessons guide future roles only when relevant and compatible with tool versions.
@@ -97,6 +122,7 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
     Args:
         runtime: Injected DeerFlow runtime.
         source_ids_json: JSON list of one to six real saved evidence IDs.
+        impact_json: Optional JSON level major/minor/unknown, basis measured/observed/hypothesis and reason grounded in the selected evidence. No fabricated measurements. This ranks proposals, not a product quality certificate.
         dismiss_reason: Instead of saving a lesson, explain why the selected source IDs do not warrant one. Do not combine with lesson_json.
         lesson_json: JSON title, applies_when, procedure (list), verification (list), limits and tools (installed IDs or empty for a general principle). Conditions and limits are required; no facts of the source project.
     """
@@ -106,12 +132,12 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
         if lesson_json:
             raise ValueError('Salva o scarta la singola lezione, non entrambe')
         dismiss(root, json.loads(source_ids_json), dismiss_reason)
-        return json.dumps({'decision': 'not_generalized', 'pending_sources': pending(root)}, ensure_ascii=False)
+        return lesson_reply(runtime, {'decision': 'not_generalized', 'pending_sources': pending(root)})
     if bool(source_ids_json) != bool(lesson_json):
         raise ValueError('Indica sia le fonti sia la lezione generale')
-    identifier = learn(root, json.loads(source_ids_json), json.loads(lesson_json)) if lesson_json else None
-    return json.dumps({'saved_lesson': identifier, 'pending_sources': pending(root),
-                       'instruction': 'Conserva solo la lezione generale e condizionale; le fonti restano separate e non dimostrano più di quanto verificato.'}, ensure_ascii=False)
+    identifier = learn(root, json.loads(source_ids_json), json.loads(lesson_json), json.loads(impact_json) if impact_json else None) if lesson_json else None
+    return lesson_reply(runtime, {'saved_lesson': identifier, 'pending_sources': pending(root),
+                       'instruction': 'Conserva solo la lezione generale e condizionale; le fonti restano separate e non dimostrano più di quanto verificato.'})
 
 
 @tool('studio_plan', parse_docstring=True)

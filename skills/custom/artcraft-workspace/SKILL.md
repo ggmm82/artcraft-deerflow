@@ -174,3 +174,29 @@ Per una versione corretta leggi anche il precedente artefatto, includilo in `sou
 ## Libertà di scelta e immagini native
 
 Rispetta `user_direction` nell’incarico e nella memoria compilata: le preferenze correnti dell’utente prevalgono sui metodi riutilizzati dall’esperienza. Per vettori modificabili non sostituire l’illustrazione con un raster incorporato. Per immagini generate distingui asset raster, impaginazione/testi modificabili e limiti del sorgente; conserva prompt e riferimenti effettivi in work. Se disponibile nel collegamento Codex, `image_gen.imagegen` è una capacità nativa indipendente dalle CLI ArtCraft, da usare solo quando pertinente e consentita. Il runtime trasferisce i PNG generati in `generated_images/` e registra `work/imagegen-*.json`; non leggere cartelle di autenticazione. Verifica i file consegnati e non attribuire a metadati strutturali un controllo della qualità visiva.
+
+
+## Singole lezioni sull’uso degli strumenti
+
+Se scopri un miglioramento significativo nell’uso di una CLI, non conservarne tutta
+la sessione: salva appena possibile `work/tool-lessons.json` con al massimo tre
+singole proposte. Vale anche per un incarico interrotto o non ancora consegnato.
+Una proposta contiene `lesson` (title, applies_when, procedure, verification, limits,
+tools), `evidence` con ciò che hai realmente osservato e `evidence_paths` con uno–sei
+file reali di prova nella tua cartella di lavoro. La lezione è generale: parametri,
+sequenza, errore evitato, limiti/versioni, controlli di riapertura. Nomi, percorsi e
+fatti del progetto restano nelle prove, non nella procedura riutilizzabile. Non
+registrare credenziali o ragionamenti interni e non riassumere ogni comando riuscito.
+
+Aggiungi `impact` con level `major` / `minor` / `unknown`, basis `measured` / `observed`
+/ `hypothesis`, e una `reason` fondata sulle prove. Dai priorità ai miglioramenti che
+risolvono un problema importante rispetto ai piccoli ritocchi. `measured` richiede
+`measurement.before` e `measurement.after`: percorsi di due `work/operations/<id>/status.json`
+distinti del supervisore, entrambi completed con returncode zero. Il registro legge
+i tempi effettivi, senza inventare percentuali; confrontabilità e qualità restano da
+verificare. Senza queste misure usa observed o hypothesis.
+
+Le scoperte vengono conservate come fonti dichiarate dalla sandbox, con hash e
+versioni. Il coordinatore valuta e generalizza le singole lezioni utili; soltanto
+l’utente può accettarle per le skills future. Un comando riuscito non certifica la
+qualità del prodotto e una preferenza non è una verifica tecnica indipendente.

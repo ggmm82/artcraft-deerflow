@@ -639,6 +639,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
         attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'task': clean_summary(task, 1500), 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
+        installed = {app['id']: app['version'] for app in applications()}
+        attempt['tool_environment'] = scoped_file(workspace, 'tool-environments/' + fingerprint(installed) + '.json', json.dumps(installed, sort_keys=True))
         if purpose == 'delivery':
             value['version_counter'] = value.get('version_counter', 0) + 1
             attempt['version_number'] = value['version_counter']

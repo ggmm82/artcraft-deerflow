@@ -36,6 +36,26 @@ def validate(value):
     return clean
 
 
+def validate_impact(value=None):
+    if value is None:
+        return {'level': 'unknown', 'basis': 'hypothesis', 'reason': 'Impatto non ancora valutato'}
+    if (not isinstance(value, dict) or set(value) != {'level', 'basis', 'reason'}
+            or value['level'] not in ('major', 'minor', 'unknown')
+            or value['basis'] not in ('measured', 'observed', 'hypothesis')
+            or not isinstance(value['reason'], str) or not 5 <= len(value['reason'].strip()) <= 1000
+            or redact_memory(value) != value):
+        raise ValueError('Indica impatto major/minor/unknown, base measured/observed/hypothesis e motivazione verificabile; niente percentuali inventate')
+    return {**value, 'reason': value['reason'].strip()}
+
+
+def rank(record):
+    impact = record.get('basis', {}).get('impact') or record.get('impact') or {}
+    level, basis = impact.get('level', 'unknown'), impact.get('basis', 'hypothesis')
+    # Observed small benefits precede unproven promises of a large gain.
+    return {('major', 'measured'): 0, ('major', 'observed'): 1, ('minor', 'measured'): 2,
+            ('minor', 'observed'): 3, ('major', 'hypothesis'): 4, ('minor', 'hypothesis'): 5}.get((level, basis), 6)
+
+
 def entries(root):
     folder = Path(root) / 'lessons'
     if folder.is_symlink():
@@ -54,9 +74,10 @@ def entries(root):
     return sorted(result, key=lambda r: (r['at'], r['id']), reverse=True)
 
 
-def learn(root, source_ids, value):
+def learn(root, source_ids, value, impact=None):
     from .experience import entries as observations, locked, disabled
     lesson = validate(value)
+    impact = validate_impact(impact)
     if not isinstance(source_ids, list) or not 1 <= len(source_ids) <= 6 or any(not isinstance(s, str) or not ID.fullmatch(s) for s in source_ids):
         raise ValueError('Indica da una a sei evidenze realmente conservate')
     with locked(root) as folder:
@@ -64,13 +85,15 @@ def learn(root, source_ids, value):
         excluded = disabled(folder)
         if any(s not in sources or s in excluded for s in source_ids):
             raise ValueError('Evidenza assente o esclusa: non usarla come esperienza')
+        if impact['basis'] == 'measured' and not any(sources[s].get('measurement') for s in source_ids):
+            raise ValueError('Un impatto misurato richiede misure prima/dopo conservate; usa observed o hypothesis se non ci sono')
         tools = {}
         for tool in lesson['tools']:
             versions = {sources[s].get('tools', {}).get(tool) for s in source_ids} - {None}
             if len(versions) != 1:
                 raise ValueError('Una lezione tecnica richiede la versione dello strumento nelle sue fonti')
             tools[tool] = versions.pop()
-        basis = {'lesson': lesson, 'source_ids': sorted(set(source_ids)), 'tool_versions': tools,
+        basis = {'lesson': lesson, 'impact': impact, 'source_ids': sorted(set(source_ids)), 'tool_versions': tools,
                  'source_statuses': sorted({sources[s].get('status', 'unknown') for s in source_ids})}
         identifier = fingerprint(basis)
         path = folder / 'lessons' / (identifier + '.json')
@@ -92,8 +115,12 @@ def pending(root, limit=6):
     excluded = disabled(root) | set(reviewed(root))
     return [{'id': r['id'], 'criterion': r['observation'].get('criterion'),
              'evidence': r['observation'].get('evidence'), 'status': r['observation'].get('status'),
-             'corrections': r['observation'].get('corrections', []), 'tools': r['observation'].get('tools', {})}
-            for r in observations(root) if r['id'] not in covered and r['id'] not in excluded][:limit]
+             'corrections': r['observation'].get('corrections', []), 'tools': r['observation'].get('tools', {}),
+             'suggested_lesson': r['observation'].get('suggested_lesson'),
+             'producer_method': r['observation'].get('producer_method'), 'procedure': r['observation'].get('procedure', []),
+             'impact': r['observation'].get('impact'), 'measurement': r['observation'].get('measurement'),
+             'evidence_files': r['observation'].get('evidence_files', []), 'limitations': r['observation'].get('limitations', [])}
+            for r in sorted(observations(root), key=lambda r: rank(r['observation'])) if r['id'] not in covered and r['id'] not in excluded][:limit]
 
 
 def reviewed(root):

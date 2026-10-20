@@ -146,10 +146,22 @@ window.showThread();
             def do_GET(self):
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    self.wfile.write(json.dumps({'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':0, 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
+                    library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':0, 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
                         'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
                         'observation':{'criterion':state.get('preferred_note','Risorse portabili'),'status':'preferred_by_user' if state.get('preferred_note') else 'failed','method':'functional','evidence':'Risorsa collegata mancante',
-                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}).encode()); return
+                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}
+                    if state.get('many_lessons'):
+                        template = library['lessons'][0]
+                        library['lessons'] = [{**template,'id':str(i)*64,'accepted':False,
+                            'basis':{**template['basis'],'impact':{'level':level,'basis':basis,'reason':'Prova dichiarata per il collaudo'},
+                                'lesson':{**template['basis']['lesson'],'title':title}}}
+                            for i,(title,level,basis) in enumerate([
+                                ('Piccolo perfezionamento','minor','observed'),
+                                ('Evita consegna inutilizzabile','major','observed'),
+                                ('Beneficio da confermare','major','hypothesis'),
+                                ('Riduzione tempi registrata','major','measured'),
+                                ('Impatto non valutato','unknown','hypothesis')])]
+                    self.wfile.write(json.dumps(library).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
                     self.send_header('Content-Type', 'application/json'); self.end_headers()
@@ -244,6 +256,7 @@ window.showThread();
                 state['fail_accept'] = False
                 experience_panel.get_by_role('button',name='Accetta questa lezione',exact=True).click()
                 expect(experience_panel).to_contain_text('Accettata per il riutilizzo')
+                experience_panel.get_by_test_id('accepted-lessons').locator('summary').first.click()
                 experience_panel.get_by_role('button',name='Rimuovi dalle skills',exact=True).click()
                 expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
                 experience_panel.get_by_text('Fonti, preferenze e archivio (1)', exact=True).click()
@@ -252,6 +265,17 @@ window.showThread();
                 page.get_by_label('Cosa vuoi riutilizzare?').fill('Cambiare metodo dopo il campione e verificare due scene')
                 page.get_by_role('button',name='Conserva questo metodo',exact=True).click()
                 expect(experience_panel).to_contain_text('Metodo preferito dall’utente')
+                state['many_lessons'] = True
+                page.reload(); section('Lezioni')
+                visible_lessons = page.locator('[data-testid=general-lesson]:visible')
+                expect(visible_lessons).to_have_count(3)
+                expect(visible_lessons.nth(0)).to_contain_text('Riduzione tempi registrata')
+                expect(visible_lessons.nth(1)).to_contain_text('Evita consegna inutilizzabile')
+                expect(visible_lessons.nth(2)).to_contain_text('Piccolo perfezionamento')
+                page.get_by_text('Altre proposte (2)',exact=True).click()
+                expect(page.locator('[data-testid=general-lesson]:visible')).to_have_count(5)
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'lezioni-impatto.png'))
+                state['many_lessons'] = False
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 section('Attività')
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')

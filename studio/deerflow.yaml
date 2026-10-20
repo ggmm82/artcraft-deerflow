@@ -367,6 +367,10 @@ lead_prompt_overlay:
     prevale sulla pianificazione: attendi la ripresa richiesta dall’utente.
     Una domanda semplice continua a ricevere una risposta diretta senza questo percorso.
 
+    L’esperienza include anche le scoperte operative delle sandbox: uso migliore
+    delle CLI, parametri, sequenze, errori risolti, risorse e riapertura. Non soltanto
+    la revisione del prodotto. Le osservazioni sandbox restano dichiarazioni con
+    prove e versioni, non verifiche indipendenti: valuta ogni singola proposta.
     L’esperienza conserva separatamente evidenze e lezioni generali. Quando learning
     segnala fonti da sintetizzare, usa studio_lessons senza argomenti e generalizza
     solo singole lezioni utili dopo una revisione o un feedback. Non imparare ogni
@@ -376,7 +380,12 @@ lead_prompt_overlay:
     percorsi e scelte particolari. Una preferenza non prova una qualità tecnica.
     Non ricopiare le evidenze nelle skills e non ritardare la consegna per svuotare
     l’archivio. Le lezioni salvate sono proposte: solo l’utente può accettarle
-    singolarmente nella sezione Lezioni. Non accettarle tu. Le nuove skills ricevono
+    singolarmente nella sezione Lezioni. Non accettarle tu. Ordina per significatività:
+    major per miglioramenti sostanziali, minor per piccoli perfezionamenti, unknown
+    quando non determinabile. In impact_json distingui measured (richiede misure
+    prima/dopo del supervisore), observed e hypothesis. Motiva l’impatto con le fonti:
+    non contare comandi o file e non inventare percentuali. Proponi poche lezioni
+    significative, non una scheda per ogni azione o ogni incarico. Le nuove skills ricevono
     solo lezioni accettate, generalizzate e pertinenti.
 
 

@@ -81,6 +81,10 @@ Un requisito può avere più osservazioni: un `passed` locale non annulla un `fa
 
 Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Con `studio_lessons()` leggi poche fonti, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.
 
+Considera anche le scoperte sull’uso degli strumenti prodotte dalle sandbox in `work/tool-lessons.json`, non soltanto le revisioni finali. Nei pending leggi suggested_lesson, producer_method, evidence_files e limiti. Distingui fonti operative dichiarate, misure del supervisore e verifiche indipendenti. Non salvare ogni azione come lezione.
+
+Ordina le singole proposte per impatto tramite `impact_json`: major / minor / unknown, basis measured / observed / hypothesis, reason fondata sulle fonti. I tempi misurati richiedono due stati reali del supervisore: senza dati non inventare numeri e non confondere miglioramenti ipotetici con risultati osservati.
+
 Per una proposta usa `source_ids_json` e `lesson_json` con titolo, condizioni (`applies_when`), procedura, verifiche, limiti e strumenti pertinenti. Elimina nomi, contenuti narrativi, percorsi e scelte del progetto; una preferenza personale non è un esito tecnico verificato. La generalizzazione è un giudizio del coordinatore fondato sulle fonti, non una certificazione.
 
 Ogni proposta resta inattiva finché l’utente non preme **Accetta questa lezione** nella sezione **Lezioni**. Non puoi accettarla al suo posto. Solo le lezioni accettate e pertinenti entrano nelle successive compilazioni dei ruoli; una modifica della proposta richiede una nuova accettazione. L’utente può rimuovere ogni lezione dalle skills senza cancellare le fonti. Il brief attuale prevale e gli incarichi già avviati non vengono riscritti. Non dichiarare addestramento del modello né aggiornamento automatico delle skills condivise.

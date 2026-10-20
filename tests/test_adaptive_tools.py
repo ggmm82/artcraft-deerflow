@@ -228,3 +228,18 @@ class AdaptiveToolTests(unittest.TestCase):
         self.assertEqual(source_turn(runtime),first)
         runtime.config=shared_run({'input':None})['config']
         self.assertEqual(source_turn(runtime),'')
+
+    def test_large_learning_evidence_stays_addressable_without_overflowing_control_context(self):
+        from studio.tools import lesson_reply
+        from studio.project_skills import read_document
+        with tempfile.TemporaryDirectory() as directory:
+            workspace=Path(directory)
+            result={'pending_sources':[{'id':str(i)*64,'criterion':'Useful operational lesson',
+                'evidence':'Long observed evidence '*1000,'producer_method':{'procedure':['Actual step '*1000]}} for i in range(6)]}
+            with patch('studio.tools.workspace_for',return_value=workspace):
+                text=lesson_reply(SimpleNamespace(),result)
+            self.assertLessEqual(len(text),8000)
+            value=json.loads(text)
+            self.assertEqual(len(value['pending_sources']),6)
+            full=json.loads(read_document(workspace,{'path':value['details_path'],'sha256':value['details_sha256']}))
+            self.assertEqual(full,result)
