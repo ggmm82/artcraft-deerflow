@@ -67,7 +67,7 @@ L'archivio non sostituisce la memoria personale nella pagina Settings/Memory e n
 attiva l'addestramento del modello o la riscrittura automatica delle skills Git.
 Per non perdere l'esperienza nei deploy conserva e includi nei backup l'intero
 volume `deerflow-data`, insieme alle cartelle dei progetti che contengono i file
-originali. L'export JSON è un'esportazione delle osservazioni; non è un backup dei
+originali. L'export JSON conserva osservazioni e lezioni con le relative accettazioni; non è un backup dei
 prodotti né offre importazione automatica di procedure considerate affidabili.
 
 ## Conservare un metodo preferito
@@ -106,19 +106,20 @@ processo può andare perso. Il comando non richiede socket nelle sandbox.
 
 ## Cambiare metodo durante il progetto
 
-In **Progetto → Le tue scelte sul metodo** puoi scegliere immagini generate,
-grafica vettoriale modificabile, tecnica mista o lasciare la scelta alla squadra.
-«Come indicato nel brief o in chat» mantiene le indicazioni già date. Il campo
-libero vale per qualsiasi tipo di progetto: stile, strumenti, sorgenti e cambi
-di direzione. Le scelte del pannello appartengono all'utente e un aggiornamento
-del piano del coordinatore non le sovrascrive. In chat il coordinatore chiede
-soltanto le scelte decisive ancora mancanti; non chiede di nuovo quelle esplicite.
+Apri **Intervieni** accanto alla chat. Puoi scegliere immagini generate,
+grafica vettoriale modificabile, tecnica mista o lasciare la scelta alla squadra,
+quando la scelta è pertinente. «Come indicato nel brief o in chat» mantiene le
+indicazioni già date. Il campo libero vale per qualsiasi tipo di progetto: stile,
+strumenti, sorgenti e cambi di direzione. Le scelte del pannello appartengono
+all'utente e un aggiornamento del piano del coordinatore non le sovrascrive.
+In chat il coordinatore chiede soltanto le scelte decisive ancora mancanti.
 
-Salvare aggiorna memoria e contratto dei prossimi incarichi e invalida le vecchie
-approvazioni; non cambia retroattivamente un worker già avviato. Per cambiare
-subito usa **Attività → Interrompi questa fase**, poi chiedi in chat di ripianificare.
-I file precedenti restano disponibili. Non è prevista la modifica in diretta di
-un prompt mentre una singola generazione è già in corso.
+Con **Applica e riprendi** il pannello arresta e attende la chiusura dei lavori
+prima di salvare le indicazioni e riavviare il coordinatore. Le nuove scelte
+aggiornano memoria e contratto dei prossimi incarichi e invalidano le vecchie
+approvazioni; non modificano retroattivamente i file già salvati. I file precedenti
+restano disponibili. Non è prevista la modifica in diretta di un prompt mentre
+una singola generazione è già in corso.
 
 ## Generazione nativa Codex
 
