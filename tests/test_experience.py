@@ -116,3 +116,14 @@ class ExperienceTests(unittest.TestCase):
         self.state.write_text(json.dumps(data))
         self.assertEqual(experience.collect(self.workspace,self.library),0)
         self.assertEqual(experience.summary(self.library)['total'],0)
+
+    def test_actual_method_record_keeps_script_identity_but_remains_a_declared_recipe(self):
+        out=self.product.parent; (out/'work').mkdir()
+        script=out/'work/compose.py';script.write_text('print("fixture")')
+        (out/'work/method.json').write_text(json.dumps({'approach':'Composizione con asset e lettering separato',
+            'steps':['Preparare gli asset','Comporre e riaprire'],'scripts':[str(script)],'limits':['Creazione immagini non registrata']}))
+        identifier=experience.prefer(self.workspace,self.library,out.name,'Conserva questo approccio')
+        record=next(r for r in experience.entries(self.library) if r['id']==identifier)
+        method=record['observation']['producer_method']
+        self.assertEqual(method['status'],'reported');self.assertEqual(method['scripts'][0]['sha256'],digest(script))
+        self.assertIn('non rieseguito',method['notice'])

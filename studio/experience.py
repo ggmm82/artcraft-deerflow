@@ -68,6 +68,38 @@ def exclude(root, identifier, excluded=True):
         atomic_json(folder / 'excluded.json', sorted(ids))
 
 
+def method_record(workspace, attempt):
+    from .projects import artifact_path
+    path = artifact_path(workspace, str(Path(attempt.get('output_dir', '')) / 'work/method.json'))
+    trace = artifact_path(workspace, str(Path(attempt.get('output_dir', '')) / 'work/tool-events.json'))
+    trace_ref = {'path': str(trace), 'sha256': digest(trace)} if trace else None
+    if not path or path.stat().st_size > 16000:
+        return {'status': 'not_recorded', 'tool_events': trace_ref, 'notice': 'Procedimento eseguito non registrato; non dedurlo dal risultato.'}
+    try:
+        value = json.loads(path.read_text())
+        if not isinstance(value, dict) or not isinstance(value.get('approach'), str):
+            raise ValueError()
+        clean = {'approach': value['approach'][:1500]}
+        for key in ('steps', 'limits'):
+            items = value.get(key, [])
+            if not isinstance(items, list) or any(not isinstance(item, str) for item in items):
+                raise ValueError()
+            clean[key] = [item[:1000] for item in items[:12]]
+        scripts = []
+        filenames = value.get('scripts', [])
+        if not isinstance(filenames, list):
+            raise ValueError()
+        for filename in filenames[:12]:
+            script = artifact_path(workspace, filename) if isinstance(filename, str) else None
+            if script and script.stat().st_size <= 1048576 and script.suffix.lower() in ('.py', '.js', '.mjs', '.cjs', '.sh', '.json'):
+                scripts.append({'path': filename, 'sha256': digest(script)})
+        return redact_memory({'status': 'reported', 'path': str(path), 'sha256': digest(path),
+                              'declared_method': clean, 'scripts': scripts, 'tool_events': trace_ref,
+                              'notice': 'Procedimento dichiarato dal produttore, non rieseguito dal registro esperienza.'})
+    except (OSError, ValueError, TypeError):
+        return {'status': 'invalid', 'notice': 'Procedimento registrato in formato non utilizzabile.'}
+
+
 def collect(workspace, root, source_thread=None):
     """Capture evaluated criteria/corrections, not successful exits or model claims."""
     from .projects import locked as project_lock, load, artifact_path
@@ -107,6 +139,7 @@ def collect(workspace, root, source_thread=None):
                         'criterion': criterion.get('criterion', '')[:1000], 'method': criterion.get('method'),
                         'status': criterion['status'], 'evidence': criterion.get('evidence', '')[:1500],
                         'corrections': [a.get('action', '')[:1000] for a in actions[:3]],
+                        'producer_method': method_record(workspace, producer),
                         'procedure': role.get('procedure', [])[:6], 'tools': tools, 'scope_known': bool(role),
                         'source_product': review['product_path'], 'source_report': review['report_path'],
                     })
@@ -194,7 +227,7 @@ def prefer(workspace, root, delivery_id, note, source_thread=None):
             'kind': 'user_preference', 'project_id': project['id'], 'source_thread': source_thread,
             'criterion': note.strip(), 'method': 'user_feedback', 'status': 'preferred_by_user',
             'evidence': 'Preferenza espressa dall’utente per questa lavorazione; non è un collaudo tecnico o un risultato riproducibile garantito.',
-            'corrections': [], 'procedure': role.get('procedure', []),
+            'corrections': [], 'producer_method': method_record(workspace, attempt), 'procedure': role.get('procedure', []),
             'tools': {t: role.get('tool_versions', {}).get(t, 'unknown') for t in role.get('tools', [])},
             'scope_known': bool(role), 'models': (attempt.get('context') or {}).get('provider', {}),
             'role_skill': role_skill, 'files': files,

@@ -5,7 +5,7 @@ import { getBackendBaseURL } from "@/core/config";
 
 type Observation = { id: string; at: string; excluded: boolean; observation: {
   criterion: string; status: string; method: string; evidence: string; corrections: string[];
-  tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string; limitations?: string[];
+  tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string; producer_method?: { status: string; notice: string; declared_method?: { approach: string; steps: string[]; limits: string[] } }; limitations?: string[];
 } };
 type Library = { total: number; excluded: number; observations: Observation[] };
 export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
@@ -67,6 +67,7 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
       <p className="font-medium">{record.observation.criterion}</p>
       <p>{record.observation.status === "preferred_by_user" ? "Metodo preferito dall’utente" : record.observation.status === "passed" ? "Esito positivo osservato" : "Difetto osservato"} · {record.observation.method} · {record.excluded ? "Esclusa" : "Disponibile per selezione"}</p>
       <p>{record.observation.evidence}</p>
+      {record.observation.producer_method && <details><summary>Procedimento conservato</summary><p>{record.observation.producer_method.notice}</p><p>{record.observation.producer_method.declared_method?.approach}</p><ol className="list-inside list-decimal">{record.observation.producer_method.declared_method?.steps.map((step, i) => <li key={i}>{step}</li>)}</ol></details>}
       {record.observation.limitations?.map((limit, i) => <p key={i}>Limite conservato: {limit}</p>)}
       {record.observation.corrections.map((action, i) => <p key={i}>Correzione proposta: {action}</p>)}
       <p>Strumenti: {Object.entries(record.observation.tools).map(([tool, version]) => `${tool} ${version}`).join(", ") || "Workspace generale"}</p>

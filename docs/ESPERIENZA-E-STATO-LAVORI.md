@@ -75,3 +75,17 @@ le capacità non registrati restano sconosciuti. I file restano nei progetti di
 origine e vanno inclusi nel backup del volume. Una preferenza può suggerire una
 procedura alla prossima skill pertinente; non garantisce lo stesso risultato né
 trasforma una bitmap in tracciati modificabili.
+
+Ai nuovi worker viene richiesto anche `work/method.json`: approccio effettivo,
+azioni svolte, riferimenti agli script e limiti. Il registro esperienza ne conserva
+una copia dichiarata con hash, insieme ai riferimenti e agli hash degli script.
+Non riesegue la ricetta e non presume che le dichiarazioni siano dimostrate.
+Per le lavorazioni storiche prive di questo documento compare «procedimento non
+registrato»: la preferenza resta utile, ma non ricostruisce passaggi sconosciuti.
+
+Per gli eventi strutturati Codex riconosciuti viene anche conservato
+`work/tool-events.json`: identità e inizio/fine degli strumenti, senza argomenti,
+prompt, testo delle risposte o ragionamenti. Permette di distinguere, quando la CLI
+lo espone, un generatore immagini da un comando di impaginazione. Il registro
+esperienza ne conserva il riferimento e l'hash, non ricostruisce eventi storici
+mai salvati né presume che tutte le CLI espongano gli stessi eventi.

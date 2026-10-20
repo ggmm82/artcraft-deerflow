@@ -191,6 +191,8 @@ class Reporter:
         self.last_cli_event = None
         self.last_signal = 0
         self.execution_state = 'model'
+        self.tool_events = []
+        self.engine, self.model = job['engine'], job['model']
 
     def emit(self, phase, summary=None, **fields):
         if phase in ('running_tool', 'waiting_model'):
@@ -261,6 +263,23 @@ class Reporter:
         if not isinstance(event, dict):
             return
         self.model_signal()
+        # Persist only tool identity/lifecycle, never arguments, text or reasoning.
+        item = event.get('item') or {}
+        item_type = item.get('type') if isinstance(item, dict) else None
+        if event.get('type') in ('item.started', 'item.completed') and item_type in (
+                'command_execution', 'mcp_tool_call', 'image_generation', 'image_generation_call', 'web_search'):
+            self.tool_events.append({'at': utcnow(), 'event': event['type'], 'tool_type': item_type,
+                                     'tool': clean_summary(item.get('tool') or item_type, 80)})
+            self.tool_events = self.tool_events[-250:]
+            try:
+                folder = self.output_dir / 'work'
+                folder.mkdir(exist_ok=True)
+                path = folder / 'tool-events.json'
+                if not folder.is_symlink() and folder.resolve().is_relative_to(self.output_dir.resolve()) and not path.is_symlink():
+                    path.write_text(json.dumps({'engine': self.engine, 'model': clean_summary(self.model), 'events': self.tool_events}))
+                    path.chmod(0o600)
+            except (OSError, ValueError):
+                pass
         kind = event.get('type') if engine == 'codex' else event.get('event')
         if engine == 'codex' and kind not in ('item.started', 'item.completed', 'turn.started', 'turn.completed'):
             return

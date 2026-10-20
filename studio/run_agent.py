@@ -203,6 +203,7 @@ def main():
         'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
         'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
+        'Prima della consegna salva work/method.json con approach (metodo realmente usato), steps (azioni concrete concluse, senza ragionamenti interni o credenziali), scripts (percorsi assoluti degli script riutilizzabili salvati) e limits (passaggi non riproducibili o non registrati). Per asset generati registra lo strumento effettivo e il riferimento al processo salvato; non inventare prompt, servizi o provenienza. Non includere chiavi, token o comandi con segreti. Questo registro serve ai progetti futuri e non sostituisce le evidenze dei controlli.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.',
         'Lavora per risultati visibili presto: se l’incarico è una prova, produci una piccola '

@@ -175,3 +175,16 @@ class ProviderWaitBudgetTests(unittest.TestCase):
             result=run_cli([sys.executable,'-c',code],cwd=folder,input='',env=None,timeout=3,
                            on_event=event,model_wait_seconds=.05,waiting_model=lambda:mode['waiting'])
             self.assertEqual(result.returncode,0)
+
+class ToolIdentityTests(unittest.TestCase):
+    def test_image_generation_is_work_not_model_silence_and_trace_excludes_payload(self):
+        with tempfile.TemporaryDirectory() as root:
+            output=Path(root)/'outputs/workspace/artcraft-job-123456abcdef';output.mkdir(parents=True)
+            reporter=progress.Reporter(output,{'run_id':output.name,'agent':'workspace','engine':'codex','model':'fixture'})
+            reporter.cli_event('codex',{'type':'item.started','item':{'type':'image_generation_call','prompt':'private prompt','arguments':{'api_key':'private key'}}})
+            self.assertEqual(reporter.execution_state,'tool')
+            text=(output/'work/tool-events.json').read_text()
+            self.assertIn('image_generation_call',text)
+            self.assertNotIn('private prompt',text);self.assertNotIn('private key',text)
+            reporter.cli_event('codex',{'type':'item.completed','item':{'type':'image_generation_call'}})
+            self.assertEqual(reporter.execution_state,'model')
