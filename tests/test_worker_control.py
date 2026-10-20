@@ -27,6 +27,7 @@ class WorkerControlTests(unittest.TestCase):
                 with self.assertRaises(ValueError):docker_runtime.request_stop(workspace,job)
                 self.assertEqual(docker.call_count,1)
             self.assertFalse(failure_info('Interruzione della fase richiesta dall’utente')['retryable'])
+            self.assertEqual(failure_info("Command 'codex' timed out after 1500 seconds")['code'],'work_limit')
             with self.assertRaises(ValueError):docker_runtime.request_stop(workspace,'../another-job')
 
     def test_stop_signal_unwinds_cleanup_instead_of_abandoning_refreshed_credentials(self):

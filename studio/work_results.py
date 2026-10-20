@@ -27,7 +27,7 @@ def failure_info(error):
         return {'code': 'provider_wait_limit', 'retryable': True,
                 'message': 'Il modello non ha inviato nuovi eventi entro il budget di attesa.',
                 'action': 'Conserva e ispeziona i file prodotti; valuta una continuazione mirata o un altro modello. Non ricominciare tutto.'}
-    if any(s in text for s in ('turni', 'turn limit', 'timeout', 'tempo massimo', 'limite della singola', 'tempo esaurito')):
+    if any(s in text for s in ('turni', 'turn limit', 'timeout', 'timed out', 'tempo massimo', 'limite della singola', 'tempo esaurito')):
         return {'code': 'work_limit', 'retryable': True,
                 'message': 'Questo incarico si è fermato; puoi riusare i file prodotti.',
                 'action': 'Ispeziona i risultati disponibili e assegna solo il recupero, la verifica o l’integrazione mancanti.'}
