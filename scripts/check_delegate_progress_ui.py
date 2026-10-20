@@ -28,7 +28,7 @@ def main():
     iso = lambda t: t.isoformat()
     video_path = '/mnt/user-data/outputs/filmcraft/preview.mp4'
     job = {'job_id': 'artcraft-job-123456abcdef', 'agent': 'effectcraft', 'engine': 'codex',
-        'model': 'fixture-model', 'phase': 'running_tool', 'summary': 'Esporto il risultato con Effectcraft',
+        'model': 'fixture-model', 'can_stop': True, 'phase': 'running_tool', 'summary': 'Esporto il risultato con Effectcraft',
         'resources': {'memory_bytes': 1073741824, 'memory_limit_bytes': 2147483648, 'oom_kills': 0},
         'limits': {'cpus': 1.5}, 'operations': [{'id': 'render', 'state': 'running', 'label': 'Render finale', 'elapsed_seconds': 600, 'progress': {'done': 12, 'total': 48}}],
         'work_summary': 'Correggo inquadratura e proporzioni del robot prima del render',
@@ -106,7 +106,13 @@ window.showThread();
                 pass
 
             def do_POST(self):
-                data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                data = json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))) or b'{}')
+                if self.path.endswith('/stop'):
+                    self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers()
+                    self.wfile.write(b'{"requested":true}');return
+                if self.path.endswith('/studio-experience/prefer'):
+                    state['preferred_note'] = data['note']
+                    self.do_GET(); return
                 valid = self.path == '/api/threads/fixture/studio-delivery/accept' and data.get('delivery_id') == 'final'
                 if valid:
                     state['project'] = {**state['project'], 'status': 'ready', 'quality_status': 'accepted_by_user'}
@@ -114,7 +120,22 @@ window.showThread();
                 self.send_header('Content-Type', 'application/json'); self.end_headers()
                 self.wfile.write(json.dumps({'project': state['project']}).encode())
 
+            def do_PUT(self):
+                body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+                if self.path.endswith('/studio-direction'):
+                    state['project']['user_direction'] = {**body, 'revision': 1}
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(b'{"running_step_ids":["motion"]}'); return
+                state['experience_excluded'] = body['excluded']
+                self.do_GET()
+
             def do_GET(self):
+                if '/studio-experience' in self.path:
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'total':1,'excluded':int(state.get('experience_excluded',False)), 'observations':[{
+                        'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
+                        'observation':{'criterion':state.get('preferred_note','Risorse portabili'),'status':'preferred_by_user' if state.get('preferred_note') else 'failed','method':'functional','evidence':'Risorsa collegata mancante',
+                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
                     self.send_header('Content-Type', 'application/json'); self.end_headers()
@@ -141,7 +162,7 @@ window.showThread();
                 page.on('pageerror', lambda error: errors.append(str(error)))
                 page.goto(f'http://127.0.0.1:{server.server_port}')
                 dock = page.get_by_test_id('delegate-progress')
-                expect(page.get_by_test_id('studio-status')).to_have_text('Effectcraft sta lavorando')
+                expect(page.get_by_test_id('studio-status')).to_have_text('Avanzamento da verificare')
                 expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
                 expect(page.get_by_test_id('studio-health')).to_contain_text('Nessun nuovo avanzamento')
                 expect(page.get_by_test_id('delegate-job')).to_have_count(0)  # no wall of technical detail
@@ -173,9 +194,29 @@ window.showThread();
                     page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                page.get_by_role('button', name='Progetto', exact=True).click()
+                direction = page.get_by_test_id('project-direction')
+                direction.get_by_label('Tecnica visiva, se pertinente').select_option('vector')
+                direction.get_by_label('Indicazioni per questo progetto').fill('Disegni modificabili, senza raster incorporati')
+                direction.get_by_role('button', name='Salva le mie scelte').click()
+                expect(direction).to_contain_text('Scelta salvata per i prossimi incarichi')
+                assert state['project']['user_direction']['visual_approach'] == 'vector'
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                page.get_by_role('button', name='Esperienza', exact=True).click()
+                experience_panel = page.get_by_test_id('experience-panel')
+                expect(experience_panel).to_contain_text('1 osservazioni conservate')
+                expect(experience_panel).to_contain_text('Risorsa collegata mancante')
+                page.get_by_role('button', name='Escludi dal riutilizzo', exact=True).click()
+                expect(page.get_by_role('button', name='Riattiva il riutilizzo')).to_be_visible()
+                page.get_by_label('Cosa vuoi riutilizzare?').fill('Cambiare metodo dopo il campione e verificare due scene')
+                page.get_by_role('button',name='Conserva questo metodo',exact=True).click()
+                expect(experience_panel).to_contain_text('Metodo preferito dall’utente')
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 page.get_by_role('button', name='Attività', exact=True).click()
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
                 expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
+                page.get_by_role('button',name='Interrompi questa fase',exact=True).click()
+                expect(page.get_by_role('button',name='Arresto richiesto…',exact=True)).to_be_disabled()
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 # A professional role is compiled from the project, independently of CLI names.
                 state['job'] = {**job, 'role_id': 'coherence', 'role_title': 'Responsabile della coerenza', 'role_version': 'abcdef0123456789'}
@@ -185,7 +226,7 @@ window.showThread();
                     {'id': 'verify', 'title': 'Revisore indipendente', 'mission': 'Verificare la consegna', 'expertise': ['Verifiche indipendenti'], 'checks': ['Raccogliere evidenze'], 'tools': [], 'version': 'fedcba0123456789'}],
                     'steps': [{**step, 'role_id': 'coherence' if step['id'] == 'motion' else 'verify' if step['id'] == 'final' else '', 'attempt_count': 1 if step['id'] == 'motion' else 0} for step in project['steps']]}
                 page.reload()
-                expect(page.get_by_test_id('studio-status')).to_have_text('Responsabile della coerenza sta lavorando')
+                expect(page.get_by_test_id('studio-status')).to_have_text('Avanzamento da verificare')
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 compiled = page.get_by_test_id('compiled-role').first
                 expect(compiled).to_contain_text('Al lavoro')
@@ -224,7 +265,7 @@ window.showThread();
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 expect(page.get_by_test_id('team-plan')).not_to_contain_text('Verifico il mix recuperato')
                 state['project'] = {**project, 'status': 'clarifying', 'outcome': {**project['outcome'], 'format': '', 'questions': ['Una proposta di lavoro o un prodotto pronto da distribuire?']}}
-                state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now)}
+                state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now), 'resources_reclaimed': True, 'cleanup_finished_at': iso(now)}
                 page.reload()
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Definiamo il risultato insieme')
@@ -232,6 +273,8 @@ window.showThread();
                 page.get_by_role('button', name='Progetto', exact=True).click()
                 expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
                 expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
+                page.get_by_role('button', name='Attività', exact=True).click()
+                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Container rimosso')
                 state['job'] = job
                 page.evaluate("window.showThread('fixture',true,true,false)")
                 # A report-only inventory must never replace the selected artifact.

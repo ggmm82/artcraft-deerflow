@@ -34,7 +34,7 @@ with sync_playwright() as p:
     page.locator('#runtime-memory').fill('3072')
     page.get_by_role('button', name='Salva risorse').click()
     expect(page.locator('#status')).to_contain_text('Risorse salvate')
-    assert saved == [{'mode': 'manual', 'cpus': 2, 'memory_mib': 3072}]
+    assert saved == [{'mode': 'manual', 'cpus': 2, 'memory_mib': 3072, 'model_wait_seconds': 0}]
     page.reload()
     expect(page.locator('#runtime-cpus')).to_have_value('2')
     expect(page.locator('#runtime-memory')).to_have_value('3072')

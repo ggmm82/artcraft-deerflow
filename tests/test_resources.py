@@ -23,6 +23,12 @@ class ResourceTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 runtime_settings.save({'mode': 'manual', 'cpus': 2, 'memory_mib': 8192})
             self.assertEqual(runtime_settings.settings()['memory_mib'], 3072)
+            self.assertEqual(runtime_settings.effective()['model_wait_seconds'], 0)
+            runtime_settings.save({'mode':'auto','cpus':2,'memory_mib':3072,'model_wait_seconds':120})
+            self.assertEqual(runtime_settings.read()['effective']['model_wait_seconds'],120)
+            with self.assertRaises(ValueError):
+                runtime_settings.save({'mode':'auto','cpus':2,'memory_mib':3072,'model_wait_seconds':1})
+            self.assertEqual(runtime_settings.read()['effective']['model_wait_seconds'],120)
 
     def test_oom_requires_a_real_counter_not_exit_137(self):
         with tempfile.TemporaryDirectory() as directory:

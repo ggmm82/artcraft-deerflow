@@ -34,7 +34,7 @@ def project_view(project):
     if not project or project.get('archived'):
         return project
     value = {k: project.get(k) for k in ('id', 'status', 'summary', 'next_action', 'product_path',
-             'quality_status', 'attention', 'outcome', 'memory', 'requirements', 'project_type')}
+             'quality_status', 'attention', 'outcome', 'user_direction', 'memory', 'requirements', 'project_type')}
     value['brief'] = clean_summary(project.get('brief'), 500)
     acceptance = project.get('acceptance') or {}
     value['acceptance'] = {k: acceptance.get(k) for k in ('hash', 'request_count', 'request_manifest')}
@@ -45,7 +45,7 @@ def project_view(project):
     active = set(orientation.get('active_step_ids', [s['id'] for s in project.get('steps', [])]))
     value['steps'] = [{k: s.get(k) for k in ('id', 'agent', 'role_id', 'status')} |
             {'goal': clean_summary(s.get('goal'), 180)} for s in project.get('steps', []) if s['id'] in active][:16]
-    value['roles'] = [{k: r.get(k) for k in ('id', 'title', 'tools', 'skill')} |
+    value['roles'] = [{k: r.get(k) for k in ('id', 'title', 'tools', 'skill', 'experience')} |
             {'mission': clean_summary(r.get('mission'), 160)} for r in project.get('roles', [])][:12]
     value['results'] = [{k: r.get(k) for k in ('path', 'role', 'delivery_id')} for r in project.get('results', [])[:4]]
     value['deliveries'] = [{k: d.get(k) for k in ('id', 'title', 'technical_status', 'current')} for d in project.get('deliveries', [])[:3]]
@@ -102,6 +102,8 @@ def reply(workspace, payload, kind):
     text = json.dumps(full, ensure_ascii=False)
     reference = scoped_file(workspace, 'control-results/' + kind + '-' + fingerprint(full) + '.json', text)
     value = {'project': project_view(full.get('project'))} if kind == 'plan' else delegate_view(full)
+    if kind == 'plan' and full.get('generation_capabilities'):
+        value['generation_capabilities'] = full['generation_capabilities']
     value.update(details_path=reference['path'], details_sha256=reference['sha256'])
     if len(json.dumps(value, ensure_ascii=False)) <= LIMIT:
         return json.dumps(value, ensure_ascii=False)
@@ -132,7 +134,7 @@ def reply(workspace, payload, kind):
         # All exceptions survive in the addressed full result; counters signal
         # that an omitted list is not evidence of success.
         keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'review_counts',
-                'attention', 'retry_blocked', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
+                'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
         if kind == 'plan':
             p = value.get('project') or {}
             value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention', 'method_recovery', 'presentation')}}

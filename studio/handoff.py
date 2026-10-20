@@ -59,7 +59,16 @@ def validate_delivery(value):
         if reopen['status'] != 'passed':
             unverified = True
             if not limitations:
-                raise ValueError('handoff.json: riapertura non verificata richiede un limite esplicito')
+                if reopen['status'] == 'not_run' and item['role'] in ('dependency', 'report'):
+                    # A missing repetition of an auxiliary check must not discard
+                    # an otherwise usable job. Keep not_run, add the truthful
+                    # limit and warning; never promote an unverified source.
+                    note = 'Riapertura non eseguita per ' + Path(path).name + ': ' + reopen['evidence']
+                    item['limitations'] = [note]
+                    if note not in value['warnings']:
+                        value['warnings'].append(note)
+                else:
+                    raise ValueError('handoff.json: riapertura non verificata richiede un limite esplicito')
         if item['role'] in ('editable_source', 'source_archive'):
             if path not in outputs:
                 raise ValueError('handoff.json: il sorgente modificabile deve essere scaricabile in output_files')

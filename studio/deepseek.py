@@ -131,6 +131,8 @@ def run(model, prompt, output_dir, timeout, progress=None, transport=None, provi
         if progress:
             progress.emit('finalizing' if finalizing else 'waiting_model', turn=turn + 1)
         result = transport('/chat/completions', payload, timeout=min(remaining, 180))
+        if progress:
+            progress.model_signal()
         usage.append(result.get('usage', {}))
         (output_dir / ('work/deepseek-usage.json' if provider_label == 'DeepSeek' else 'work/openai-usage.json')).write_text(json.dumps(usage))
         choice = result['choices'][0]

@@ -19,6 +19,18 @@ def workspace_for(runtime):
     return paths.sandbox_user_data_dir(thread, user_id=user)
 
 
+def experience_root(runtime):
+    return get_paths().user_dir(resolve_runtime_user_id(runtime)) / 'artcraft-experience'
+
+
+def preserve_experience(workspace, runtime):
+    from .experience import collect
+    try:
+        return {'saved': collect(workspace, experience_root(runtime), (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id'))}
+    except (OSError, ValueError, TypeError):
+        return {'error': 'Esperienza non archiviata: conserva il volume dati e riprova il recupero dalla scheda Esperienza.'}
+
+
 def interaction_id(runtime):
     messages = (getattr(runtime, 'state', None) or {}).get('messages', [])
     for index in range(len(messages) - 1, -1, -1):
@@ -112,7 +124,8 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         sync_acceptance(workspace, requests, json.loads(criteria_json) if criteria_json else None)
         if strategy_json:
             create_plan(workspace, '', [], strategy=json.loads(strategy_json), status='blocked' if status == 'blocked' else '')
-        sync_project_context(workspace, json.loads(roles_json) if roles_json else None, json.loads(memory_json) if memory_json else None)
+        preserve_experience(workspace, runtime)
+        sync_project_context(workspace, json.loads(roles_json) if roles_json else None, json.loads(memory_json) if memory_json else None, experience_root=experience_root(runtime))
         value = read_project(workspace)
     if value and not value.get('archived'):
         # The user board contains all versions. Repeating its entire inventory
@@ -120,7 +133,10 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = {**value, 'results': value.get('results', [])[:8],
                  'deliveries': value.get('deliveries', [])[:5]}
     from .control_memory import reply
-    return reply(workspace, {'project': value}, 'plan')
+    from .state import team
+    from .acceptance import generation_capabilities
+    return reply(workspace, {'project': value,
+        'generation_capabilities': generation_capabilities(team('squad')['engine'], (value or {}).get('user_direction'))}, 'plan')
 
 
 @tool('studio_delegate', parse_docstring=True)
@@ -160,7 +176,8 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     from .state import team
     profile = team('squad')
     request_id = interaction_id(runtime)
-    sync_project_context(workspace)
+    preserve_experience(workspace, runtime)
+    sync_project_context(workspace, experience_root=experience_root(runtime))
     project = read_project(workspace) or {}
     if not role_id and step_id:
         role_id = next((s.get('role_id', '') for s in project.get('steps', []) if s['id'] == step_id), '')
@@ -173,6 +190,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
             tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
             requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role), provider={k: profile[k] for k in ('engine', 'model', 'connection_id') if k in profile},
         purpose=purpose, request_id=request_id, role=role))
+    experience = preserve_experience(workspace, runtime)
     handoff = result.get('handoff') or {}
     from .progress import clean_summary
     compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked',
@@ -195,8 +213,26 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status')}
     compact['quality_review'] = result.get('quality_review')
     from .acceptance import capabilities
+    compact['experience'] = experience
     compact['verification_capabilities'] = capabilities(profile['engine'])
+    from .acceptance import generation_capabilities
+    current_direction = (read_project(workspace) or {}).get('user_direction')
+    compact['user_direction'] = current_direction
+    if current_direction != project.get('user_direction'):
+        compact['direction_changed'] = 'L’utente ha cambiato le scelte durante questo incarico: rileggi studio_plan e ripianifica prima di produrre o approvare. Conserva i file validi.'
+    compact['generation_capabilities'] = generation_capabilities(profile['engine'], current_direction)
     from .control_memory import reply, counts
     compact['check_counts'] = counts(handoff.get('checks', []))
     compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))
     return reply(workspace, compact, 'delegate')
+
+
+async def _studio_delegate_async(agent: str, task: str, runtime: Runtime, step_id: str = '', purpose: str = 'work', role_id: str = '') -> str:
+    from .cancellation import call
+    return await call(studio_delegate.func, agent=agent, task=task, runtime=runtime,
+                      step_id=step_id, purpose=purpose, role_id=role_id)
+
+
+# Keep the synchronous function for direct callers; LangGraph awaits this
+# coroutine, so an explicit run cancellation reaches the Docker worker too.
+studio_delegate.coroutine = _studio_delegate_async

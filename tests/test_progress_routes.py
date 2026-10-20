@@ -48,7 +48,7 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertTrue(require_existing)
                 return thread == 'conversation' and user == 'owner'
             store = SimpleNamespace(check_access=AsyncMock(side_effect=check_access))
-            paths = SimpleNamespace(sandbox_user_data_dir=lambda thread, user_id: root / user_id / thread)
+            paths = SimpleNamespace(user_dir=lambda user_id: root / user_id, sandbox_user_data_dir=lambda thread, user_id: root / user_id / thread)
             with patch('app.gateway.deps.get_thread_store', return_value=store), \
                  patch('studio.progress_routes.get_paths', return_value=paths), TestClient(app) as client:
                 url = '/api/threads/conversation/studio-jobs'
@@ -62,6 +62,29 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'no-permission'}).status_code, 403)
                 self.assertEqual(client.get('/api/threads/missing/studio-jobs', headers={'X-Test-User': 'owner'}).status_code, 404)
+                experience_url = '/api/threads/conversation/studio-experience'
+                self.assertEqual(client.get(experience_url).status_code, 401)
+                self.assertEqual(client.get(experience_url, headers={'X-Test-User':'other'}).status_code, 404)
+                self.assertEqual(client.get(experience_url, headers={'X-Test-User':'no-permission'}).status_code, 403)
+                self.assertEqual(client.get(experience_url, headers={'X-Test-User':'owner'}).json()['total'], 0)
+                self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'other'}).status_code, 404)
+                self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'owner'}).status_code, 200)
+                self.assertEqual(client.put(experience_url,json={'id':'a'*64,'excluded':True},headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.post(experience_url+'/prefer',json={'delivery_id':'artcraft-job-123456abcdef','note':'Preferenza personale'},headers={'X-Test-User':'other'}).status_code,404)
+                with patch('studio.docker_runtime.request_stop',return_value={'requested':True}) as stop:
+                    stop_url='/api/threads/conversation/studio-jobs/artcraft-job-123456abcdef/stop'
+                    self.assertEqual(client.post(stop_url).status_code,401)
+                    self.assertEqual(client.post(stop_url,headers={'X-Test-User':'other'}).status_code,404)
+                    self.assertEqual(client.post(stop_url,headers={'X-Test-User':'owner'}).status_code,200)
+                    stop.assert_called_once()
+                direction_url = '/api/threads/conversation/studio-direction'
+                direction = {'visual_approach': 'vector', 'instructions': 'Disegni modificabili'}
+                self.assertEqual(client.put(direction_url,json=direction).status_code,401)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'no-permission'}).status_code,403)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'owner'}).status_code,200)
+                self.assertEqual(client.get(url,headers={'X-Test-User':'owner'}).json()['project']['user_direction']['visual_approach'],'vector')
+                self.assertEqual(client.put(direction_url,json={'visual_approach':'invalid'},headers={'X-Test-User':'owner'}).status_code,422)
                 accept_url = '/api/threads/conversation/studio-delivery/accept'
                 data = {'delivery_id': 'nonexistent'}
                 self.assertEqual(client.post(accept_url, json=data).status_code, 401)

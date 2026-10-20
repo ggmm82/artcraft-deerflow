@@ -1,6 +1,8 @@
 import contextlib
 import io
 import json
+import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -40,9 +42,13 @@ assert pathlib.Path.cwd() == out
     'checks': [{'name': 'Content', 'status': 'passed', 'evidence': 'Read report.txt'}], 'warnings': []}))
 pathlib.Path(sys.argv[1]).write_text('Completed')
 '''
+            def native_fixture(model, prompt, output, timeout, progress, **options):
+                subprocess.run([sys.executable, '-c', code, str(root / 'tmp/final')],
+                    cwd=output, env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output)}, check=True)
+                return 'Completed'
             with patch.object(run_agent, 'Path', side_effect=worker_path), \
                  patch.object(sys, 'argv', ['run_agent.py', str(jobfile)]), \
-                 patch.object(run_agent, 'command', side_effect=lambda engine, model, prompt, final: [sys.executable, '-c', code, str(final)]):
+                 patch('studio.codex_native.run', side_effect=native_fixture):
                 jobfile.write_text(json.dumps(job))
                 stream = io.StringIO()
                 with contextlib.redirect_stdout(stream):
@@ -60,7 +66,7 @@ pathlib.Path(sys.argv[1]).write_text('Completed')
                 job.pop('requirements')
                 job['run_id'] = 'artcraft-job-222222222222'
                 jobfile.write_text(json.dumps(job))
-                with patch.object(run_agent, 'command', return_value=[sys.executable, '-c', 'pass']):
+                with patch('studio.codex_native.run', return_value='Completed without files'):
                     with self.assertRaises(FileNotFoundError):
                         run_agent.main()
 

@@ -31,6 +31,7 @@ COPY studio/run_agent.py studio/handoff.py studio/deepseek.py studio/refresh_cod
 COPY studio/openai_compatible.py /opt/studio/
 COPY studio/antigravity_cli.py studio/terminal_text.py /opt/studio/
 COPY studio/progress.py studio/cli_runner.py studio/work_results.py studio/operations.py studio/resource_usage.py /opt/studio/
+COPY studio/codex_native.py /opt/studio/
 COPY studio/source_packages.py studio/deliveries.py studio/acceptance.py studio/revision.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
 WORKDIR /mnt/user-data

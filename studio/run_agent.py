@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -48,13 +49,6 @@ def copy_credentials(source, destination, engine):
 
 
 def command(engine, model, prompt, output):
-    if engine == 'codex':
-        args = ['codex', 'exec', '--json', '--skip-git-repo-check',
-                '--dangerously-bypass-approvals-and-sandbox',
-                '--output-last-message', str(output)]
-        if model:
-            args += ['--model', model]
-        return args + ['-']
     if engine == 'gemini':
         args = ['agy', '--dangerously-skip-permissions', '--input-format', 'stream-json', '--output-format', 'stream-json',
                 '--add-dir', '/mnt/user-data', '--print-timeout', '25m',
@@ -119,6 +113,9 @@ def verify_project_context(job, workspace=Path('/mnt/user-data')):
         manifest = read(acceptance['request_manifest'])
         for document in json.loads(manifest.read_text()):
             read(document)
+    experience = (job.get('role') or {}).get('experience')
+    if experience:
+        read(experience)
     memory = (job.get('role') or {}).get('memory')
     if memory:
         memory_path = read(memory)
@@ -127,7 +124,17 @@ def verify_project_context(job, workspace=Path('/mnt/user-data')):
             read(method)
 
 
+class WorkerCancelled(Exception):
+    pass
+
+
+def handle_stop(signum, frame):
+    # Unwind through run_cli's process cleanup and the credential refresh finally.
+    raise WorkerCancelled('Interruzione della fase richiesta dall’utente; i file salvati sono conservati.')
+
+
 def main():
+    signal.signal(signal.SIGTERM, handle_stop)
     job = json.loads(Path(sys.argv[1]).read_text())
     engine = job['engine']
     auth = Path('/root') / ('.' + engine)
@@ -182,7 +189,8 @@ def main():
         'Python: /usr/bin/python3 (non python). CLI native e craft: /usr/local/bin; '
         'non usare /opt/artcraft/bin, che non esiste.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
-        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai.',
+        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai. '
+        'Il runtime trasferisce automaticamente i PNG restituiti dalla generazione nativa in ARTCRAFT_OUTPUT_DIR/generated_images: usa quelle copie, senza esplorare la cartella delle credenziali.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
         'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
@@ -200,6 +208,7 @@ def main():
         'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
         'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
         + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
+        'Prima della consegna salva work/method.json con approach (metodo realmente usato), steps (azioni concrete concluse, senza ragionamenti interni o credenziali), scripts (percorsi assoluti degli script riutilizzabili salvati) e limits (passaggi non riproducibili o non registrati). Per asset generati registra lo strumento effettivo e il riferimento al processo salvato; non inventare prompt, servizi o provenienza. Non includere chiavi, token o comandi con segreti. Questo registro serve ai progetti futuri e non sostituisce le evidenze dei controlli.',
         'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
         'Non dichiarare verifiche visive/audio che non hai eseguito.',
         'Lavora per risultati visibili presto: se l’incarico è una prova, produci una piccola '
@@ -226,6 +235,17 @@ def main():
         'Fasi ammesse: planning, creating, exporting, checking, finalizing. '
         'Non inventare percentuali o tempi di completamento.'
     ])
+    prompt += ('\nScelte esplicite dell’utente dal pannello (prevalgono su metodi preferiti e ipotesi): ' +
+               json.dumps(job.get('user_direction'), ensure_ascii=False) +
+               '\nUn’immagine raster inserita in un SVG non è un disegno vettoriale modificabile. '
+               'Se la tecnica richiesta non è disponibile, riferisci il limite senza sostituirla in silenzio.')
+    native_images = engine == 'codex' and (job.get('user_direction') or {}).get('visual_approach') != 'vector'
+    if native_images:
+        prompt += ('\nCapacità nativa configurata: image_gen.imagegen di Codex. Disponibilità effettiva soggetta a login, modello e quota. '
+                   'Usala solo se coerente con la scelta dell’utente: non è obbligatoria. '
+                   'Per gli asset generati consulta generated_images e work/imagegen-*.json: il runtime copia il PNG e registra prompt riveduto, hash e dimensioni reali. '
+                   'Conserva inoltre in work i prompt originari e i riferimenti agli input effettivamente usati, senza credenziali. '
+                   'Il PNG non contiene livelli separati: se servono testi e impaginazione modificabili, crea un progetto con quelle componenti separate e dichiara i limiti della parte raster.')
     if engine == 'gemini':
         prompt += ('\nChiusura obbligatoria Antigravity: quando file e handoff.json sono pronti, '
                    'chiama il tool nativo finish e consegna un oggetto con summary contenente '
@@ -249,27 +269,33 @@ def main():
                     from deepseek import run
             os.environ['ARTCRAFT_OUTPUT_DIR'] = str(output_dir)
             message = run(job['model'], prompt, output_dir, job['timeout'], progress=reporter)
+        elif engine == 'codex':
+            try:
+                from .codex_native import run
+            except ImportError:
+                from codex_native import run
+            reporter.model_wait_seconds = (job.get('resources') or {}).get('model_wait_seconds', 0)
+            message = run(job['model'], prompt, output_dir, job['timeout'], reporter, image_generation=native_images)
         else:
             reporter.emit('waiting_model')
             result = run_cli(command(engine, job['model'], prompt, final), cwd=output_dir,
                                 input=(json.dumps({'event': 'user', 'message': {'content': prompt}}) + '\n') if engine == 'gemini' else prompt,
                                 env={**(cli_env() if engine == 'gemini' else os.environ), 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
-                                timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event))
+                                timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event),
+                                model_wait_seconds=(job.get('resources') or {}).get('model_wait_seconds', 0),
+                                waiting_model=lambda: reporter.execution_state == 'model')
             if result.returncode:
                 reporter.emit('failed')
                 print(json.dumps({'ok': False, 'engine': engine, 'agent': job['agent'],
                               'exit_code': result.returncode,
                               'error': worker_error(engine, result)}))
                 return result.returncode
-            if engine == 'codex':
-                message = final.read_text() if final.exists() else result.stdout
-            else:
-                parsed = result_envelope(result.stdout)
-                if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
-                    raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
-                message = parsed.get('structured_output', {}).get('summary')
-                if not isinstance(message, str) or not message.strip():
-                    raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
+            parsed = result_envelope(result.stdout)
+            if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
+                raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
+            message = parsed.get('structured_output', {}).get('summary')
+            if not isinstance(message, str) or not message.strip():
+                raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
         reporter.emit('checking')
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)

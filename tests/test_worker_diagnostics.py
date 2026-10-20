@@ -7,12 +7,8 @@ from studio.run_agent import command, worker_error, handoff_error
 
 
 class WorkerDiagnosticsTests(unittest.TestCase):
-    def test_codex_prompt_uses_stdin_and_errors_are_structured(self):
+    def test_legacy_codex_errors_are_structured(self):
         prompt = 'Contesto privato\n' * 20000
-        args = command('codex', 'gpt-6.1-sol', prompt, '/tmp/final')
-        self.assertNotIn(prompt, args)
-        self.assertEqual(args[-1], '-')
-        self.assertIn('--json', args)
         events = [{'type': 'item.completed', 'item': {'text': prompt}},
                   {'type': 'turn.failed', 'error': {'message': 'Model is not supported'}}]
         result = SimpleNamespace(stdout='\n'.join(map(json.dumps, events)), stderr=prompt)

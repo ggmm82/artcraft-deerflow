@@ -58,7 +58,7 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
     return {'product_path': str(target), 'sha256': digest(target), 'criteria': criteria,
             'status': status, 'revision_actions': corrections, 'comparison': compared, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
-            'report_path': str(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
+            'report_path': str(path), 'report_sha256': digest(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
 
 
 def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=()):

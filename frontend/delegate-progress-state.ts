@@ -1,10 +1,14 @@
 export type JobProgress = {
+  can_stop?: boolean; cancel_requested?: boolean;
+  worker_exit_at?: string; cleanup_started_at?: string; cleanup_finished_at?: string;
+  resources_reclaimed?: boolean; cleanup_error?: boolean; cancel_error?: boolean;
   resources?: { memory_bytes?: number; memory_limit_bytes?: number; oom_kills?: number };
-  limits?: { cpus?: number; memory_mib?: number };
+  limits?: { cpus?: number; memory_mib?: number; model_wait_seconds?: number };
   operations?: { id: string; label: string; state: string; elapsed_seconds?: number; estimate_seconds?: number; oom_kills?: number; progress?: { done?: number; total?: number } }[];
   job_id: string; agent: string; role_id?: string; role_title?: string; role_version?: string; engine: string; model: string; phase: string; summary: string; work_summary: string;
   created_at: string; started_at: string; finished_at: string; deadline_at: string;
   last_activity_at: string; heartbeat_at: string;
+  execution_state?: string; execution_started_at?: string; last_model_event_at?: string; last_file_change_at?: string;
   files: { name: string; size: number }[]; files_count: number;
   events: { at: string; phase: string; summary: string }[];
 };
@@ -34,7 +38,9 @@ export function jobHealth(job: JobProgress, now: number): string | null {
     return "Segnale del worker assente: stato da verificare";
   const activity = secondsSince(job.last_activity_at, now);
   if (activity !== null && activity >= 90)
-    return `Nessun nuovo avanzamento da ${duration(activity)}: possibile attesa del modello o comando lungo`;
+    return job.execution_state === 'model' || job.phase === 'waiting_model'
+      ? `Nessun nuovo avanzamento da ${duration(activity)}: sandbox presente, attesa del modello prolungata. La risposta non è confermata; non è una stima di consegna.`
+      : `Nessun nuovo avanzamento da ${duration(activity)}: comando ancora senza esito. La presenza della sandbox non dimostra che il comando avanzi.`;
   return null;
 }
 

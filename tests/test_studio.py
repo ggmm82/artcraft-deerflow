@@ -182,6 +182,69 @@ class StudioTests(unittest.TestCase):
             self.assertIn('checkpoint', result['resume'])
         remove.assert_called_once()
         self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+        from studio.progress import list_jobs
+        status = list_jobs(Path(self.temp.name) / 'work')[0]
+        self.assertTrue(status['resources_reclaimed'])
+        self.assertTrue(status['cleanup_started_at'])
+        self.assertTrue(status['cleanup_finished_at'])
+
+    def test_cancelled_queued_job_cannot_start_or_stop_an_unrelated_worker(self):
+        import threading
+        from studio.cancellation import CURRENT
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        event = threading.Event(); event.set()
+        token = CURRENT.set(event)
+        self.runtime.EXECUTION_LOCK.acquire()
+        try:
+            with patch.object(self.runtime.subprocess, 'run') as run:
+                result = json.loads(self.runtime.delegate('wordcraft','Queued',Path(self.temp.name)/'work'))
+                self.assertFalse(result['ok'])
+                run.assert_not_called()
+            self.assertTrue(self.runtime.EXECUTION_LOCK.locked())
+        finally:
+            self.runtime.EXECUTION_LOCK.release()
+            CURRENT.reset(token)
+
+    def test_run_cancellation_stops_its_label_checked_docker_worker_and_reclaims_resources(self):
+        import asyncio, threading
+        from types import SimpleNamespace
+        from studio.cancellation import call
+        from studio.progress import list_jobs, workspace_key
+        workspace = Path(self.temp.name)/'work'
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        ready, stopped = threading.Event(), threading.Event()
+        def execute(args, **kwargs):
+            name = args[args.index('--name')+1]
+            output = workspace/'outputs/wordcraft'/name
+            output.mkdir(parents=True); (output/'saved.txt').write_text('keep')
+            ready.set()
+            self.assertTrue(stopped.wait(3), 'Docker worker was left running')
+            return SimpleNamespace(returncode=1,stdout='',stderr='worker stopped')
+        def docker(*args, **kwargs):
+            if args[0]=='inspect':
+                return json.dumps({'Config':{'Labels':{'org.artcraft.studio.installation':'test-installation','org.artcraft.studio.workspace':workspace_key(workspace)}},'State':{'Running':True}})
+            self.assertEqual(args[:3],('stop','--time','10'))
+            stopped.set(); return ''
+        async def scenario():
+            task = asyncio.create_task(call(self.runtime.delegate,'wordcraft','Create',workspace))
+            for _ in range(100):
+                if ready.is_set(): break
+                await asyncio.sleep(.01)
+            self.assertTrue(ready.is_set())
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError): await asyncio.wait_for(task,4)
+        with patch.object(self.runtime,'host_path',return_value='/host/path'), \
+             patch.object(self.runtime.subprocess,'run',side_effect=execute), \
+             patch.object(self.runtime,'docker',side_effect=docker), \
+             patch.object(self.runtime,'remove') as remove:
+            asyncio.run(scenario())
+        remove.assert_called_once()
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
+        self.assertEqual(next((workspace/'outputs').rglob('saved.txt')).read_text(),'keep')
+        status = list_jobs(workspace)[0]
+        self.assertTrue(status['cancel_requested'])
+        self.assertTrue(status['resources_reclaimed'])
+        self.assertEqual(status['error_code'],'work_cancelled')
 
     def test_only_auth_files_are_copied_and_links_rejected(self):
         from studio.run_agent import copy_credentials
@@ -210,6 +273,26 @@ class StudioTests(unittest.TestCase):
                 self.runtime.delegate('gridcraft', 'Analizza', Path(self.temp.name) / 'work')
         self.assertTrue(self.runtime.EXECUTION_LOCK.locked())
         self.runtime.EXECUTION_LOCK.release()
+        from studio.progress import list_jobs
+        status = list_jobs(Path(self.temp.name) / 'work')[0]
+        self.assertTrue(status['cleanup_error'])
+        self.assertFalse(status['resources_reclaimed'])
+
+    def test_lifecycle_telemetry_failure_does_not_prevent_resource_reclamation(self):
+        from types import SimpleNamespace
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        original = self.runtime.update
+        def update(*args, **fields):
+            if any(k in fields for k in ('worker_exit_at', 'cleanup_started_at', 'cleanup_finished_at')):
+                raise OSError('Telemetry unavailable')
+            return original(*args, **fields)
+        with patch.object(self.runtime, 'host_path', return_value='/host/path'), \
+             patch.object(self.runtime.subprocess, 'run', return_value=SimpleNamespace(returncode=0, stdout='{"ok":true}', stderr='')), \
+             patch.object(self.runtime, 'update', side_effect=update), \
+             patch.object(self.runtime, 'remove') as remove:
+            self.assertTrue(json.loads(self.runtime.delegate('gridcraft', 'Analyze', Path(self.temp.name) / 'work'))['ok'])
+        remove.assert_called_once()
+        self.assertFalse(self.runtime.EXECUTION_LOCK.locked())
 
     def test_long_worker_response_remains_valid_json(self):
         (self.state.credential_dir('codex') / 'auth.json').write_text('{}')

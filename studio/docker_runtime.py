@@ -3,11 +3,12 @@ import json
 import os
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 
 from .state import STATE, effective_agent, credential_dir, connection_status, custom_connection_path
-from .progress import clean_summary, create_job, read_status, update
+from .progress import clean_summary, create_job, read_status, update, utcnow, workspace_key
 from .work_results import failure_info, partial_files
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
@@ -63,6 +64,14 @@ def remove(name):
     if result.returncode and 'No such container' not in result.stderr:
         # Do not admit another worker unless reclamation was confirmed.
         raise RuntimeError('Rimozione sandbox non confermata; riavvia il Gateway per recuperarla')
+
+
+def lifecycle(progress, **fields):
+    # A telemetry write must never prevent container removal or lock release.
+    try:
+        update(progress, **fields)
+    except (OSError, ValueError):
+        pass
 
 
 def cleanup_orphans():
@@ -185,10 +194,22 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         update(progress, role_id=role['id'], role_title=role['title'], role_version=role['version'])
     output_dir = '/mnt/user-data/outputs/' + agent_id + '/' + name
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
-    if not EXECUTION_LOCK.acquire(timeout=120):
-        update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
-        raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
+    from .cancellation import requested, watch
+    def cancelled_before_start():
+        update(progress, 'failed', 'Interruzione della fase richiesta dall’utente', cancel_requested=True)
+        return json.dumps({'ok': False, 'error': 'Interruzione della fase richiesta dall’utente; nessun nuovo container avviato.'})
+    until = time.monotonic() + 120
+    while True:
+        if requested():
+            return cancelled_before_start()
+        if EXECUTION_LOCK.acquire(timeout=min(.2, max(0, until - time.monotonic()))):
+            break
+        if time.monotonic() >= until:
+            update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
+            raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
     try:
+        if requested():
+            return cancelled_before_start()
         update(progress, 'starting')
         if on_started:
             on_started(output_dir)
@@ -197,11 +218,13 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         job = jobs / (name + '.json')
         from .runtime_settings import effective
         resources = effective()
-        update(progress, limits=resources)
+        update(progress, limits=resources, can_stop=True)
         payload = {'resources': resources, 'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
                    'acceptance': acceptance, 'role': role, 'compiled_skill': role_text}
+        from .projects import read_project
+        payload['user_direction'] = (read_project(workspace) or {}).get('user_direction')
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
@@ -211,13 +234,16 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name, resources) + ['--label', f'org.artcraft.studio.installation={installation}',
+            '--label', f'org.artcraft.studio.workspace={workspace_key(workspace)}',
             '--mount', mount(workspace, '/mnt/user-data'),
             '--mount', (mount(custom_connection_path(settings.get('connection_id')), '/credentials/api.json', True)
                         if engine == 'openai' else mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek')),
             '--mount', mount(job, '/job.json', True),
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
-        completed = subprocess.run(['docker', *args], capture_output=True, text=True,
-                                   timeout=1560)
+        with watch(lambda: request_stop(workspace, name), lambda: lifecycle(progress, cancel_error=True)):
+            completed = subprocess.run(['docker', *args], capture_output=True, text=True,
+                                       timeout=1560)
+        lifecycle(progress, worker_exit_at=utcnow())
         response = completed.stdout
         if completed.returncode:
             status = read_status(progress)
@@ -229,7 +255,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
                 failure = {}
             if not isinstance(failure, dict):
                 failure = {}
-            error = failure.get('error') or completed.stderr or 'Specialista non completato'
+            error = ('Interruzione della fase richiesta dall’utente; i file salvati sono conservati.' if status.get('cancel_requested') else failure.get('error') or completed.stderr or 'Specialista non completato')
             try:
                 container_state = json.loads(docker('inspect', '--format', '{{json .State}}', name))
                 if isinstance(container_state, dict) and container_state.get('OOMKilled') is True:
@@ -272,11 +298,37 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             pass
         raise
     finally:
+        lifecycle(progress, cleanup_started_at=utcnow())
         try:
             remove(name)
         except Exception:
-            update(progress, 'failed', 'Pulizia del worker non confermata: la squadra richiede un controllo')
+            update(progress, 'failed', 'Pulizia del worker non confermata: la squadra richiede un controllo', cleanup_error=True)
             raise
-        if 'job' in locals():
-            job.unlink(missing_ok=True)
-        EXECUTION_LOCK.release()
+        lifecycle(progress, cleanup_finished_at=utcnow(), resources_reclaimed=True)
+        try:
+            if 'job' in locals():
+                job.unlink(missing_ok=True)
+        finally:
+            EXECUTION_LOCK.release()
+
+
+def request_stop(workspace, job_id):
+    """Stop only a worker bound by Docker labels to this installation and conversation."""
+    from .progress import job_path, workspace_key, TERMINAL
+    path = job_path(workspace, job_id)
+    status = read_status(path)
+    if status.get('workspace_key') != workspace_key(workspace) or status['phase'] in TERMINAL:
+        raise ValueError('Questa fase non è più in esecuzione nella conversazione')
+    info = json.loads(docker('inspect', '--format', '{{json .}}', job_id, timeout=10))
+    labels = info.get('Config', {}).get('Labels') or {}
+    if (labels.get('org.artcraft.studio.installation') != (STATE / 'installation-id').read_text().strip()
+            or labels.get('org.artcraft.studio.workspace') != workspace_key(workspace)
+            or not info.get('State', {}).get('Running')):
+        raise ValueError('Il worker non è controllabile da questa conversazione o è già terminato')
+    update(path, cancel_requested=True)
+    try:
+        docker('stop', '--time', '10', job_id, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        update(path, cancel_requested=False)
+        raise
+    return {'requested': True, 'job_id': job_id}

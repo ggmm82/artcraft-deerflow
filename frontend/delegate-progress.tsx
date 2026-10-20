@@ -5,6 +5,8 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
+import { ExperiencePanel } from "./experience-panel";
+
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
 type Delivery = { id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
@@ -12,9 +14,10 @@ type RevisionAction = { requirement_id: string; action: string; reason?: string;
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
 type Criterion = { requirement_id?: string; criterion: string; status: string; evidence: string; method: string };
 type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
-type ProjectRole = { id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
+type ProjectRole = { experience?: { count: number; ids: string[] }; id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
-type Project = { strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type UserDirection = { visual_approach: string; instructions: string; revision: number };
+type Project = { user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -33,7 +36,57 @@ const stepTone = (state: string): Tone => state === "running" ? "active" : state
   : ["paused", "needs_revision", "review"].includes(state) ? "attention" : "neutral";
 const tabStyle = "rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-border aria-expanded:bg-muted aria-expanded:font-semibold disabled:opacity-50";
 
-function JobCard({ job, now }: { job: JobProgress; now: number }) {
+function ProjectDirection({ threadId, saved }: { threadId: string; saved?: UserDirection | null }) {
+  const [choice, setChoice] = useState(saved?.visual_approach || "unspecified");
+  const [instructions, setInstructions] = useState(saved?.instructions || "");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  async function apply() {
+    setBusy(true); setNotice("");
+    try {
+      const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-direction`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visual_approach: choice, instructions }),
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json() as { running_step_ids?: string[] };
+      setNotice(data.running_step_ids?.length
+        ? "Scelta salvata per i prossimi incarichi. Per cambiare subito, interrompi la fase in Attività e chiedi in chat di ripianificare. I file salvati restano disponibili."
+        : "Scelta salvata. Scrivi in chat di proseguire con queste indicazioni: guideranno la squadra e le verifiche.");
+    } catch { setNotice("Scelta non salvata. Riprova prima di proseguire."); }
+    finally { setBusy(false); }
+  }
+  return <section className="space-y-3 rounded-xl border p-4" data-testid="project-direction">
+    <h4 className="font-semibold">Le tue scelte sul metodo</h4>
+    <p className="text-muted-foreground text-xs">Puoi cambiarle durante il progetto. Prevalgono sui metodi preferiti della squadra; le fasi già avviate vanno interrotte separatamente.</p>
+    <label className="block space-y-1"><span>Tecnica visiva, se pertinente</span>
+      <select className="bg-background w-full rounded border p-2" value={choice} onChange={e => setChoice(e.target.value)}>
+        <option value="unspecified">Come indicato nel brief o in chat</option>
+        <option value="generated">Immagini generate</option>
+        <option value="vector">Grafica vettoriale modificabile</option>
+        <option value="mixed">Combinazione di immagini e vettori</option>
+        <option value="automatic">Lascio scegliere alla squadra</option>
+      </select>
+    </label>
+    <label className="block space-y-1"><span>Indicazioni per questo progetto</span>
+      <textarea className="w-full rounded border p-2" maxLength={2000} rows={3} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Stile, strumenti, sorgenti richiesti o cambi di direzione…" />
+    </label>
+    {choice === "vector" && <p className="text-muted-foreground text-xs">La generazione nativa di immagini sarà disattivata nei prossimi worker Codex. Un PNG inserito in un SVG non soddisfa la richiesta di vettori modificabili.</p>}
+    <button type="button" className="rounded border px-3 py-1.5 disabled:opacity-50" disabled={busy} onClick={() => void apply()}>{busy ? "Salvataggio…" : "Salva le mie scelte"}</button>
+    {notice && <p role="status">{notice}</p>}
+  </section>;
+}
+
+function JobCard({ job, now, threadId }: { job: JobProgress; now: number; threadId: string }) {
+  const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState("");
+  async function stop() {
+    setStopping(true); setStopError("");
+    try {
+      const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-jobs/${encodeURIComponent(job.job_id)}/stop`, { method: "POST" });
+      if (!response.ok) throw new Error();
+    } catch { setStopError("Arresto non confermato: controlla lo stato aggiornato prima di riprovare."); setStopping(false); }
+  }
   const operation = job.operations?.find(o => o.state === "running") ?? job.operations?.[0];
   const terminal = terminalJob(job);
   const end = terminal ? (Date.parse(job.finished_at) || now) : now;
@@ -60,10 +113,22 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
     {job.model && <p className="text-muted-foreground text-xs">Modello: {job.model}</p>}
     {job.work_summary && job.work_summary !== job.summary && <p className="text-sm">{job.work_summary}</p>}
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
+    {job.cancel_error && !job.resources_reclaimed && <p role="alert" className="text-sm">Arresto del worker non confermato. Verifica il collegamento Docker; non è sufficiente fermare il coordinatore.</p>}
+    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">Container rimosso: risorse della fase liberate; file salvati conservati.</p>}
+    {job.cleanup_started_at && !job.resources_reclaimed && <p className="text-xs" role="status">{job.cleanup_error ? "Rimozione del container non confermata: la squadra richiede un controllo." : "Chiusura del container e rilascio delle risorse in corso."}</p>}
     {!terminal && <div className="text-muted-foreground space-y-1 text-xs">
-      <p>Ultima attività: {duration(secondsSince(job.last_activity_at, now))} fa</p>
+      <p>Ultimo avanzamento osservato: {duration(secondsSince(job.last_activity_at, now))} fa</p>
+      {job.execution_started_at && <p>{job.execution_state === "model" ? "Attesa del modello" : "Comando in esecuzione"}: {duration(secondsSince(job.execution_started_at, now))}</p>}
+      {job.last_model_event_at && <p>Ultimo evento ricevuto dal modello: {duration(secondsSince(job.last_model_event_at, now))} fa</p>}
+      {job.last_file_change_at && <p>Ultima modifica dei file: {duration(secondsSince(job.last_file_change_at, now))} fa</p>}
       {remaining !== null && remaining > 0 && <p>Limite di esecuzione tra {duration(remaining)}. Non è una stima di consegna.</p>}
-      {heartbeat !== null && heartbeat <= 15 && <p>Worker raggiungibile</p>}
+      {(job.limits?.model_wait_seconds ?? 0) > 0 && ["codex", "gemini"].includes(job.engine) && <p>Budget senza eventi del modello: {duration(job.limits?.model_wait_seconds ?? 0)}; poi il coordinatore può ripianificare.</p>}
+      {heartbeat !== null && heartbeat <= 15 && <p>Monitor della sandbox presente · non conferma l’avanzamento del modello</p>}
+    </div>}
+    {!terminal && job.can_stop && <div className="space-y-1 text-xs">
+      <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={stopping || job.cancel_requested} onClick={() => void stop()}>{stopping || job.cancel_requested ? "Arresto richiesto…" : "Interrompi questa fase"}</button>
+      <p>Termina la fase corrente e restituisce il controllo al coordinatore. I file già salvati restano disponibili; il lavoro non salvato può andare perso.</p>
+      {stopError && <p role="alert">{stopError}</p>}
     </div>}
     {health && <p className="rounded-md border border-amber-500/50 p-2 text-sm" role="status">{health}</p>}
     {job.files.length > 0 && <div className="text-xs">
@@ -134,7 +199,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
-  const title = working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
+  const title = working && jobHealth(current, now) ? "Avanzamento da verificare" : working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
@@ -226,7 +291,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   return <section ref={dock} className="bg-background relative mb-2 rounded-2xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
     {tab && <div className="bg-background absolute right-0 bottom-full left-0 z-50 mb-2 flex flex-col overflow-hidden rounded-2xl border shadow-xl" style={{ maxHeight: "min(60dvh, var(--studio-panel-space, 60dvh))" }} data-testid="studio-drawer">
       <div className="bg-background flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
-        <h3 className="text-sm font-semibold">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra del progetto" : tab === "files" ? "File e sorgenti" : "Attività e verifiche"}</h3>
+        <h3 className="text-sm font-semibold">{tab === "project" ? "Il progetto e il punto attuale" : tab === "preview" ? "Risultato da vedere" : tab === "team" ? "La squadra del progetto" : tab === "files" ? "File e sorgenti" : tab === "experience" ? "Esperienza conservata" : "Attività e verifiche"}</h3>
         <button type="button" className="hover:bg-muted rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </div>
       <div className="min-h-0 overflow-y-auto p-4" data-testid="studio-drawer-content">
@@ -238,6 +303,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {project.outcome?.use && <p><strong>Uso e destinatari:</strong> {project.outcome.use}</p>}
           {project.outcome?.quality && <p><strong>Qualità attesa:</strong> {project.outcome.quality}</p>}
         </section>
+        <ProjectDirection key={threadId} threadId={threadId} saved={project.user_direction} />
         {questions.length > 0 && <section className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4" data-testid="brief-questions">
           <h4 className="font-semibold">Le scelte che mancano</h4>
           <ul className="list-inside list-disc">{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
@@ -342,6 +408,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           return <article key={role.id} className="bg-muted/20 space-y-3 rounded-xl border p-4 text-sm" data-testid="compiled-role">
             <div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-base">{role.title}</strong><StatusBadge tone={live || usage?.running ? "active" : state === "In pausa" ? "attention" : "neutral"}>{state}</StatusBadge></div>
             <p>{role.mission}</p>
+            {role.experience && <p>{role.experience.count} osservazioni pertinenti incluse nella skill compilata.</p>}
             <h4 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Competenze assegnate</h4>
             <ul className="list-inside list-disc">{role.expertise.map((skill, i) => <li key={i}>{skill}</li>)}</ul>
             <div className="space-y-2"><p className="text-muted-foreground text-xs font-semibold">Strumenti assegnati</p><div className="flex flex-wrap gap-1.5">{role.tools.length ? role.tools.map(tool => <StatusBadge key={tool}>{person(tool)}</StatusBadge>) : <span>Strumenti di base del progetto</span>}</div></div>
@@ -372,7 +439,8 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
-      {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
+      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} />}
+      {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} threadId={threadId} />)}</div>}
       </div>
     </div>}
     <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">
@@ -400,6 +468,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       <button type="button" className={tabStyle} aria-expanded={tab === "team"} onClick={() => toggle("team")}>Squadra</button>
       <button type="button" className={tabStyle} aria-expanded={tab === "files"} onClick={() => toggle("files")}>File e sorgenti ({results.length})</button>
       <button type="button" className={tabStyle} aria-expanded={tab === "activity"} onClick={() => toggle("activity")}>Attività</button>
+      <button type="button" className={tabStyle} aria-expanded={tab === "experience"} onClick={() => toggle("experience")}>Esperienza</button>
       {!active && !working && !ready && !waitingForReview && !questions.length && onContinue && <button type="button" className="rounded border px-3 py-1.5 font-medium disabled:opacity-50" disabled={resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : clarifying ? "Definisci risultato" : "Riprendi lavoro"}</button>}
     </nav>
   </section>;

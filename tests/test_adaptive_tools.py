@@ -17,6 +17,11 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
+        fixture = patch('studio.tools.experience_root', return_value=Path(directory.name) / 'library')
+        fixture.start(); self.addCleanup(fixture.stop)
+
     def test_failed_sample_replans_and_new_method_reaches_worker(self):
         from studio.projects import read_project
         from studio.project_skills import read_document
@@ -56,6 +61,23 @@ class AdaptiveToolTests(unittest.TestCase):
                 saved.write_text('Changed method after compilation')
                 with self.assertRaisesRegex(ValueError, 'modificato'):
                     verify_project_context({'role': compiled}, root)
+
+    def test_changed_owner_direction_is_returned_when_the_worker_finishes(self):
+        from studio.projects import set_user_direction
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runtime = SimpleNamespace(state={'messages': [SimpleNamespace(type='human', id='request', content='Create an illustration')]})
+            def work(*args, **kwargs):
+                set_user_direction(root, 'vector', 'Voglio modificare i tracciati')
+                return json.dumps({'ok': True})
+            with patch('studio.tools.workspace_for', return_value=root), \
+                 patch('studio.state.team', return_value={'engine': 'codex', 'model': 'fixture'}), \
+                 patch('studio.tools.delegate', side_effect=work):
+                studio_plan.func(runtime=runtime, brief='Illustration', outcome_json=json.dumps({'result':'Illustration','format':'Editable source'}))
+                result = json.loads(studio_delegate.func(agent='vectorcraft', task='Create', runtime=runtime))
+                self.assertEqual(result['user_direction']['visual_approach'], 'vector')
+                self.assertIn('ripianifica', result['direction_changed'])
+                self.assertFalse(result['generation_capabilities']['native_images']['allowed_by_user'])
 
     def test_contract_uses_gateway_user_input_instead_of_synthetic_agent_message(self):
         from studio.projects import read_project

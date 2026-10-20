@@ -19,7 +19,19 @@ def failure_info(error):
         return {'code': 'provider_auth', 'retryable': False,
                 'message': 'Il collegamento al servizio AI richiede un controllo.',
                 'action': 'Apri La tua squadra e verifica il collegamento del servizio.'}
-    if any(s in text for s in ('turni', 'turn limit', 'timeout', 'tempo massimo', 'limite della singola', 'tempo esaurito')):
+    if 'interruzione della fase richiesta' in text:
+        return {'code':'work_cancelled','retryable':False,
+                'message':'Fase interrotta su richiesta; i risultati precedenti sono conservati.',
+                'action':'Ispeziona i file salvati e ripianifica il seguito; non rilanciare automaticamente la stessa fase.'}
+    if 'budget di attesa del modello' in text:
+        return {'code': 'provider_wait_limit', 'retryable': True,
+                'message': 'Il modello non ha inviato nuovi eventi entro il budget di attesa.',
+                'action': 'Conserva e ispeziona i file prodotti; valuta una continuazione mirata o un altro modello. Non ricominciare tutto.'}
+    if 'budget di avvio codex' in text:
+        return {'code': 'provider_startup_limit', 'retryable': True,
+                'message': 'Codex non ha confermato l’avvio dell’incarico entro un minuto.',
+                'action': 'Verifica il collegamento e riusa i file salvati. Questa è un’attesa di avvio, non una generazione immagini conclusa né una pulizia del container.'}
+    if any(s in text for s in ('turni', 'turn limit', 'timeout', 'timed out', 'tempo massimo', 'limite della singola', 'tempo esaurito')):
         return {'code': 'work_limit', 'retryable': True,
                 'message': 'Questo incarico si è fermato; puoi riusare i file prodotti.',
                 'action': 'Ispeziona i risultati disponibili e assegna solo il recupero, la verifica o l’integrazione mancanti.'}

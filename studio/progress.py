@@ -99,7 +99,15 @@ def update(path, phase=None, summary=None, **fields):
             if summary and phase in {'planning', 'creating', 'exporting', 'checking', 'finalizing'}:
                 value['work_summary'] = clean_summary(summary)
             summary = clean_summary(summary or LABELS[phase])
+            if value.get('phase') != phase:
+                value['phase_started_at'] = now
             value.update(phase=phase, summary=summary, last_activity_at=now)
+            if phase == 'running_tool':
+                value.update(execution_state='tool', execution_started_at=now)
+            elif phase == 'waiting_model':
+                value.update(execution_state='model', execution_started_at=now)
+            elif phase in TERMINAL:
+                value['execution_state'] = 'finished'
             if phase in TERMINAL:
                 value['finished_at'] = now
             history = value.setdefault('events', [])
@@ -182,8 +190,13 @@ class Reporter:
         self.thread = None
         self.last_cli_event = None
         self.last_signal = 0
+        self.execution_state = 'model'
+        self.tool_events = []
+        self.engine, self.model = job['engine'], job['model']
 
     def emit(self, phase, summary=None, **fields):
+        if phase in ('running_tool', 'waiting_model'):
+            self.execution_state = 'tool' if phase == 'running_tool' else 'model'
         try:
             update(self.path, phase, summary, **fields)
         except (OSError, ValueError):
@@ -205,6 +218,7 @@ class Reporter:
                 now = utcnow()
                 if value.get('files') != files:
                     value['last_activity_at'] = now
+                    value['last_file_change_at'] = now
                 value.update(heartbeat_at=now, updated_at=now, files=files, files_count=len(files))
                 try:
                     from .resource_usage import snapshot
@@ -238,9 +252,34 @@ class Reporter:
             self.thread.join(timeout=3)
         self.pulse()
 
+    def model_signal(self):
+        # A provider event is distinct from the monitor heartbeat and file changes.
+        try:
+            update(self.path, last_model_event_at=utcnow())
+        except (OSError, ValueError):
+            pass
+
     def cli_event(self, engine, event):
         if not isinstance(event, dict):
             return
+        self.model_signal()
+        # Persist only tool identity/lifecycle, never arguments, text or reasoning.
+        item = event.get('item') or {}
+        item_type = item.get('type') if isinstance(item, dict) else None
+        if event.get('type') in ('item.started', 'item.completed') and item_type in (
+                'command_execution', 'mcp_tool_call', 'image_generation', 'image_generation_call', 'web_search'):
+            self.tool_events.append({'at': utcnow(), 'event': event['type'], 'tool_type': item_type,
+                                     'tool': clean_summary(item.get('tool') or item_type, 80)})
+            self.tool_events = self.tool_events[-250:]
+            try:
+                folder = self.output_dir / 'work'
+                folder.mkdir(exist_ok=True)
+                path = folder / 'tool-events.json'
+                if not folder.is_symlink() and folder.resolve().is_relative_to(self.output_dir.resolve()) and not path.is_symlink():
+                    path.write_text(json.dumps({'engine': self.engine, 'model': clean_summary(self.model), 'events': self.tool_events}))
+                    path.chmod(0o600)
+            except (OSError, ValueError):
+                pass
         kind = event.get('type') if engine == 'codex' else event.get('event')
         if engine == 'codex' and kind not in ('item.started', 'item.completed', 'turn.started', 'turn.completed'):
             return
@@ -271,6 +310,10 @@ class Reporter:
                 self.emit('running_tool', 'Esecuzione di uno strumento MCP')
             elif kind == 'item.completed' and item.get('type') == 'mcp_tool_call':
                 self.emit('waiting_model', 'Strumento MCP concluso; elaborazione del risultato')
+            elif kind == 'item.started' and item.get('type') in ('image_generation', 'image_generation_call'):
+                self.emit('running_tool', 'Generazione di immagini tramite il modello')
+            elif kind == 'item.completed' and item.get('type') in ('image_generation', 'image_generation_call'):
+                self.emit('waiting_model', 'Generazione immagini conclusa; elaborazione del risultato')
             elif kind == 'turn.started':
                 self.emit('waiting_model')
         elif kind == 'step_update':
@@ -292,7 +335,12 @@ def public_status(value):
     """Allowlist every returned field even if a worker modified its own file."""
     result = {key: clean_summary(value.get(key)) for key in (
         'job_id', 'agent', 'role_id', 'role_title', 'role_version', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
-        'started_at', 'finished_at', 'deadline_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
+        'started_at', 'finished_at', 'deadline_at', 'phase_started_at', 'execution_state', 'execution_started_at', 'last_model_event_at', 'last_file_change_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action', 'worker_exit_at', 'cleanup_started_at', 'cleanup_finished_at')}
+    result['resources_reclaimed'] = value.get('resources_reclaimed') is True
+    result['cleanup_error'] = value.get('cleanup_error') is True
+    result['cancel_error'] = value.get('cancel_error') is True
+    result['can_stop'] = value.get('can_stop') is True
+    result['cancel_requested'] = value.get('cancel_requested') is True
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}
@@ -306,7 +354,7 @@ def public_status(value):
             return {}
         return {k: source.get(k) for k in keys if type(source.get(k)) in (int, float) and math.isfinite(source[k]) and source[k] >= 0}
     result['resources'] = numbers(value.get('resources') or {}, ('memory_bytes', 'memory_peak_bytes', 'memory_limit_bytes', 'oom_kills', 'cpu_seconds'))
-    result['limits'] = numbers(value.get('limits') or {}, ('cpus', 'memory_mib', 'tmp_mib'))
+    result['limits'] = numbers(value.get('limits') or {}, ('cpus', 'memory_mib', 'tmp_mib', 'model_wait_seconds'))
     result['operations'] = []
     for op in value.get('operations', [])[:8]:
         if not isinstance(op, dict):

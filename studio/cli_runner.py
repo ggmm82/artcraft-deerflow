@@ -7,12 +7,17 @@ import tempfile
 import time
 
 
-def run_cli(args, *, cwd, input, env, timeout, on_event):
+class ProviderSilence(TimeoutError):
+    """A waiting budget expired; this does not assert that the provider is dead."""
+
+
+def run_cli(args, *, cwd, input, env, timeout, on_event, model_wait_seconds=None, waiting_model=None):
     with tempfile.TemporaryDirectory(prefix='artcraft-cli-') as directory:
         output, errors = Path(directory) / 'stdout', Path(directory) / 'stderr'
         with output.open('wb') as out, errors.open('wb') as err:
             process = subprocess.Popen(args, cwd=cwd, stdin=subprocess.PIPE, stdout=out, stderr=err, env=env)
             deadline, first, pending = time.monotonic() + timeout, True, b''
+            last_event = time.monotonic()
             with output.open('rb') as reader:
                 try:
                     while True:
@@ -32,11 +37,18 @@ def run_cli(args, *, cwd, input, env, timeout, on_event):
                             if len(line) > 1000000:
                                 continue
                             try:
-                                on_event(json.loads(line))
+                                event = json.loads(line)
+                                on_event(event)
+                                last_event = time.monotonic()
                             except (ValueError, TypeError, AttributeError):
                                 continue
                         if done:
                             break
+                        if waiting_model is not None and not waiting_model():
+                            last_event = time.monotonic()  # Long native commands have their own budget.
+                        elif model_wait_seconds and time.monotonic() - last_event >= model_wait_seconds:
+                            raise ProviderSilence('Budget di attesa del modello esaurito senza nuovi eventi; '
+                                'file salvati conservati. Ispeziona i risultati e assegna una continuazione mirata.')
                 finally:
                     if process.poll() is None:
                         process.kill()
