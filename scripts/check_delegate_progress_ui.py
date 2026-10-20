@@ -389,6 +389,9 @@ window.showThread();
                 page.get_by_test_id('supporting-deliveries').locator('summary').first.click()
                 groups.nth(1).locator('summary').first.click()
                 expect(groups.nth(1).get_by_role('link', name='bozza.mp4')).to_be_visible()
+                page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
+                section('Stato')
+                assert page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop') == 0, 'A new section must start at its own beginning'
                 # A correction in progress cannot silently replace the selected version.
                 state['project'] = {**project, 'deliveries': [*project['deliveries'],
                     {'id':'next','title':'Correzione mirata','agent':'workspace','at':'','current':False,

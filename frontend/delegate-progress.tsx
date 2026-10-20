@@ -338,7 +338,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       <nav className="grid shrink-0 grid-cols-3 gap-1 border-b p-2 text-sm sm:flex sm:flex-wrap" aria-label="Sezioni del progetto">
         {([["project", "Stato"], ["preview", "Risultato"], ["team", "Squadra"], ["files", "Consegne"], ["activity", "Attività"], ["experience", "Lezioni"]] as const).map(([id, label]) => <button key={id} type="button" className={`${tabStyle} shrink-0`} aria-current={tab === id ? "page" : undefined} aria-expanded={tab === id} onClick={() => setPanel({ threadId, tab: id })}>{label}</button>)}
       </nav>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4" data-testid="studio-drawer-content">
+      <div key={tab} className="min-h-0 flex-1 overflow-y-auto p-4" data-testid="studio-drawer-content">
       {tab === "intervene" && <ProjectDirection key={threadId} saved={project?.user_direction} onApply={applyDirection} busy={controlBusy} />}
       {tab === "project" && project && <div className="space-y-4 text-sm" data-testid="project-overview">
         <section className="space-y-2 rounded-xl border border-blue-500/25 bg-blue-500/5 p-4" data-testid="project-position">
