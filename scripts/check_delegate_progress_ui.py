@@ -342,7 +342,7 @@ window.showThread();
                 expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
                 expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
                 section('Attività')
-                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Container rimosso')
+                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Risorse della fase liberate')
                 state['job'] = job
                 page.evaluate("window.showThread('fixture',true,true,false)")
                 # A report-only inventory must never replace the selected artifact.

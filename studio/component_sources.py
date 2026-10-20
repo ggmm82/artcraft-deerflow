@@ -4,6 +4,7 @@ An editable parent timeline does not establish editability of its ingredients.
 This checks inventory/claims; it never executes a delivered regeneration script.
 """
 from pathlib import Path, PurePosixPath
+from contextlib import ExitStack
 import hashlib
 import zipfile
 
@@ -23,8 +24,21 @@ def inspect_components(handoff, files, *, required=False, workspace=None):
     indexes={}
     for path,item in downloaded.items():
         if item.get('role')=='source_archive' and item.get('verification',{}).get('status')=='passed':
-            with zipfile.ZipFile(path) as archive:
-                indexes[path]={i.filename for i in archive.infolist() if not i.is_dir()}
+            indexes[path]={}
+            budget={'files':0,'bytes':0}
+            def collect(archive,prefix='',parents=(),depth=0):
+                for item in archive.infolist():
+                    if item.is_dir():continue
+                    budget['files']+=1;budget['bytes']+=item.file_size
+                    if budget['files']>12000 or budget['bytes']>512*1024*1024:
+                        raise ValueError('Inventario oltre il budget del pacchetto verificato')
+                    name=prefix+item.filename
+                    indexes[path][name]=(*parents,item.filename)
+                    if PurePosixPath(item.filename).suffix.lower()=='.zip':
+                        if depth>=2:raise ValueError('Archivi troppo annidati')
+                        with archive.open(item) as stream, zipfile.ZipFile(stream) as nested:
+                            collect(nested,name+'/',(*parents,item.filename),depth+1)
+            with zipfile.ZipFile(path) as archive:collect(archive)
     def ref(value):
         if not isinstance(value,dict) or set(value)-{'path','member'} or value.get('path') not in downloaded:
             raise ValueError('riferimento non scaricabile')
@@ -64,7 +78,14 @@ def inspect_components(handoff, files, *, required=False, workspace=None):
                     with p.open('rb') as stream:hashes.add(hashlib.file_digest(stream,'sha256').hexdigest())
                 for (path,member),_ in artifact_refs+source_refs:
                     if member:
-                        with zipfile.ZipFile(path) as archive, archive.open(member) as stream:value=hashlib.file_digest(stream,'sha256').hexdigest()
+                        with ExitStack() as opened:
+                            archive=opened.enter_context(zipfile.ZipFile(path))
+                            locator=indexes[path][member]
+                            for part in locator[:-1]:
+                                stream=opened.enter_context(archive.open(part))
+                                archive=opened.enter_context(zipfile.ZipFile(stream))
+                            stream=opened.enter_context(archive.open(locator[-1]))
+                            value=hashlib.file_digest(stream,'sha256').hexdigest()
                     else:
                         with Path(path).open('rb') as stream:value=hashlib.file_digest(stream,'sha256').hexdigest()
                     if value not in hashes:raise ValueError('la componente non coincide con l’originale fornito')

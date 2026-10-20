@@ -43,6 +43,30 @@ class ComponentSourcesTests(unittest.TestCase):
             handoff['source_files']=[]
             self.assertEqual(inspect_components(handoff,files,workspace=root)['status'],'incomplete')
 
+    def test_nested_colleague_sources_and_media_are_resolved_without_flattening_the_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);nested=root/'audio.zip';archive=root/'all.zip'
+            with zipfile.ZipFile(nested,'w') as z:
+                z.writestr('session.scraft','native fixture');z.writestr('media/mix.wav','wave fixture')
+            with zipfile.ZipFile(archive,'w') as z:
+                z.write(nested,'SoundCraft/sources.zip')
+                z.writestr('Media/other.wav','original bytes')
+            upload=root/'uploads/other.wav';upload.parent.mkdir();upload.write_bytes(b'original bytes')
+            files=[{'path':str(archive),'role':'source_archive','verification':{'status':'passed'}}]
+            def ref(member):return {'path':str(archive),'member':member}
+            handoff={'source_files':[str(upload)],'delivery':{'components':[
+                {'name':'Music','tool':'soundcraft','artifacts':[ref('SoundCraft/sources.zip/media/')],
+                 'sources':[ref('SoundCraft/sources.zip/session.scraft')]},
+                {'name':'User recording','tool':'provided','artifacts':[ref('Media/other.wav')],
+                 'sources':[ref('Media/other.wav')],'provided_inputs':[str(upload)]}]}}
+            self.assertEqual(inspect_components(handoff,files,workspace=root)['status'],'documented')
+            handoff['delivery']['components'][0]['artifacts']=[ref('SoundCraft/sources.zip/session.scraft')]
+            result=inspect_components(handoff,files,workspace=root)
+            self.assertEqual(result['status'],'incomplete')
+            self.assertIn('mix.wav',str(result['issues']))
+            handoff['delivery']['components'][0]['sources']=[ref('SoundCraft/sources.zip/missing.scraft')]
+            self.assertEqual(inspect_components(handoff,files,workspace=root)['status'],'incomplete')
+
     def test_frame_sequence_can_reference_a_verified_directory_without_enumerating_every_frame(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);archive=root/'sources.zip'

@@ -99,7 +99,7 @@ function JobCard({ job, now, threadId }: { job: JobProgress; now: number; thread
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
     {job.phase === "queued" && <p className="text-sm" data-testid="queue-position">{job.queue_position ? `Posizione in coda: ${job.queue_position}. ` : "In coda. "}L’incarico parte automaticamente quando la sandbox si libera; puoi chiudere la pagina.</p>}
     {job.cancel_error && !job.resources_reclaimed && <p role="alert" className="text-sm">Arresto del worker non confermato. Verifica il collegamento Docker; non è sufficiente fermare il coordinatore.</p>}
-    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">{job.started_at ? "Container rimosso: risorse della fase liberate; file salvati conservati." : "Attesa conclusa: nessun container avviato; file precedenti conservati."}</p>}
+    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">Risorse della fase liberate; file salvati conservati.</p>}
     {job.cleanup_started_at && !job.resources_reclaimed && <p className="text-xs" role="status">{job.cleanup_error ? "Rimozione del container non confermata: la squadra richiede un controllo." : "Chiusura del container e rilascio delle risorse in corso."}</p>}
     {!terminal && <details className="text-muted-foreground space-y-1 text-xs"><summary className="cursor-pointer">Tempi e segnali osservati</summary>
       <p>Ultimo avanzamento osservato: {duration(secondsSince(job.last_activity_at, now))} fa</p>
