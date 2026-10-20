@@ -19,6 +19,10 @@ def failure_info(error):
         return {'code': 'provider_auth', 'retryable': False,
                 'message': 'Il collegamento al servizio AI richiede un controllo.',
                 'action': 'Apri La tua squadra e verifica il collegamento del servizio.'}
+    if 'interruzione della fase richiesta' in text:
+        return {'code':'work_cancelled','retryable':False,
+                'message':'Fase interrotta su richiesta; i risultati precedenti sono conservati.',
+                'action':'Ispeziona i file salvati e ripianifica il seguito; non rilanciare automaticamente la stessa fase.'}
     if 'budget di attesa del modello' in text:
         return {'code': 'provider_wait_limit', 'retryable': True,
                 'message': 'Il modello non ha inviato nuovi eventi entro il budget di attesa.',

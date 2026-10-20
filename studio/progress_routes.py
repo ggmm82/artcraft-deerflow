@@ -92,3 +92,15 @@ async def experience_prefer(thread_id: ThreadId, body: PreferredMethod, request:
         return await run_in_threadpool(summary, experience_root())
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Metodo non conservato: verifica lavorazione, file e descrizione') from error
+
+
+@router.post('/api/threads/{thread_id}/studio-jobs/{job_id}/stop')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def stop_job(thread_id: ThreadId, job_id: str, request: Request, response: Response):
+    from .docker_runtime import request_stop
+    import subprocess
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    try:
+        return await run_in_threadpool(request_stop, workspace, job_id)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        raise HTTPException(409, 'Arresto non confermato: aggiorna lo stato della fase prima di riprovare') from error

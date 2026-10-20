@@ -336,6 +336,8 @@ def public_status(value):
     result = {key: clean_summary(value.get(key)) for key in (
         'job_id', 'agent', 'role_id', 'role_title', 'role_version', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
         'started_at', 'finished_at', 'deadline_at', 'phase_started_at', 'execution_state', 'execution_started_at', 'last_model_event_at', 'last_file_change_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
+    result['can_stop'] = value.get('can_stop') is True
+    result['cancel_requested'] = value.get('cancel_requested') is True
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}

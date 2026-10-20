@@ -35,7 +35,16 @@ const stepTone = (state: string): Tone => state === "running" ? "active" : state
   : ["paused", "needs_revision", "review"].includes(state) ? "attention" : "neutral";
 const tabStyle = "rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-border aria-expanded:bg-muted aria-expanded:font-semibold disabled:opacity-50";
 
-function JobCard({ job, now }: { job: JobProgress; now: number }) {
+function JobCard({ job, now, threadId }: { job: JobProgress; now: number; threadId: string }) {
+  const [stopping, setStopping] = useState(false);
+  const [stopError, setStopError] = useState("");
+  async function stop() {
+    setStopping(true); setStopError("");
+    try {
+      const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-jobs/${encodeURIComponent(job.job_id)}/stop`, { method: "POST" });
+      if (!response.ok) throw new Error();
+    } catch { setStopError("Arresto non confermato: controlla lo stato aggiornato prima di riprovare."); setStopping(false); }
+  }
   const operation = job.operations?.find(o => o.state === "running") ?? job.operations?.[0];
   const terminal = terminalJob(job);
   const end = terminal ? (Date.parse(job.finished_at) || now) : now;
@@ -70,6 +79,11 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
       {remaining !== null && remaining > 0 && <p>Limite di esecuzione tra {duration(remaining)}. Non è una stima di consegna.</p>}
       {(job.limits?.model_wait_seconds ?? 0) > 0 && ["codex", "gemini"].includes(job.engine) && <p>Budget senza eventi del modello: {duration(job.limits?.model_wait_seconds ?? 0)}; poi il coordinatore può ripianificare.</p>}
       {heartbeat !== null && heartbeat <= 15 && <p>Monitor della sandbox presente · non conferma l’avanzamento del modello</p>}
+    </div>}
+    {!terminal && job.can_stop && <div className="space-y-1 text-xs">
+      <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={stopping || job.cancel_requested} onClick={() => void stop()}>{stopping || job.cancel_requested ? "Arresto richiesto…" : "Interrompi questa fase"}</button>
+      <p>Termina la fase corrente e restituisce il controllo al coordinatore. I file già salvati restano disponibili; il lavoro non salvato può andare perso.</p>
+      {stopError && <p role="alert">{stopError}</p>}
     </div>}
     {health && <p className="rounded-md border border-amber-500/50 p-2 text-sm" role="status">{health}</p>}
     {job.files.length > 0 && <div className="text-xs">
@@ -380,7 +394,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
       {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} />}
-      {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
+      {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} threadId={threadId} />)}</div>}
       </div>
     </div>}
     <div className="space-y-1 p-3" role="status" aria-live="polite" aria-atomic="true">

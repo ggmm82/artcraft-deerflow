@@ -89,3 +89,10 @@ prompt, testo delle risposte o ragionamenti. Permette di distinguere, quando la 
 lo espone, un generatore immagini da un comando di impaginazione. Il registro
 esperienza ne conserva il riferimento e l'hash, non ricostruisce eventi storici
 mai salvati né presume che tutte le CLI espongano gli stessi eventi.
+
+In **Attività → Interrompi questa fase** puoi fermare un worker della versione
+aggiornata senza annullare la conversazione. L'API verifica sia il proprietario
+della chat sia le etichette Docker di installazione e workspace. Il coordinatore
+riceve l'interruzione e i percorsi parziali; non deve rilanciare automaticamente lo
+stesso incarico. Restano i file già salvati, mentre lo stato non salvato del
+processo può andare perso. Il comando non richiede socket nelle sandbox.

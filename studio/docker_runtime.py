@@ -7,7 +7,7 @@ import uuid
 from pathlib import Path
 
 from .state import STATE, effective_agent, credential_dir, connection_status, custom_connection_path
-from .progress import clean_summary, create_job, read_status, update
+from .progress import clean_summary, create_job, read_status, update, workspace_key
 from .work_results import failure_info, partial_files
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
@@ -197,7 +197,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         job = jobs / (name + '.json')
         from .runtime_settings import effective
         resources = effective()
-        update(progress, limits=resources)
+        update(progress, limits=resources, can_stop=True)
         payload = {'resources': resources, 'agent': agent_id, 'engine': engine, 'model': settings['model'],
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
@@ -211,6 +211,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         atomic_json(job, payload)
         installation = (STATE / 'installation-id').read_text().strip()
         args = base_arguments(name, resources) + ['--label', f'org.artcraft.studio.installation={installation}',
+            '--label', f'org.artcraft.studio.workspace={workspace_key(workspace)}',
             '--mount', mount(workspace, '/mnt/user-data'),
             '--mount', (mount(custom_connection_path(settings.get('connection_id')), '/credentials/api.json', True)
                         if engine == 'openai' else mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek')),
@@ -229,7 +230,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
                 failure = {}
             if not isinstance(failure, dict):
                 failure = {}
-            error = failure.get('error') or completed.stderr or 'Specialista non completato'
+            error = ('Interruzione della fase richiesta dall’utente; i file salvati sono conservati.' if status.get('cancel_requested') else failure.get('error') or completed.stderr or 'Specialista non completato')
             try:
                 container_state = json.loads(docker('inspect', '--format', '{{json .State}}', name))
                 if isinstance(container_state, dict) and container_state.get('OOMKilled') is True:
@@ -280,3 +281,25 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         if 'job' in locals():
             job.unlink(missing_ok=True)
         EXECUTION_LOCK.release()
+
+
+def request_stop(workspace, job_id):
+    """Stop only a worker bound by Docker labels to this installation and conversation."""
+    from .progress import job_path, workspace_key, TERMINAL
+    path = job_path(workspace, job_id)
+    status = read_status(path)
+    if status.get('workspace_key') != workspace_key(workspace) or status['phase'] in TERMINAL:
+        raise ValueError('Questa fase non è più in esecuzione nella conversazione')
+    info = json.loads(docker('inspect', '--format', '{{json .}}', job_id, timeout=10))
+    labels = info.get('Config', {}).get('Labels') or {}
+    if (labels.get('org.artcraft.studio.installation') != (STATE / 'installation-id').read_text().strip()
+            or labels.get('org.artcraft.studio.workspace') != workspace_key(workspace)
+            or not info.get('State', {}).get('Running')):
+        raise ValueError('Il worker non è controllabile da questa conversazione o è già terminato')
+    update(path, cancel_requested=True)
+    try:
+        docker('stop', '--time', '10', job_id, timeout=20)
+    except (OSError, subprocess.SubprocessError):
+        update(path, cancel_requested=False)
+        raise
+    return {'requested': True, 'job_id': job_id}

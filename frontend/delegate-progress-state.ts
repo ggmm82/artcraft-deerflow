@@ -1,4 +1,5 @@
 export type JobProgress = {
+  can_stop?: boolean; cancel_requested?: boolean;
   resources?: { memory_bytes?: number; memory_limit_bytes?: number; oom_kills?: number };
   limits?: { cpus?: number; memory_mib?: number; model_wait_seconds?: number };
   operations?: { id: string; label: string; state: string; elapsed_seconds?: number; estimate_seconds?: number; oom_kills?: number; progress?: { done?: number; total?: number } }[];

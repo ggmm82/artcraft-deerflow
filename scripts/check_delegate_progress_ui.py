@@ -28,7 +28,7 @@ def main():
     iso = lambda t: t.isoformat()
     video_path = '/mnt/user-data/outputs/filmcraft/preview.mp4'
     job = {'job_id': 'artcraft-job-123456abcdef', 'agent': 'effectcraft', 'engine': 'codex',
-        'model': 'fixture-model', 'phase': 'running_tool', 'summary': 'Esporto il risultato con Effectcraft',
+        'model': 'fixture-model', 'can_stop': True, 'phase': 'running_tool', 'summary': 'Esporto il risultato con Effectcraft',
         'resources': {'memory_bytes': 1073741824, 'memory_limit_bytes': 2147483648, 'oom_kills': 0},
         'limits': {'cpus': 1.5}, 'operations': [{'id': 'render', 'state': 'running', 'label': 'Render finale', 'elapsed_seconds': 600, 'progress': {'done': 12, 'total': 48}}],
         'work_summary': 'Correggo inquadratura e proporzioni del robot prima del render',
@@ -106,7 +106,10 @@ window.showThread();
                 pass
 
             def do_POST(self):
-                data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                data = json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))) or b'{}')
+                if self.path.endswith('/stop'):
+                    self.send_response(200);self.send_header('Content-Type','application/json');self.end_headers()
+                    self.wfile.write(b'{"requested":true}');return
                 if self.path.endswith('/studio-experience/prefer'):
                     state['preferred_note'] = data['note']
                     self.do_GET(); return
@@ -200,6 +203,8 @@ window.showThread();
                 page.get_by_role('button', name='Attività', exact=True).click()
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
                 expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
+                page.get_by_role('button',name='Interrompi questa fase',exact=True).click()
+                expect(page.get_by_role('button',name='Arresto richiesto…',exact=True)).to_be_disabled()
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 # A professional role is compiled from the project, independently of CLI names.
                 state['job'] = {**job, 'role_id': 'coherence', 'role_title': 'Responsabile della coerenza', 'role_version': 'abcdef0123456789'}
