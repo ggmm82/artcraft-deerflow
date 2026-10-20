@@ -274,7 +274,6 @@ def main():
                 from .codex_native import run
             except ImportError:
                 from codex_native import run
-            reporter.emit('waiting_model')
             reporter.model_wait_seconds = (job.get('resources') or {}).get('model_wait_seconds', 0)
             message = run(job['model'], prompt, output_dir, job['timeout'], reporter, image_generation=native_images)
         else:

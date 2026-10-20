@@ -225,3 +225,14 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     compact['check_counts'] = counts(handoff.get('checks', []))
     compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))
     return reply(workspace, compact, 'delegate')
+
+
+async def _studio_delegate_async(agent: str, task: str, runtime: Runtime, step_id: str = '', purpose: str = 'work', role_id: str = '') -> str:
+    from .cancellation import call
+    return await call(studio_delegate.func, agent=agent, task=task, runtime=runtime,
+                      step_id=step_id, purpose=purpose, role_id=role_id)
+
+
+# Keep the synchronous function for direct callers; LangGraph awaits this
+# coroutine, so an explicit run cancellation reaches the Docker worker too.
+studio_delegate.coroutine = _studio_delegate_async

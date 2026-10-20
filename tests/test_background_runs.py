@@ -63,6 +63,29 @@ class BackgroundRunTests(unittest.IsolatedAsyncioTestCase):
                 await asyncio.wait_for(task, timeout=2)
                 self.assertEqual(output.read_text(), 'completed after browser disconnect')
 
+    async def test_structured_tool_cancellation_propagates_into_the_synchronous_worker(self):
+        import threading
+        from studio.tools import studio_delegate
+        from studio.cancellation import requested
+        ready, cleaned = threading.Event(), threading.Event()
+        def synchronous_worker(**kwargs):
+            ready.set()
+            for _ in range(300):
+                if requested():
+                    cleaned.set()
+                    return '{"ok":false,"error":"cancelled"}'
+                threading.Event().wait(.01)
+            raise AssertionError('Cancelled run left its executor thread alive')
+        with patch.object(studio_delegate, 'func', side_effect=synchronous_worker):
+            task = asyncio.create_task(studio_delegate.coroutine(agent='workspace', task='fixture', runtime=SimpleNamespace()))
+            for _ in range(100):
+                if ready.is_set(): break
+                await asyncio.sleep(.01)
+            self.assertTrue(ready.is_set())
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError): await asyncio.wait_for(task,3)
+            self.assertTrue(cleaned.is_set())
+
     async def test_default_disconnect_keeps_worker_and_delivery_running(self):
         await self.check_disconnect()
 

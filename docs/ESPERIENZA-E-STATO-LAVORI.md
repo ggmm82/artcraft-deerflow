@@ -139,3 +139,31 @@ fittizie e rete esterna disabilitata: verifica eventi immagini, copia PNG,
 provenienza, esecuzione di un comando e assenza del tool nella modalità vettoriale.
 Il protocollo app-server è marcato experimental dal fornitore: la versione resta
 fissata e gli aggiornamenti richiedono il superamento di questo contratto.
+
+## Stop della chat, chiusura e risorse
+
+Lo **Stop della chat** ora propaga la cancellazione asyncio al worker sincrono:
+annullare soltanto il Future non ferma il thread Python che sta aspettando Docker.
+Ogni delega ha un segnale isolato; l'arresto usa il suo nome di job e le label di
+installazione/workspace. La cancellazione di un incarico ancora in coda impedisce
+l'avvio del suo container e non arresta il lavoro che occupa la squadra. Chiudere
+la pagina con la politica predefinita `continue` non invia questo segnale.
+
+Il pannello distingue avvio Codex, incarico accettato, strumento nativo attivo e
+pulizia del container. Un avvio senza conferma ha un limite separato di 60 secondi;
+questo limite non si applica a una generazione accettata. Restano il budget di fase
+(25 minuti), il salvataggio progressivo e il budget di silenzio opzionale.
+
+`worker_exit_at`, `cleanup_started_at`, `cleanup_finished_at` e
+`resources_reclaimed` distinguono uscita del processo e rimozione Docker. La UI
+scrive «Container rimosso» soltanto dopo la conferma di `docker rm`. Se la rimozione
+fallisce, lo segnala e non ammette un altro worker. Un errore nella sola telemetria
+non deve impedire rimozione o rilascio del lock. Le versioni precedenti non
+espongono queste conferme: il riavvio del Gateway esegue già la pulizia degli
+orfani limitata all'installazione, conservando i file nel volume.
+
+Per i soli file ausiliari `dependency` e `report`, un controllo di riapertura
+`not_run` con evidenza ma lista dei limiti vuota viene riportato come limitazione e
+warning dal runtime, senza scartare l'intero incarico. Resta `not_run`: non diventa
+un controllo riuscito. Sorgenti, archivi, export e riaperture fallite mantengono i
+controlli rigorosi già previsti.

@@ -113,6 +113,9 @@ function JobCard({ job, now, threadId }: { job: JobProgress; now: number; thread
     {job.model && <p className="text-muted-foreground text-xs">Modello: {job.model}</p>}
     {job.work_summary && job.work_summary !== job.summary && <p className="text-sm">{job.work_summary}</p>}
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
+    {job.cancel_error && !job.resources_reclaimed && <p role="alert" className="text-sm">Arresto del worker non confermato. Verifica il collegamento Docker; non è sufficiente fermare il coordinatore.</p>}
+    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">Container rimosso: risorse della fase liberate; file salvati conservati.</p>}
+    {job.cleanup_started_at && !job.resources_reclaimed && <p className="text-xs" role="status">{job.cleanup_error ? "Rimozione del container non confermata: la squadra richiede un controllo." : "Chiusura del container e rilascio delle risorse in corso."}</p>}
     {!terminal && <div className="text-muted-foreground space-y-1 text-xs">
       <p>Ultimo avanzamento osservato: {duration(secondsSince(job.last_activity_at, now))} fa</p>
       {job.execution_started_at && <p>{job.execution_state === "model" ? "Attesa del modello" : "Comando in esecuzione"}: {duration(secondsSince(job.execution_started_at, now))}</p>}

@@ -335,7 +335,10 @@ def public_status(value):
     """Allowlist every returned field even if a worker modified its own file."""
     result = {key: clean_summary(value.get(key)) for key in (
         'job_id', 'agent', 'role_id', 'role_title', 'role_version', 'engine', 'model', 'phase', 'summary', 'work_summary', 'created_at',
-        'started_at', 'finished_at', 'deadline_at', 'phase_started_at', 'execution_state', 'execution_started_at', 'last_model_event_at', 'last_file_change_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action')}
+        'started_at', 'finished_at', 'deadline_at', 'phase_started_at', 'execution_state', 'execution_started_at', 'last_model_event_at', 'last_file_change_at', 'last_activity_at', 'heartbeat_at', 'updated_at', 'error_code', 'action', 'worker_exit_at', 'cleanup_started_at', 'cleanup_finished_at')}
+    result['resources_reclaimed'] = value.get('resources_reclaimed') is True
+    result['cleanup_error'] = value.get('cleanup_error') is True
+    result['cancel_error'] = value.get('cancel_error') is True
     result['can_stop'] = value.get('can_stop') is True
     result['cancel_requested'] = value.get('cancel_requested') is True
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}

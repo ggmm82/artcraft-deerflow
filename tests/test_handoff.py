@@ -142,6 +142,19 @@ class DeliveryTests(HandoffFixture):
         with self.assertRaisesRegex(ValueError, 'prodotto esportato'):
             self.validate()
 
+    def test_auxiliary_not_run_is_explicit_without_discarding_work_or_faking_success(self):
+        self.delivery([self.metadata(role='report')], status='not_applicable')
+        self.value['delivery']['files'][0]['reopen'] = {'status':'not_run','evidence':'File ausiliario; nessuna riapertura eseguita'}
+        result = self.validate()
+        self.assertEqual(result['delivery']['files'][0]['reopen']['status'],'not_run')
+        self.assertIn('Riapertura non eseguita',result['delivery']['files'][0]['limitations'][0])
+        self.assertTrue(result['warnings'])
+        self.value['delivery']['files'][0]['reopen']['status'] = 'failed'
+        with self.assertRaisesRegex(ValueError,'limite esplicito'): self.validate()
+        self.delivery()
+        self.value['delivery']['files'][0]['reopen'] = {'status':'not_run','evidence':'Sorgente non riaperto'}
+        with self.assertRaisesRegex(ValueError,'limite esplicito'): self.validate()
+
     def test_unverified_source_keeps_failure_and_requires_limit_and_warning(self):
         self.delivery()
         item = self.value['delivery']['files'][0]

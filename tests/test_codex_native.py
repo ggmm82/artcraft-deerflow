@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import threading
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from studio.codex_native import export_image, png_info, run
@@ -45,6 +45,24 @@ class NativeAssetTests(unittest.TestCase):
             with self.assertRaises(RuntimeError) as error:
                 export_image({'status': 'failed', 'failure': failure}, Path('/unused'), Path('/unused'))
             self.assertEqual(failure_info(error.exception)['code'], code)
+
+    def test_unresponsive_startup_has_a_separate_limit_and_reaps_the_process(self):
+        from studio.cli_runner import ProviderSilence
+        from studio.work_results import failure_info
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            binary = root / 'hung-codex'
+            pid = root / 'pid'
+            binary.write_text('#!' + sys.executable + '\nimport os,time,pathlib\npathlib.Path(' + repr(str(pid)) + ').write_text(str(os.getpid()))\ntime.sleep(20)\n')
+            binary.chmod(0o700)
+            progress = Mock(); progress.model_wait_seconds = 0
+            with patch('studio.codex_native.STARTUP_TIMEOUT', .25):
+                with self.assertRaises(ProviderSilence) as error:
+                    run('fixture','Private prompt',root,5,progress,executable=str(binary))
+            self.assertEqual(failure_info(error.exception)['code'],'provider_startup_limit')
+            with self.assertRaises(ProcessLookupError): os.kill(int(pid.read_text()),0)
+            self.assertFalse(any(c.args[0]=='waiting_model' for c in progress.emit.call_args_list))
 
 
 BINARY = os.getenv('CODEX_TEST_BINARY') or shutil.which('codex')

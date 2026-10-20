@@ -265,7 +265,7 @@ window.showThread();
                 page.get_by_role('button', name='Squadra', exact=True).click()
                 expect(page.get_by_test_id('team-plan')).not_to_contain_text('Verifico il mix recuperato')
                 state['project'] = {**project, 'status': 'clarifying', 'outcome': {**project['outcome'], 'format': '', 'questions': ['Una proposta di lavoro o un prodotto pronto da distribuire?']}}
-                state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now)}
+                state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now), 'resources_reclaimed': True, 'cleanup_finished_at': iso(now)}
                 page.reload()
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Definiamo il risultato insieme')
@@ -273,6 +273,8 @@ window.showThread();
                 page.get_by_role('button', name='Progetto', exact=True).click()
                 expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
                 expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
+                page.get_by_role('button', name='Attività', exact=True).click()
+                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Container rimosso')
                 state['job'] = job
                 page.evaluate("window.showThread('fixture',true,true,false)")
                 # A report-only inventory must never replace the selected artifact.

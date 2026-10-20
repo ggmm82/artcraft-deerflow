@@ -22,6 +22,7 @@ except ImportError:
 
 MAX_IMAGE = 32 * 1024 * 1024
 MAX_FRAME = 48 * 1024 * 1024
+STARTUP_TIMEOUT = 60
 
 
 def safe_path(path, root):
@@ -129,6 +130,8 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
     args = [executable, '--enable' if image_generation else '--disable', 'image_generation',
             'app-server', '--listen', 'stdio://']
     deadline = time.monotonic() + timeout
+    startup_deadline = min(deadline, time.monotonic() + STARTUP_TIMEOUT)
+    turn_accepted = False
     events = queue.Queue(maxsize=8)
     messages, active_tools = [], set()
     last_event = time.monotonic()
@@ -169,12 +172,15 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
         def request(ident, method, params):
             send({'id': ident, 'method': method, 'params': params})
         try:
+            progress.emit('preparing', 'Avvio Codex e preparazione del collegamento')
             request(1, 'initialize', {'clientInfo': {'name': 'artcraft_studio', 'version': '1'},
                                     'capabilities': {'experimentalApi': True}})
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise subprocess.TimeoutExpired('codex', timeout)
+                if not turn_accepted and time.monotonic() >= startup_deadline:
+                    raise ProviderSilence('Budget di avvio Codex esaurito: la CLI non ha confermato l’accettazione dell’incarico; file salvati conservati')
                 try:
                     event = events.get(timeout=min(.25, remaining))
                 except queue.Empty:
@@ -204,6 +210,10 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
                 elif ident == 2:
                     request(3, 'turn/start', {'threadId': event['result']['thread']['id'],
                             'input': [{'type': 'text', 'text': prompt, 'text_elements': []}]})
+                if ident == 3 or method == 'turn/started':
+                    turn_accepted = True
+                    if not active_tools:
+                        progress.emit('waiting_model', 'Incarico accettato da Codex; attendo la risposta del modello')
                 if method in ('item/started', 'item/completed'):
                     item = params.get('item') or {}
                     key, kind = item.get('id'), item.get('type')

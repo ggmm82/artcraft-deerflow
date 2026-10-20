@@ -3,11 +3,12 @@ import json
 import os
 import subprocess
 import threading
+import time
 import uuid
 from pathlib import Path
 
 from .state import STATE, effective_agent, credential_dir, connection_status, custom_connection_path
-from .progress import clean_summary, create_job, read_status, update, workspace_key
+from .progress import clean_summary, create_job, read_status, update, utcnow, workspace_key
 from .work_results import failure_info, partial_files
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
@@ -63,6 +64,14 @@ def remove(name):
     if result.returncode and 'No such container' not in result.stderr:
         # Do not admit another worker unless reclamation was confirmed.
         raise RuntimeError('Rimozione sandbox non confermata; riavvia il Gateway per recuperarla')
+
+
+def lifecycle(progress, **fields):
+    # A telemetry write must never prevent container removal or lock release.
+    try:
+        update(progress, **fields)
+    except (OSError, ValueError):
+        pass
 
 
 def cleanup_orphans():
@@ -185,10 +194,22 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         update(progress, role_id=role['id'], role_title=role['title'], role_version=role['version'])
     output_dir = '/mnt/user-data/outputs/' + agent_id + '/' + name
     # At most one login or worker at a time: bounded RAM and serialized credential refresh.
-    if not EXECUTION_LOCK.acquire(timeout=120):
-        update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
-        raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
+    from .cancellation import requested, watch
+    def cancelled_before_start():
+        update(progress, 'failed', 'Interruzione della fase richiesta dall’utente', cancel_requested=True)
+        return json.dumps({'ok': False, 'error': 'Interruzione della fase richiesta dall’utente; nessun nuovo container avviato.'})
+    until = time.monotonic() + 120
+    while True:
+        if requested():
+            return cancelled_before_start()
+        if EXECUTION_LOCK.acquire(timeout=min(.2, max(0, until - time.monotonic()))):
+            break
+        if time.monotonic() >= until:
+            update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
+            raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
     try:
+        if requested():
+            return cancelled_before_start()
         update(progress, 'starting')
         if on_started:
             on_started(output_dir)
@@ -219,8 +240,10 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
                         if engine == 'openai' else mount(credential_dir(engine), '/credentials', read_only=engine == 'deepseek')),
             '--mount', mount(job, '/job.json', True),
             IMAGE, 'python3', '/opt/studio/run_agent.py', '/job.json']
-        completed = subprocess.run(['docker', *args], capture_output=True, text=True,
-                                   timeout=1560)
+        with watch(lambda: request_stop(workspace, name), lambda: lifecycle(progress, cancel_error=True)):
+            completed = subprocess.run(['docker', *args], capture_output=True, text=True,
+                                       timeout=1560)
+        lifecycle(progress, worker_exit_at=utcnow())
         response = completed.stdout
         if completed.returncode:
             status = read_status(progress)
@@ -275,14 +298,18 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             pass
         raise
     finally:
+        lifecycle(progress, cleanup_started_at=utcnow())
         try:
             remove(name)
         except Exception:
-            update(progress, 'failed', 'Pulizia del worker non confermata: la squadra richiede un controllo')
+            update(progress, 'failed', 'Pulizia del worker non confermata: la squadra richiede un controllo', cleanup_error=True)
             raise
-        if 'job' in locals():
-            job.unlink(missing_ok=True)
-        EXECUTION_LOCK.release()
+        lifecycle(progress, cleanup_finished_at=utcnow(), resources_reclaimed=True)
+        try:
+            if 'job' in locals():
+                job.unlink(missing_ok=True)
+        finally:
+            EXECUTION_LOCK.release()
 
 
 def request_stop(workspace, job_id):
