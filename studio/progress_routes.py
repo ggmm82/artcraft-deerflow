@@ -18,6 +18,22 @@ class ProjectDirection(BaseModel):
     instructions: str = Field(default='', max_length=2000)
 
 
+class ProjectControl(BaseModel):
+    paused: bool
+
+
+@router.put('/api/threads/{thread_id}/studio-control')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def project_control(thread_id: ThreadId, body: ProjectControl, request: Request, response: Response):
+    from .projects import set_user_control
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        return {'user_control': await run_in_threadpool(set_user_control, workspace, body.paused)}
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error
+
+
 @router.put('/api/threads/{thread_id}/studio-direction')
 @require_permission('threads', 'write', owner_check=True, require_existing=True)
 async def project_direction(thread_id: ThreadId, body: ProjectDirection, request: Request, response: Response):
@@ -92,6 +108,24 @@ async def experience_select(thread_id: ThreadId, body: ExperienceSelection, requ
         return await run_in_threadpool(summary, experience_root())
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Esperienza non disponibile') from error
+
+
+class LessonAcceptance(BaseModel):
+    id: str = Field(pattern='^[a-f0-9]{64}$')
+    accepted: bool
+
+
+@router.put('/api/threads/{thread_id}/studio-experience/lesson')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def lesson_accept(thread_id: ThreadId, body: LessonAcceptance, request: Request, response: Response):
+    from .lessons import accept
+    from .experience import summary
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        await run_in_threadpool(accept, experience_root(), body.id, body.accepted)
+        return await run_in_threadpool(summary, experience_root())
+    except (OSError, ValueError) as error:
+        raise HTTPException(409, 'Lezione non disponibile') from error
 
 
 class PreferredMethod(BaseModel):

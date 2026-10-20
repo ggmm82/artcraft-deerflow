@@ -25,8 +25,11 @@ def experience_root(runtime):
 
 def preserve_experience(workspace, runtime):
     from .experience import collect
+    from .lessons import pending
     try:
-        return {'saved': collect(workspace, experience_root(runtime), (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id'))}
+        saved = collect(workspace, experience_root(runtime), (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id'))
+        return {'saved': saved, 'pending': len(pending(experience_root(runtime))),
+                'instruction': 'Usa studio_lessons per generalizzare poche evidenze in lezioni riutilizzabili; i fatti specifici non entrano nelle skills.'}
     except (OSError, ValueError, TypeError):
         return {'error': 'Esperienza non archiviata: conserva il volume dati e riprova il recupero dalla scheda Esperienza.'}
 
@@ -40,6 +43,13 @@ def interaction_id(runtime):
             identifier = message.get('id') if isinstance(message, dict) else getattr(message, 'id', None)
             return str(identifier or ('human-' + str(index)))[:150]
     return ''
+
+
+def source_turn(runtime):
+    config = (getattr(runtime, 'config', None) or {}).get('configurable') or {}
+    if 'artcraft_user_turn' in config:
+        return config['artcraft_user_turn'] or ''
+    return interaction_id(runtime)
 
 
 def user_requests(runtime):
@@ -67,6 +77,41 @@ def user_requests(runtime):
         if isinstance(text, str) and text.strip() and request_text(text) not in result:
             result.append(request_text(text))
     return result
+
+
+@tool('studio_lessons', parse_docstring=True)
+def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str = '', dismiss_reason: str = '') -> str:
+    """Generalize saved evidence into conditional reusable lessons, never project facts.
+
+    Read without arguments to inspect up to six pending evidence records. Extract
+    the transferable cause, procedure, verification and limits, omitting names,
+    story content, file paths and project choices. Group related observations.
+    A user preference is not technical verification; preserve that distinction.
+    Save only individual lessons with a useful transferable insight, not every
+    observation. Dismiss unhelpful sources with a reason; keep their evidence.
+    New lessons are proposals: only the owner can accept each one in the Lessons
+    panel. Never approve them yourself or claim a proposal is already reused.
+    Accepted lessons guide future roles only when relevant and compatible with tool versions.
+    Do not block useful production on the learning backlog.
+
+    Args:
+        runtime: Injected DeerFlow runtime.
+        source_ids_json: JSON list of one to six real saved evidence IDs.
+        dismiss_reason: Instead of saving a lesson, explain why the selected source IDs do not warrant one. Do not combine with lesson_json.
+        lesson_json: JSON title, applies_when, procedure (list), verification (list), limits and tools (installed IDs or empty for a general principle). Conditions and limits are required; no facts of the source project.
+    """
+    from .lessons import learn, pending, dismiss
+    root = experience_root(runtime)
+    if dismiss_reason:
+        if lesson_json:
+            raise ValueError('Salva o scarta la singola lezione, non entrambe')
+        dismiss(root, json.loads(source_ids_json), dismiss_reason)
+        return json.dumps({'decision': 'not_generalized', 'pending_sources': pending(root)}, ensure_ascii=False)
+    if bool(source_ids_json) != bool(lesson_json):
+        raise ValueError('Indica sia le fonti sia la lezione generale')
+    identifier = learn(root, json.loads(source_ids_json), json.loads(lesson_json)) if lesson_json else None
+    return json.dumps({'saved_lesson': identifier, 'pending_sources': pending(root),
+                       'instruction': 'Conserva solo la lezione generale e condizionale; le fonti restano separate e non dimostrano più di quanto verificato.'}, ensure_ascii=False)
 
 
 @tool('studio_plan', parse_docstring=True)
@@ -104,6 +149,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Optional origin=user requires source_quote copied from actual user messages; origin=proposal identifies team choices. Proposals remain checked until explicitly revised; never weaken user requirements to pass. Preserve requested references; no invented substitutions.
     """
     workspace = workspace_for(runtime)
+    learning = {}
     requests = user_requests(runtime)
     if read_project(workspace):
         sync_acceptance(workspace, requests, json.loads(criteria_json) if criteria_json else None)
@@ -117,14 +163,14 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = create_plan(workspace, brief, json.loads(steps_json or '[]'), project_type,
             json.loads(omissions_json), summary=summary, next_action=next_action, status=status,
             product_path=product_path, requirements=json.loads(requirements_json) if requirements_json else None,
-            outcome=json.loads(outcome_json) if outcome_json else None)
+            outcome=json.loads(outcome_json) if outcome_json else None, source_turn=source_turn(runtime))
     else:
         value = read_project(workspace)
     if value and not value.get('archived'):
         sync_acceptance(workspace, requests, json.loads(criteria_json) if criteria_json else None)
         if strategy_json:
             create_plan(workspace, '', [], strategy=json.loads(strategy_json), status='blocked' if status == 'blocked' else '')
-        preserve_experience(workspace, runtime)
+        learning = preserve_experience(workspace, runtime)
         sync_project_context(workspace, json.loads(roles_json) if roles_json else None, json.loads(memory_json) if memory_json else None, experience_root=experience_root(runtime))
         value = read_project(workspace)
     if value and not value.get('archived'):
@@ -135,7 +181,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
     from .control_memory import reply
     from .state import team
     from .acceptance import generation_capabilities
-    return reply(workspace, {'project': value,
+    return reply(workspace, {'project': value, 'learning': learning,
         'generation_capabilities': generation_capabilities(team('squad')['engine'], (value or {}).get('user_direction'))}, 'plan')
 
 

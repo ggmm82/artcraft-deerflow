@@ -74,7 +74,8 @@ for (const relative of ['src/components/workspace/chats/chat-page.tsx', 'src/app
   assert.equal(source.split('<DelegateProgress ').length,2,'one project dock per chat');
   assert.ok(source.indexOf('<DelegateProgress ') > source.indexOf('<MessageList'),'outside historical messages');
   assert.ok(source.indexOf('<DelegateProgress ') < source.indexOf('<InputBox'),'beside the composer');
-  assert.match(source,/onContinue=\{\(\) => handleSubmit/,'continue uses the normal authenticated submit flow');
+  assert.match(source,/onPause=\{\(\) => thread\.stop\(\)\}/,'pause uses the authenticated thread cancellation');
+  assert.match(source,/onContinue=\{\(message\) => handleSubmit/,'continue uses the normal authenticated submit flow');
 }
 assert.ok(!fs.readFileSync(path.join(root,'src/components/workspace/messages/message-list.tsx'),'utf8').includes('<DelegateProgress'),'no project panel hidden in scrolling history');
 console.log('Project dock: normal and agent chats, fixed composer placement, authenticated continue and no duplicate transcript panel verified');

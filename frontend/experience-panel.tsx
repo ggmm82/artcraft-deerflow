@@ -7,7 +7,8 @@ type Observation = { id: string; at: string; excluded: boolean; observation: {
   criterion: string; status: string; method: string; evidence: string; corrections: string[];
   tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string; producer_method?: { status: string; notice: string; declared_method?: { approach: string; steps: string[]; limits: string[] } }; limitations?: string[];
 } };
-type Library = { total: number; excluded: number; observations: Observation[] };
+type Lesson = { id: string; accepted: boolean; excluded: boolean; basis: { source_ids: string[]; source_statuses?: string[]; lesson: { title: string; applies_when: string; procedure: string[]; verification: string[]; limits: string; tools: string[] } } };
+type Library = { total: number; excluded: number; pending?: number; lessons?: Lesson[]; observations: Observation[] };
 export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
   const [library, setLibrary] = useState<Library | null>(null);
   const [error, setError] = useState("");
@@ -47,9 +48,22 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
     } catch { if (alive.current) setError("Esportazione non riuscita. Le esperienze restano nell’archivio."); }
   }
   return <div className="space-y-3 text-sm" data-testid="experience-panel">
-    <p>Esperienza privata del tuo account, conservata tra progetti e aggiornamenti. Le revisioni registrano cosa ha funzionato e cosa correggere; le skills dinamiche ricevono soltanto osservazioni pertinenti. Non è addestramento del modello.</p>
-    <p>Le procedure associate restano proposte: una revisione non dimostra che ogni passo della procedura sia stato eseguito.</p>
-    {library && <p>{library.total} osservazioni conservate · {library.excluded} escluse dal riutilizzo. {library.total > 200 ? "Qui sono mostrate le ultime 200; l’esportazione le include tutte." : ""}</p>}
+    <p>Solo le lezioni che accetti singolarmente entrano nelle skills. Le altre restano proposte. Le evidenze del singolo progetto restano separate.</p>
+    {library && <p>{library.lessons?.filter(lesson => !lesson.accepted).length ?? 0} proposte da valutare · {library.lessons?.filter(lesson => lesson.accepted).length ?? 0} lezioni accettate</p>}
+    {library?.lessons?.map(record => <article key={record.id} className="space-y-3 rounded-xl border p-4" data-testid="general-lesson">
+      <h4 className="font-semibold">{record.basis.lesson.title}</h4>
+      <p className="text-xs">{record.accepted ? "Accettata per il riutilizzo" : "Proposta: non ancora usata nelle skills"}</p>
+      <p><strong>Quando usarla:</strong> {record.basis.lesson.applies_when}</p>
+      <details><summary className="cursor-pointer">Procedura e verifiche</summary>
+        <ol className="my-2 list-inside list-decimal">{record.basis.lesson.procedure.map((step, i) => <li key={i}>{step}</li>)}</ol>
+        <ul className="list-inside list-disc">{record.basis.lesson.verification.map((step, i) => <li key={i}>{step}</li>)}</ul>
+      </details>
+      <p className="text-muted-foreground"><strong>Limiti:</strong> {record.basis.lesson.limits}</p>
+      <p className="text-xs">{record.basis.source_ids.length} fonti · {record.basis.source_statuses?.includes("preferred_by_user") ? "Include una preferenza dell’utente, non un collaudo tecnico." : "Generalizzazione delle osservazioni conservate, da verificare nel nuovo progetto."}</p>
+      <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("/lesson", { id: record.id, accepted: !record.accepted })}>{record.accepted ? "Rimuovi dalle skills" : "Accetta questa lezione"}</button>
+    </article>)}
+    {library && !library.lessons?.length && <p>Nessuna lezione generale ancora compilata. Le fonti già conservate non vengono copiate nelle nuove skills.</p>}
+    <details className="space-y-3 rounded-xl border p-3"><summary className="cursor-pointer font-medium">Fonti, preferenze e archivio ({library?.total ?? 0})</summary>
     <div className="flex flex-wrap gap-2">
       <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("/collect")}>Recupera esperienza di questa chat</button>
       <button className="rounded border px-3 py-2" disabled={!library} onClick={() => void download()}>Esporta esperienza</button>
@@ -59,13 +73,13 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
       <label className="block">Lavorazione<select className="w-full rounded border p-2" value={delivery} onChange={event => setDelivery(event.target.value)}>{deliveries.filter(d => d.purpose !== "review").map(d => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}</select></label>
       <label className="block">Cosa vuoi riutilizzare?<textarea className="w-full rounded border p-2" maxLength={2000} value={note} onChange={event => setNote(event.target.value)} placeholder="Ad esempio: cambiare metodo dopo il campione, conservare la struttura valida, verificare due casi diversi." /></label>
       <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !delivery || note.trim().length < 5} onClick={() => void change("/prefer", { delivery_id: delivery, note })}>Conserva questo metodo</button>
-      <p>Registra la tua preferenza, la procedura dichiarata e gli hash dei file. Non approva automaticamente tutti i requisiti e non ricostruisce operazioni non registrate.</p>
+      <p className="text-xs text-muted-foreground">Conserva una fonte per la successiva generalizzazione del coordinatore. Non entra direttamente nelle skills.</p>
     </div>
     {error && <p role="alert">{error}</p>}
     {library?.total === 0 && <p>Nessuna revisione utilizzabile ancora registrata. I soli comandi riusciti non diventano buone pratiche.</p>}
     {library?.observations.map(record => <article className="space-y-2 rounded border p-3" key={record.id}>
       <p className="font-medium">{record.observation.criterion}</p>
-      <p>{record.observation.status === "preferred_by_user" ? "Metodo preferito dall’utente" : record.observation.status === "passed" ? "Esito positivo osservato" : "Difetto osservato"} · {record.observation.method} · {record.excluded ? "Esclusa" : "Disponibile per selezione"}</p>
+      <p>{record.observation.status === "preferred_by_user" ? "Metodo preferito dall’utente" : record.observation.status === "passed" ? "Esito positivo osservato" : "Difetto osservato"} · {record.observation.method} · {record.excluded ? "Esclusa" : "Fonte conservata, separata dalle skills"}</p>
       <p>{record.observation.evidence}</p>
       {record.observation.producer_method && <details><summary>Procedimento conservato</summary><p>{record.observation.producer_method.notice}</p><p>{record.observation.producer_method.declared_method?.approach}</p><ol className="list-inside list-decimal">{record.observation.producer_method.declared_method?.steps.map((step, i) => <li key={i}>{step}</li>)}</ol></details>}
       {record.observation.limitations?.map((limit, i) => <p key={i}>Limite conservato: {limit}</p>)}
@@ -73,7 +87,8 @@ export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: strin
       <p>Strumenti: {Object.entries(record.observation.tools).map(([tool, version]) => `${tool} ${version}`).join(", ") || "Workspace generale"}</p>
       {record.observation.source_thread && <a className="underline" href={`/workspace/chats/${encodeURIComponent(record.observation.source_thread)}`}>Apri il progetto di origine</a>}
       <details><summary>Provenienza e versioni</summary><p className="break-all">Prodotto SHA256: {record.observation.product_sha256}</p><p className="break-all">Rapporto SHA256: {record.observation.report_sha256}</p></details>
-      <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("", { id: record.id, excluded: !record.excluded })}>{record.excluded ? "Riattiva il riutilizzo" : "Escludi dal riutilizzo"}</button>
+
     </article>)}
+    </details>
   </div>;
 }

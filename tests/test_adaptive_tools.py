@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 try:
-    from studio.tools import studio_delegate, studio_plan
+    from studio.tools import studio_delegate, studio_plan, studio_lessons
 except ImportError:
     if os.getenv('STUDIO_REQUIRE_GATEWAY_TESTS') == '1':
         raise
@@ -140,6 +140,8 @@ class AdaptiveToolTests(unittest.TestCase):
                 response = json.loads(studio_delegate.func(agent='wordcraft', task='Avvia comunque', runtime=runtime))
                 self.assertTrue(response['needs_briefing'])
                 self.assertFalse(worker.called)
+                with self.assertRaisesRegex(ValueError, 'nuova risposta reale'):
+                    studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'format': 'Documento', 'questions': []}))
                 runtime.state['messages'].append(SimpleNamespace(type='human', id='answer', content='Documento impaginato e sorgente modificabile'))
                 studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'format': 'Documento impaginato con sorgente modificabile', 'questions': []}))
                 response = json.loads(studio_delegate.func(agent='wordcraft', task='Prepara la prima versione', runtime=runtime))
@@ -212,3 +214,17 @@ class AdaptiveToolTests(unittest.TestCase):
                 runtime.state['messages'].append(SimpleNamespace(type='human', id='explicit-continue'))
                 studio_delegate.func(agent='effectcraft', task='Riprendi la posa', runtime=runtime, step_id='motion')
                 self.assertEqual(worker.call_count, 2)
+
+    def test_lesson_tool_exposes_proposal_but_no_acceptance_argument(self):
+        from studio.team_routing import shared_run
+        from studio.tools import source_turn
+        schema=studio_lessons.tool_call_schema.model_json_schema()
+        self.assertIn('lesson_json',schema['properties'])
+        self.assertNotIn('accepted',schema['properties'])
+        self.assertNotIn('runtime',schema['properties'])
+        runtime=SimpleNamespace(config=shared_run({'input':{'messages':[{'role':'user','content':'Risposta'}]}})['config'])
+        first=source_turn(runtime)
+        self.assertTrue(first)
+        self.assertEqual(source_turn(runtime),first)
+        runtime.config=shared_run({'input':None})['config']
+        self.assertEqual(source_turn(runtime),'')

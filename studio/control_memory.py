@@ -34,7 +34,7 @@ def project_view(project):
     if not project or project.get('archived'):
         return project
     value = {k: project.get(k) for k in ('id', 'status', 'summary', 'next_action', 'product_path',
-             'quality_status', 'attention', 'outcome', 'user_direction', 'memory', 'requirements', 'project_type')}
+             'quality_status', 'attention', 'outcome', 'user_direction', 'user_control', 'memory', 'requirements', 'project_type')}
     value['brief'] = clean_summary(project.get('brief'), 500)
     acceptance = project.get('acceptance') or {}
     value['acceptance'] = {k: acceptance.get(k) for k in ('hash', 'request_count', 'request_manifest')}
@@ -102,6 +102,8 @@ def reply(workspace, payload, kind):
     text = json.dumps(full, ensure_ascii=False)
     reference = scoped_file(workspace, 'control-results/' + kind + '-' + fingerprint(full) + '.json', text)
     value = {'project': project_view(full.get('project'))} if kind == 'plan' else delegate_view(full)
+    if kind == 'plan':
+        value['learning'] = full.get('learning', {})
     if kind == 'plan' and full.get('generation_capabilities'):
         value['generation_capabilities'] = full['generation_capabilities']
     value.update(details_path=reference['path'], details_sha256=reference['sha256'])

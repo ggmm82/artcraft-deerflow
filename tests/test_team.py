@@ -192,3 +192,16 @@ class TeamTests(unittest.TestCase):
         self.assertTrue(all(p['model'] == 'deepseek-pro' for p in yaml.safe_load(path.read_text())['models']))
         self.assertTrue(all(s['model'] == 'deepseek-pro'
             for s in self.client.get('/studio/api/catalog').json()['effective_agents'].values()))
+
+    def test_upgrade_adds_lesson_proposal_tool_without_replacing_profiles(self):
+        path=self.state.STATE/'config.yaml'
+        config=yaml.safe_load(path.read_text())
+        config['tools']=[t for t in config['tools'] if t['name']!='studio_lessons']
+        models=config['models']
+        path.write_text(yaml.safe_dump(config))
+        self.bootstrap.initialize()
+        migrated=yaml.safe_load(path.read_text())
+        self.assertEqual(migrated['models'],models)
+        self.assertEqual(sum(t['name']=='studio_lessons' for t in migrated['tools']),1)
+        self.bootstrap.initialize()
+        self.assertEqual(sum(t['name']=='studio_lessons' for t in yaml.safe_load(path.read_text())['tools']),1)

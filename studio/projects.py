@@ -65,7 +65,8 @@ def load(folder, workspace):
             raise ValueError('Stato della fase non valido')
     if value.get('workspace_key') != workspace_key(workspace):
         return None
-    changed = False
+    from .revisions import number_attempts
+    changed = number_attempts(value)
     if value.get('project_type') == 'animated_video' and 'requirements' not in value:
         value['requirements'] = {'video': True, 'audio': not bool(value.get('omissions', {}).get('soundcraft'))}
         changed = True
@@ -228,6 +229,28 @@ def _direction_result(value):
             'instruction': 'Scelta salvata per i prossimi incarichi. Le fasi già avviate conservano il loro incarico: interrompile dal pannello Attività per cambiare subito. Riporta questa scelta in chat per chiedere al coordinatore la ripianificazione.'}
 
 
+def set_user_control(workspace, paused):
+    if type(paused) is not bool:
+        raise ValueError('Indica se mettere in pausa il progetto')
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value:
+            value = {'id': uuid.uuid4().hex, 'workspace_key': workspace_key(workspace),
+                     'brief': 'Progetto da definire', 'project_type': 'custom', 'created_at': utcnow(),
+                     'steps': [], 'requirements': {}}
+        previous = value.get('user_control') or {}
+        if previous.get('paused') != paused:
+            value['user_control'] = {'paused': paused, 'revision': previous.get('revision', 0) + 1, 'updated_at': utcnow()}
+            value['updated_at'] = utcnow()
+            atomic_json(folder / 'project.json', value)
+        return value.get('user_control')
+
+
+def assert_user_allows_work(value):
+    if (value.get('user_control') or {}).get('paused'):
+        raise ValueError('Progetto in pausa su richiesta dell’utente: attendi Riprendi dal pannello, senza avviare altre deleghe.')
+
+
 def read_project(workspace):
     """Compact operational memory: histories remain on disk, not in every LLM turn."""
     if not (Path(workspace) / '.studio-project').exists():
@@ -244,6 +267,7 @@ def read_project(workspace):
     result['memory'] = value.get('memory')
     result['outcome'] = value.get('outcome')
     result['user_direction'] = value.get('user_direction')
+    result['user_control'] = value.get('user_control')
     result['strategy'] = value.get('strategy')
     result['method_recovery'] = value.get('method_recovery')
     result['orientation'] = orientation(value)
@@ -315,6 +339,8 @@ def read_project(workspace):
             if parent not in used and directory and any(p.is_relative_to(directory) for p in delivery_inputs.get(did, [])):
                 used.add(parent)
                 pending.append(parent)
+    from .revisions import annotate
+    annotate(result['deliveries'], value, workspace, artifact_path)
     for delivery in result['deliveries']:
         delivery['contribution'] = delivery['id'] in used and not delivery['current']
     result['deliveries'].sort(key=lambda d: (d['current'], d['contribution'], d['at']), reverse=True)
@@ -355,7 +381,7 @@ def read_project(workspace):
 
 
 def create_plan(workspace, brief, steps, project_type='', omissions=None, *, summary='', next_action='',
-                status='', product_path='', requirements=None, outcome=None, strategy=None):
+                status='', product_path='', requirements=None, outcome=None, strategy=None, source_turn=''):
     """Update an evolving brief and activity board, preserving work and versions."""
     if project_type not in ('', 'custom', 'animated_video'):
         raise ValueError('Tipo di progetto non valido')
@@ -395,6 +421,14 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
         if brief:
             value['brief'] = clean_summary(brief, 4000)
         if outcome is not None:
+            question_turn = value.get('brief_question_turn')
+            if (value.get('outcome') or {}).get('questions') and not outcome.get('questions') and question_turn:
+                if not source_turn or source_turn == question_turn:
+                    raise ValueError('Le domande sul risultato attendono una nuova risposta reale dell’utente; non cancellarle nello stesso turno.')
+            if outcome.get('questions') and source_turn:
+                value['brief_question_turn'] = source_turn
+            elif not outcome.get('questions'):
+                value.pop('brief_question_turn', None)
             if value.get('outcome') != outcome:
                 value.pop('user_acceptance', None)
                 if value.get('status') == 'ready':
@@ -557,6 +591,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         create_plan(workspace, clean_summary(task), [])
     with locked(workspace) as folder:
         value = load(folder, workspace)
+        assert_user_allows_work(value)
         if value.get('outcome') and briefing_issue(value['outcome']):
             raise ValueError('Prima della produzione completa le scelte sul risultato: ' + briefing_issue(value['outcome']))
         step = next((s for s in value['steps'] if s['id'] == step_id), None) if step_id else None
@@ -564,7 +599,9 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             sid = step_id or agent + '-' + uuid.uuid4().hex[:8]
             if not STEP_ID.fullmatch(sid) or agent not in ({a['id'] for a in applications()} | {'workspace'}) or len(value['steps']) >= 64:
                 raise ValueError('Attività o specialista non valido')
-            step = {'id': sid, 'agent': agent, 'goal': clean_summary(task), 'depends_on': [], 'attempts': [], 'status': 'pending'}
+            label = (role or {}).get('title') or {'review': 'Verifica del risultato', 'preview': 'Preparazione di un campione',
+                'integration': 'Integrazione dei contributi', 'delivery': 'Preparazione della consegna'}.get(purpose)
+            step = {'id': sid, 'agent': agent, 'goal': clean_summary(label or task), 'depends_on': [], 'attempts': [], 'status': 'pending'}
             value['steps'].append(step)
         if step['status'] == 'running':
             raise ValueError('Questa attività è già in esecuzione')
@@ -602,6 +639,9 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
         attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'task': clean_summary(task, 1500), 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
+        if purpose == 'delivery':
+            value['version_counter'] = value.get('version_counter', 0) + 1
+            attempt['version_number'] = value['version_counter']
         if role and role.get('scope'):
             attempt['role_scope'] = role['scope']
         history = step['attempts'][-(MAX_HISTORY - 3):]
@@ -708,6 +748,7 @@ def sync_project_context(workspace, roles=None, memory=None, experience_root=Non
         if value.get('outcome'):
             current['project_outcome'] = value['outcome']
         current['user_direction'] = value.get('user_direction')
+        current['user_control'] = value.get('user_control')
         if value.get('strategy'):
             current['method_selection'] = value['strategy']['record']
         serialized = json.dumps(current, ensure_ascii=False, sort_keys=True, indent=2)

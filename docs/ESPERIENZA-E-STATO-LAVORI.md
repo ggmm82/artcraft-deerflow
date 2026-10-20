@@ -33,27 +33,35 @@ Le procedure associate sono contesto dichiarato: non si presume che ogni loro
 passo sia stato eseguito. Un esito positivo non certifica qualità universale,
 competenza professionale o miglioramento artistico.
 
-Prima di compilare le skills del progetto vengono selezionate al massimo sei
-osservazioni pertinenti per ruolo (entro un budget di testo). La selezione è
-basata sugli strumenti o, per ruoli senza CLI, sulla sovrapposizione dei termini;
-non è una ricerca semantica e può tralasciare esperienze utili. Le esperienze di
-CLI con versione diversa o sconosciuta restano archiviate ma non vengono inserite
-automaticamente, salvo le preferenze esplicite dell’utente che restano candidati da verificare. La versione della skill include lo snapshot delle osservazioni:
-le versioni precedenti rimangono riproducibili. Il brief attuale prevale sempre.
+Le osservazioni sono **fonti**, non istruzioni da copiare nelle skills. Il coordinatore
+usa `studio_lessons` per proporre solo singole lezioni che meritano di essere conservate:
+condizioni d’uso, procedura generale, verifiche e limiti. Le fonti prive di una lezione
+utile possono essere valutate senza generalizzarle; restano nell’archivio. Non c’è
+l’obbligo di imparare tutta l’esperienza né di svuotare una coda prima della consegna.
 
-## Controllo e recupero
+## Accettazione delle singole lezioni
 
-La scheda **Esperienza** di ogni chat mostra l'archivio privato dell'account.
-Permette di escludere e riattivare osservazioni senza cancellare la storia, nonché
-esportare l'archivio completo in JSON. **Squadra** mostra quante osservazioni sono
-state incluse in ogni nuova skill. Le esclusioni si applicano alle compilazioni
-successive: non riscrivono procedure già in esecuzione.
+Apri **Dettagli progetto → Lezioni**. Ogni nuova lezione è una proposta inattiva:
+solo **Accetta questa lezione** ne autorizza il riutilizzo. Il coordinatore può
+proporre ma non accettare. La scelta riguarda l’esatta versione della lezione;
+un’altra formulazione richiede una nuova accettazione. **Rimuovi dalle skills**
+revoca il riutilizzo successivo senza cancellare fonti e storia. Nessuna accettazione
+massiva o riutilizzo automatico delle vecchie osservazioni.
 
-Per le chat precedenti all'aggiornamento usa **Recupera esperienza di questa chat**:
-il recupero è ripetibile senza duplicati e importa soltanto revisioni utilizzabili
-con prodotto ancora corrispondente all'hash registrato. Le versioni CLI storiche
-non registrate non vengono indovinate. Non importa da solo tutte le vecchie chat,
-né recupera dati già eliminati. Non modifica il lavoro in esecuzione.
+La compilazione seleziona al massimo sei lezioni accettate, entro un budget di testo.
+La pertinenza usa strumenti/versioni o sovrapposizione di termini per principi generali;
+non è una ricerca semantica. I fatti e i file del progetto di origine non vengono
+iniettati nelle nuove skills. Le fonti rimangono referenziate separatamente e distinguono
+preferenze dell’utente da verifiche positive e difetti. Le condizioni e i limiti
+restano da controllare nel nuovo contesto. La validazione blocca percorsi, identificatori
+e credenziali, ma non può certificare automaticamente la bontà della generalizzazione:
+la lettura e l’accettazione della singola proposta restano necessarie.
+
+**Squadra** mostra quante lezioni sono incluse nelle skills. L’accettazione o la revoca
+si applica alla compilazione successiva, senza riscrivere incarichi già avviati.
+Per le vecchie chat, **Fonti, preferenze e archivio → Recupera esperienza di questa chat**
+raccoglie revisioni utilizzabili senza duplicarle. Non accetta lezioni, non importa
+tutte le conversazioni e non ricostruisce versioni CLI storiche ignote.
 
 L'archivio non sostituisce la memoria personale nella pagina Settings/Memory e non
 attiva l'addestramento del modello o la riscrittura automatica delle skills Git.
@@ -64,7 +72,7 @@ prodotti né offre importazione automatica di procedure considerate affidabili.
 
 ## Conservare un metodo preferito
 
-In **Esperienza**, scegli la lavorazione e descrivi cosa vuoi riutilizzare, poi premi
+In **Lezioni → Fonti, preferenze e archivio**, scegli la lavorazione e descrivi cosa vuoi riutilizzare, poi premi
 **Conserva questo metodo**. Si conservano la tua valutazione, il contesto dichiarato
 del produttore, modello, strumenti e hash dei file. La preferenza è separata dagli
 esiti delle verifiche e non porta il progetto a ready. Può riguardare un campione
@@ -72,8 +80,7 @@ riuscito anche se la consegna completa deve ancora finire.
 
 Il software non deduce da un'immagine il processo che l'ha generata: i passaggi e
 le capacità non registrati restano sconosciuti. I file restano nei progetti di
-origine e vanno inclusi nel backup del volume. Una preferenza può suggerire una
-procedura alla prossima skill pertinente; non garantisce lo stesso risultato né
+origine e vanno inclusi nel backup del volume. Una preferenza può essere fonte di una proposta di lezione, da accettare singolarmente; non garantisce lo stesso risultato né
 trasforma una bitmap in tracciati modificabili.
 
 Ai nuovi worker viene richiesto anche `work/method.json`: approccio effettivo,
@@ -167,3 +174,38 @@ Per i soli file ausiliari `dependency` e `report`, un controllo di riapertura
 warning dal runtime, senza scartare l'intero incarico. Resta `not_run`: non diventa
 un controllo riuscito. Sorgenti, archivi, export e riaperture fallite mantengono i
 controlli rigorosi già previsti.
+
+## Console e interventi durante il lavoro
+
+Accanto alla chat: identità del progetto, stato attuale, avanzamento sintetico e azioni
+**Vedi anteprima / Apri consegna**, **Intervieni**, **Metti in pausa**. I dettagli si
+aprono in una finestra con sezioni **Stato, Risultato, Squadra, Consegne, Attività,
+Lezioni**. Intestazione e azioni restano raggiungibili anche sul telefono; solo il
+contenuto centrale scorre. Modello, risorse, tempi e cronologia sono espandibili.
+
+**Applica e riprendi** chiude prima il cancello delle nuove deleghe, arresta la
+conversazione, attende l’esito e la rimozione delle sandbox attive, salva le nuove
+indicazioni e invia un nuovo messaggio al coordinatore. Se la chiusura non è
+confermata il progetto resta in pausa: nessun nuovo incarico viene avviato dal pannello.
+I file salvati restano disponibili; lo stato in memoria di un processo terminato
+non è recuperabile. La pausa manuale sopravvive alla ripianificazione del coordinatore.
+
+Stile estetico, tecnica e modificabilità sono decisioni distinte. Le domande decisive
+registrate non possono essere cancellate nello stesso turno utente; la produzione
+attende una nuova risposta reale. Il sistema non può riconoscere automaticamente
+ogni scelta omessa dal coordinatore: prompt e scheda del risultato devono chiarirle.
+
+## Versioni del prodotto e verifiche
+
+**Consegne** mette davanti le versioni del prodotto completo, numerate una sola volta.
+I numeri non cambiano quando vengono aggiunte verifiche o ridotta la cronologia degli
+incarichi. Una versione può essere in lavorazione, incompleta o selezionata: il numero
+non certifica che sia pronta. **Risultato** mostra il numero della versione visualizzata
+e indica se la squadra ne sta preparando un’altra. Anteprima e sorgenti dello stesso
+riquadro restano associati alla medesima consegna.
+
+Campioni, contributi e rapporti sono raccolti separatamente. Ogni verifica disponibile
+indica il risultato controllato; se riguarda una versione precedente o un brief cambiato
+non è presentata come approvazione della nuova versione. La relazione deriva dal file
+indicato nel rapporto, non dal titolo dell’incarico o dalla parola «revisione».
+Per le lavorazioni storiche non più presenti non viene inventata una corrispondenza.

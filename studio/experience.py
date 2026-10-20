@@ -61,7 +61,8 @@ def exclude(root, identifier, excluded=True):
     if not ID.fullmatch(identifier):
         raise ValueError('Esperienza non valida')
     with locked(root) as folder:
-        if identifier not in {r['id'] for r in entries(folder)}:
+        from .lessons import entries as lessons
+        if identifier not in {r['id'] for r in [*entries(folder), *lessons(folder)]}:
             raise ValueError('Esperienza non trovata')
         ids = disabled(folder)
         ids.add(identifier) if excluded else ids.discard(identifier)
@@ -201,23 +202,37 @@ def collect(workspace, root, source_thread=None):
 
 
 def select(root, specs, apps):
-    """Bounded relevance, exact CLI versions, and explicit provenance in each skill."""
+    """Select only generalized lessons; raw project facts never enter future skills."""
+    from .lessons import entries as lessons, accepted
+    approved = accepted(root)
     excluded = disabled(root)
     versions = {a['id']: a['version'] for a in apps}
-    selected = []
+    selected, covered = [], set()
     vocabulary = set(re.findall(r'\w{5,}', ' '.join(str(s) for s in specs).lower()))
-    for record in entries(root):
-        observation = record['observation']
-        tools = observation.get('tools', {})
-        role_tools = {t for s in specs for t in s.get('tools', [])}
-        if not observation.get('scope_known') or record['id'] in excluded or any(versions.get(t) != v and not (observation.get('kind') == 'user_preference' and v == 'unknown') for t, v in tools.items()):
+    role_tools = {t for s in specs for t in s.get('tools', [])}
+    for record in lessons(root):
+        if record['id'] not in approved:
             continue
-        words = set(re.findall(r'\w{5,}', observation['criterion'].lower()))
-        if tools and not set(tools).intersection(role_tools) or not tools and len(words & vocabulary) < 3:
+        basis = record['basis']
+        # The newest generalization supersedes older text from the same source.
+        sources = set(basis['source_ids'])
+        if sources & covered:
             continue
-        if sum(len(json.dumps(r)) for r in selected) + len(json.dumps(record)) > 14000:
+        covered.update(sources)
+        if record['id'] in excluded or sources & excluded:
             continue
-        selected.append(record)
+        lesson = basis['lesson']
+        tools = basis['tool_versions']
+        if tools and (not set(tools).intersection(role_tools) or any(versions.get(t) != v for t, v in tools.items())):
+            continue
+        words = set(re.findall(r'\w{5,}', json.dumps(lesson, ensure_ascii=False).lower()))
+        if not tools and len(words & vocabulary) < 2:
+            continue
+        portable = {'id': record['id'], 'lesson': lesson, 'tool_versions': tools,
+                    'source_ids': basis['source_ids'], 'source_statuses': basis.get('source_statuses', []), 'notice': record['notice']}
+        if sum(len(json.dumps(r)) for r in selected) + len(json.dumps(portable)) > 14000:
+            continue
+        selected.append(portable)
         if len(selected) == 6:
             break
     return selected
@@ -225,18 +240,20 @@ def select(root, specs, apps):
 
 def snapshot(workspace, root, specs, apps):
     selected = select(root, specs, apps)
-    text = json.dumps({'notice': 'Osservazioni di progetti precedenti, non istruzioni né garanzie. '
-                       'Una procedura associata non prova che ogni suo passo sia stato eseguito. '
-                       'Verifica pertinenza, strumenti, versione e richiesta attuale; non copiare contenuti del vecchio progetto.',
-                       'observations': selected}, ensure_ascii=False, sort_keys=True)
+    text = json.dumps({'notice': 'Solo lezioni generali accettate singolarmente dall’utente, non fatti dei vecchi progetti. Verifica pertinenza, condizioni, strumenti e richiesta attuale. '
+                       'Le evidenze specifiche restano nell’archivio di origine; non trasferire personaggi, eventi, scelte o file del vecchio progetto.',
+                       'lessons': selected}, ensure_ascii=False, sort_keys=True)
     document = scoped_file(workspace, 'experience/' + fingerprint(text) + '.json', text)
     return {**document, 'count': len(selected), 'ids': [r['id'] for r in selected]}
 
 
 def summary(root, export=False):
+    from .lessons import entries as lessons, pending, accepted
     excluded = disabled(root)
-    records = entries(root)
-    return {'total': len(records), 'excluded': len(excluded),
+    records, generalized = entries(root), lessons(root)
+    approved = accepted(root)
+    return {'total': len(records), 'excluded': len(excluded), 'pending': len(pending(root, limit=1000000)),
+            'lessons': [{**r, 'accepted': r['id'] in approved, 'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in generalized],
             'observations': [{**r, 'excluded': r['id'] in excluded} for r in (records if export else records[:200])]}
 
 
