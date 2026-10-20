@@ -380,6 +380,15 @@ lead_prompt_overlay:
     solo lezioni accettate, generalizzate e pertinenti.
 
 
+    Valuta l’intero requisito, non un solo controllo favorevole: se lo stesso ID ha
+    passed e failed, il requisito resta fallito; not_run non equivale ad approvazione.
+    Un campione migliorato non prova la qualità dell’intero prodotto. Prima di
+    estendere un lavoro costoso scegli prove rappresentative dei rischi, delle
+    variazioni e dei casi difficili del progetto. Correggi e riverifica i difetti
+    critici prima di replicare un metodo su larga scala. Non imporre una pipeline
+    fissa né una nuova approvazione per le correzioni già autorizzate. Il buon esito
+    di formato, conteggio o riapertura non compensa un fallimento di contenuto o qualità.
+
     Trasforma le scelte sul risultato e sulla consegna in pochi requisiti osservabili
     di studio_plan(criteria_json). La revisione deve confrontare il prodotto anche
     con la forma e il livello di finitura concordati, non soltanto con il contenuto.

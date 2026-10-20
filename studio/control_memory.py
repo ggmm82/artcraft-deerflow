@@ -5,7 +5,7 @@ is for LLM control messages; the browser keeps the full project API.
 """
 import json
 
-from .acceptance import fingerprint
+from .acceptance import fingerprint, requirement_verdicts
 from .project_skills import redact_memory, scoped_file
 from .progress import clean_summary
 
@@ -49,6 +49,7 @@ def project_view(project):
             {'mission': clean_summary(r.get('mission'), 160)} for r in project.get('roles', [])][:12]
     value['results'] = [{k: r.get(k) for k in ('path', 'role', 'delivery_id')} for r in project.get('results', [])[:4]]
     value['deliveries'] = [{k: d.get(k) for k in ('id', 'title', 'technical_status', 'current')} for d in project.get('deliveries', [])[:3]]
+    value['requirement_verdicts'] = requirement_verdicts(project.get('review_criteria', []))
     value['revision_actions'] = [fit(a, 160) for a in project.get('revision_actions', [])[:3]]
     value['revision_action_count'] = len(project.get('revision_actions', []))
     value['comparison'] = fit(project.get('comparison'), 120)
@@ -75,6 +76,9 @@ def delegate_view(result):
     review = result.get('quality_review') or {}
     value['check_counts'] = result.get('check_counts', counts(result.get('checks', [])))
     value['review_counts'] = counts(review.get('criteria', []))
+    value['quality_review'] = {**review, 'requirement_verdicts': requirement_verdicts(review.get('criteria', []))}
+    if review.get('criteria'):
+        value['review_scope_instruction'] = 'Il verdetto aggregato comprende tutti i controlli dello stesso requisito: un passed locale non annulla failed o not_run. Un campione prova solo il risultato osservato; prima di estendere verifica i rischi e i difetti ancora aperti, senza abbassare il brief.'
     value['next_action'] = (review.get('revision_actions') or [{}])[0].get('action', '')
     if review.get('status') == 'needs_revision':
         value['revision_instruction'] = ('Trasforma le correzioni in un incarico mirato sui file esistenti e verifica il prima/dopo. '
@@ -114,6 +118,7 @@ def reply(workspace, payload, kind):
         # Put verdicts before inventories, not after pages of opening instructions.
         review = full.get('quality_review') or {}
         value['quality_review'] = {k: review.get(k) for k in ('status', 'product_path', 'report_path')}
+        value['quality_review']['requirement_verdicts'] = requirement_verdicts(review.get('criteria', []))
         value['quality_review']['revision_actions'] = [fit(a, 160) for a in review.get('revision_actions', [])[:3]]
         value['quality_review']['revision_action_count'] = len(review.get('revision_actions', []))
         value['quality_review']['comparison'] = fit(review.get('comparison'), 120)

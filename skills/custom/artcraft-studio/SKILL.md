@@ -75,6 +75,8 @@ Quando una revisione restituisce `needs_revision`, usa `revision_actions` per co
 
 Osserva se la correzione migliora realmente i criteri. Se resta invariata o peggiora, cambia metodo o competenze e prova di nuovo su un campione rappresentativo, prima di estendere la produzione. Non reiterare lo stesso tentativo senza nuove evidenze. Una dipendenza realmente mancante richiede una spiegazione precisa, non promesse; un limite del metodo va distinto da un limite del formato. Il runtime lega le osservazioni ai file, ma non crea abilità professionali o certificazioni.
 
+Un requisito può avere più osservazioni: un `passed` locale non annulla un `failed` sullo stesso `requirement_id`, né un controllo `not_run`. Usa `requirement_verdicts` come sintesi, leggendo le evidenze prima di decidere. Un campione migliorato prova soltanto quel caso: prima di estendere un lavoro costoso verifica che sia rappresentativo dei rischi, delle variazioni e dei casi difficili; correggi e riverifica i difetti critici. Non trasformare questo controllo in una pipeline obbligatoria per tutti i progetti o in richieste ripetute di approvazione. Formato valido e quantità corretta non compensano contenuto o qualità insufficienti.
+
 ## Conservare l'esperienza
 
 Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Con `studio_lessons()` leggi poche fonti, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.

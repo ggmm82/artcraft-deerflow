@@ -91,3 +91,16 @@ class ControlMemoryTests(unittest.TestCase):
             self.assertLessEqual(len(text), LIMIT)
             self.assertNotIn('private', text)
             self.assertEqual(json.loads(text)['decision'], 'needs_revision')
+
+    def test_mixed_subchecks_have_one_failed_verdict_instead_of_cherry_picking_passed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            criteria=[{'requirement_id':'quality','status':'passed','evidence':'Local aspect works'},
+                      {'requirement_id':'quality','status':'failed','evidence':'Critical defect persists'}]
+            result={'ok':True,'quality_review':{'status':'needs_revision','criteria':criteria}}
+            value=json.loads(reply(Path(temp),result,'delegate'))
+            verdict=value['quality_review']['requirement_verdicts'][0]
+            self.assertEqual(verdict['status'],'failed')
+            self.assertEqual(verdict['observations'],2)
+            self.assertEqual(value['decision'],'needs_revision')
+            self.assertIn('campione',value['review_scope_instruction'])
+            self.assertNotIn('requirement_verdicts',result['quality_review'])

@@ -101,6 +101,15 @@ class AcceptanceTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'revisione separata'):
                     projects.create_plan(root, '', [], status='ready')
 
+    def test_requirement_verdicts_keep_failures_and_unknowns_in_either_order(self):
+        from studio.acceptance import requirement_verdicts
+        for states, expected in [(['passed','failed'],'failed'),(['failed','passed'],'failed'),
+                                 (['passed','not_run'],'not_run'),(['passed','passed'],'passed')]:
+            with self.subTest(states=states):
+                verdict=requirement_verdicts([{'requirement_id':'same','status':state} for state in states])[0]
+                self.assertEqual(verdict['status'],expected)
+                self.assertEqual(verdict['observations'],2)
+
 
 if __name__ == '__main__':
     unittest.main()

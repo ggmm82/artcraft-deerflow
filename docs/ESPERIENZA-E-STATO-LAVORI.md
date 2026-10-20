@@ -209,3 +209,9 @@ indica il risultato controllato; se riguarda una versione precedente o un brief 
 non è presentata come approvazione della nuova versione. La relazione deriva dal file
 indicato nel rapporto, non dal titolo dell’incarico o dalla parola «revisione».
 Per le lavorazioni storiche non più presenti non viene inventata una corrispondenza.
+
+Un requisito può avere più controlli: se almeno uno fallisce, il riepilogo resta
+**Da correggere**. Esiti favorevoli parziali non nascondono i difetti e `not_run`
+non diventa approvazione. La stessa sintesi aggregata è visibile al coordinatore.
+I campioni devono essere scelti rispetto ai rischi e alla varietà del progetto:
+un miglioramento locale non prova che l’intero prodotto soddisfi il brief.

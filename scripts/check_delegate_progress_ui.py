@@ -52,7 +52,7 @@ def main():
             'request_documents': [{'path': '/mnt/user-data/.studio-project/requests/original.txt'}],
             'request_manifest': {'path': '/mnt/user-data/.studio-project/requests/index.json'}, 'request_count': 12, 'criteria': [
             {'id': 'request_fidelity', 'requirement': 'Contenuto conforme alla richiesta originale', 'critical': True}]},
-        'review_criteria': [{'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
+        'review_criteria': [{'requirement_id':'request_fidelity','criterion':'Aspetto locale riuscito','status':'passed','method':'content','evidence':'Un solo aspetto è riuscito'}, {'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
             'status': 'failed', 'evidence': 'Il contenuto è stato sostituito con una variante non richiesta.'}],
         'revision_actions': [{'requirement_id': 'request_fidelity', 'action': 'Correggere il contenuto usando il riferimento originale',
             'strategy': 'change_method', 'priority': 1}],
@@ -320,7 +320,7 @@ window.showThread();
                 page.reload()
                 page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 expect(page.get_by_label('Anteprima video')).to_have_attribute('src', '/api/threads/fixture/artifacts'+video_path)
-                page.get_by_test_id('acceptance-criteria').locator('summary').click()
+                page.get_by_test_id('acceptance-criteria').locator('summary').first.click()
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Conserva il contenuto del riferimento fornito')
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Da correggere')
                 expect(page.get_by_role('link', name='Leggi la richiesta originale completa')).to_have_attribute('href',

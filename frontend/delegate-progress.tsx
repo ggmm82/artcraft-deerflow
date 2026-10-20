@@ -335,7 +335,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </header>
       <nav className="grid shrink-0 grid-cols-3 gap-1 border-b p-2 text-sm sm:flex sm:flex-wrap" aria-label="Sezioni del progetto">
-        {[["project", "Stato"], ["preview", "Risultato"], ["team", "Squadra"], ["files", "Consegne"], ["activity", "Attività"], ["experience", "Lezioni"]].map(([id, label]) => <button key={id} type="button" className={`${tabStyle} shrink-0`} aria-current={tab === id ? "page" : undefined} aria-expanded={tab === id} onClick={() => setPanel({ threadId, tab: id })}>{label}</button>)}
+        {([["project", "Stato"], ["preview", "Risultato"], ["team", "Squadra"], ["files", "Consegne"], ["activity", "Attività"], ["experience", "Lezioni"]] as const).map(([id, label]) => <button key={id} type="button" className={`${tabStyle} shrink-0`} aria-current={tab === id ? "page" : undefined} aria-expanded={tab === id} onClick={() => setPanel({ threadId, tab: id })}>{label}</button>)}
       </nav>
       <div className="min-h-0 flex-1 overflow-y-auto p-4" data-testid="studio-drawer-content">
       {tab === "intervene" && <ProjectDirection key={threadId} saved={project?.user_direction} onApply={applyDirection} busy={controlBusy} />}
@@ -430,11 +430,12 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <summary className="cursor-pointer font-medium">Rispondenza alla tua richiesta</summary>
           <p className="my-2 whitespace-pre-wrap">{project.acceptance.user_requests[0]}</p>
           <ul className="space-y-2">{project.acceptance.criteria.map((rule) => {
-            const observed = project.review_criteria?.find((c) => c.requirement_id === rule.id);
-            return <li key={rule.id}><strong>{observed?.status === "passed" ? "Verificato" : observed?.status === "failed" ? "Da correggere" : "Da verificare"}</strong> · {rule.requirement}
+            const observations = project.review_criteria?.filter(c => c.requirement_id === rule.id) ?? [];
+            const verdict = observations.some(c => c.status === 'failed') ? 'failed' : observations.length && observations.every(c => c.status === 'passed') ? 'passed' : 'not_run';
+            return <li key={rule.id}><strong>{verdict === "passed" ? "Verificato" : verdict === "failed" ? "Da correggere" : "Da verificare"}</strong> · {rule.requirement}
               {rule.origin === "proposal" && <p className="text-muted-foreground text-xs">Criterio proposto dalla squadra, rivedibile nel rispetto della richiesta.</p>}
               {rule.origin === "user" && rule.source_quote && <p className="text-muted-foreground text-xs">Dalla tua richiesta: «{rule.source_quote}»</p>}
-              {observed && <p className="text-muted-foreground">{observed.evidence}</p>}</li>;
+              {observations.length > 0 && <details className="mt-1 text-muted-foreground"><summary className="cursor-pointer">Evidenze ({observations.length})</summary><ul className="list-inside list-disc">{observations.map((observed, i) => <li key={i}>{observed.status === "failed" ? "Difetto" : observed.status === "passed" ? "Verificato" : "Non verificato"}: {observed.evidence}</li>)}</ul></details>}</li>;
           })}</ul>
           {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}
           {project.acceptance.request_manifest && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_manifest.path, true)}>Indice dei messaggi conservati ({project.acceptance.request_count ?? 1})</a></p>}
