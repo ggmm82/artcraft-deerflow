@@ -55,10 +55,28 @@ class CalibreTests(unittest.TestCase):
     def test_native_failure_exposes_exit_and_does_not_claim_success(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(cli, 'ROOT', Path(temp)), patch.object(cli, 'environment', return_value=Path(temp)):
             source = Path(temp) / 'source.txt'; source.write_text('original')
-            with patch.object(cli, 'supervise', return_value=(subprocess.CompletedProcess([], -11, 'crashed', ''), {})):
+            with patch.object(cli.shutil, 'which', return_value='/usr/bin/xvfb-run'), patch.object(cli, 'supervise', return_value=(subprocess.CompletedProcess([], -11, 'crashed', ''), {})):
                 with self.assertRaisesRegex(RuntimeError, 'exit -11'):
                     cli.invoke('convert', {'input': str(source), 'output': str(Path(temp) / 'out.pdf')})
             self.assertEqual(source.read_text(), 'original')
+
+    def test_headless_backend_uses_software_opengl_inside_a_supervised_virtual_display(self):
+        import os
+        with tempfile.TemporaryDirectory() as temp, patch.object(cli,'ROOT',Path(temp)), patch.dict(os.environ, {'ARTCRAFT_OUTPUT_DIR':temp,'QT_QUICK_BACKEND':'software'}):
+            cli.environment()
+            self.assertEqual(os.environ['QT_QPA_PLATFORM'],'xcb')
+            self.assertNotIn('QT_QUICK_BACKEND',os.environ)
+            self.assertEqual(os.environ['QSG_RHI_BACKEND'],'opengl')
+            self.assertEqual(os.environ['LIBGL_ALWAYS_SOFTWARE'],'1')
+            with patch.object(cli.shutil,'which',return_value='/usr/bin/xvfb-run'), patch.object(cli,'supervise',return_value=(subprocess.CompletedProcess([],0,'ok',''),{})) as run:
+                self.assertEqual(cli.run(['ebook-convert','source.xhtml','output.epub'],Path(temp),'Conversione'),'ok')
+                argv=run.call_args.args[0]
+                self.assertEqual(argv[0],'/usr/bin/xvfb-run')
+                self.assertEqual(argv[-3:],['ebook-convert','source.xhtml','output.epub'])
+                self.assertIn('-nolisten tcp',argv[2])
+            with patch.object(cli.shutil,'which',return_value=None):
+                with self.assertRaisesRegex(RuntimeError,'xvfb-run'):
+                    cli.run(['ebook-convert','source.xhtml','output.epub'],Path(temp),'Conversione')
 
     def test_unpack_marker_prevents_silent_cross_format_repack(self):
         with tempfile.TemporaryDirectory() as temp, patch.object(cli, 'ROOT', Path(temp)), patch.object(cli, 'environment', return_value=Path(temp)):

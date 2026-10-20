@@ -152,6 +152,12 @@ jobs:
       - name: Run representative native file workflows for all specialists
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
+      - name: Repeat native Calibre conversion and reopening without a GPU
+        if: matrix.component == 'sandbox'
+        run: |
+          for probe in 1 2 3; do
+            docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --agents calibre --output /mnt/user-data/outputs/calibre-repeat/report.json
+          done
       - name: Check real multidisciplinary asset, animation, audio and editing handoffs
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance --simulate-audio-interruption
