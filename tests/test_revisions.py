@@ -1,0 +1,36 @@
+"""Version identity must outlive reviews, retries and pruned attempt histories."""
+from pathlib import Path
+import unittest
+from studio.revisions import annotate, number_attempts
+
+
+class RevisionTests(unittest.TestCase):
+    def test_version_numbers_are_stable_and_reviews_point_to_their_own_target(self):
+        def attempt(identifier, purpose, at, **extra):
+            return {'started_at': at, 'finished_at': at, 'context': {'purpose': purpose},
+                    'delivery_record': {'id': identifier}, 'output_files': ['/data/'+identifier], **extra}
+        first=attempt('first','delivery','1')
+        sample=attempt('sample','preview','2')
+        check=attempt('check','review','3',validated=True,quality_review={
+            'product_path':'/data/first','status':'needs_revision','contract_hash':'old','revision_actions':[{'action':'Correct'}]})
+        second=attempt('second','delivery','4',status='running')
+        project={'steps':[{'id':'step','attempts':[first,sample,check,second]}],
+                 'product_path':'/data/first','acceptance':{'hash':'new'}}
+        self.assertTrue(number_attempts(project))
+        self.assertFalse(number_attempts(project))
+        deliveries=[{'id':name,'title':name} for name in ('first','sample','check','second')]
+        by_id={d['id']:d for d in annotate(deliveries,project,None,lambda _, p: Path(p) if p else None)}
+        self.assertEqual(by_id['first']['version'],1)
+        self.assertEqual(by_id['second']['version'],2)
+        self.assertEqual(by_id['second']['execution_status'],'running')
+        self.assertEqual(by_id['sample']['category'],'sample')
+        self.assertEqual(by_id['check']['category'],'review')
+        self.assertEqual(by_id['check']['review']['target_version'],1)
+        self.assertFalse(by_id['check']['review']['matches_current_brief'])
+        self.assertEqual(by_id['check']['review']['correction_count'],1)
+        project['steps'][0]['attempts']=[second]  # Old histories may be pruned.
+        third=attempt('third','delivery','5')
+        project['steps'][0]['attempts'].append(third)
+        number_attempts(project)
+        self.assertEqual(second['version_number'],2)
+        self.assertEqual(third['version_number'],3)

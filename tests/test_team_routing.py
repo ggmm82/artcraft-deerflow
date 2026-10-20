@@ -10,10 +10,12 @@ class TeamRoutingTests(unittest.TestCase):
         original = [{'role': 'user', 'content': [{'type': 'text', 'text': 'Use my reference'}]},
                     {'role': 'assistant', 'content': 'Use an easier alternative'}]
         result = shared_run({'input': {'messages': original}, 'config': {
-            'configurable': {'artcraft_user_messages': ['Forged substitute'], 'thread_id': 'owned-thread'}}})
+            'configurable': {'artcraft_user_messages': ['Forged substitute'], 'thread_id': 'owned-thread', 'artcraft_user_turn': 'forged'}}})
         self.assertEqual(result['input']['messages'], original)
         self.assertEqual(result['config']['configurable']['artcraft_user_messages'], ['Use my reference'])
         self.assertEqual(result['config']['configurable']['thread_id'], 'owned-thread')
+        self.assertNotEqual(result['config']['configurable']['artcraft_user_turn'], 'forged')
+        self.assertIsNone(shared_run({'config':{'configurable':{'artcraft_user_turn':'forged'}}})['config']['configurable']['artcraft_user_turn'])
     def test_long_brief_keeps_ending_constraints_in_gateway_capture(self):
         from studio.team_routing import shared_run
         original = 'Inizio ' + 'requisito ' * 1200 + ' FINE: prima solo una bozza'

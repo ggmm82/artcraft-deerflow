@@ -84,16 +84,26 @@ def environment():
         path = root / 'work/calibre' / child
         path.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.environ[key] = str(path)
-    os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-    os.environ['QT_QUICK_BACKEND'] = 'software'
-    os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--disable-gpu'
+    # QtWebEngine needs a real QPA/OpenGL context even for non-GUI conversion.
+    # The offscreen plugin can segfault during HTML/cover rendering; use Xvfb
+    # with Mesa software OpenGL instead of probing unavailable GPU/Vulkan devices.
+    os.environ['QT_QPA_PLATFORM'] = 'xcb'
+    os.environ.pop('QT_QUICK_BACKEND', None)
+    os.environ['QT_OPENGL'] = 'software'
+    os.environ['QSG_RHI_BACKEND'] = 'opengl'
+    os.environ['LIBGL_ALWAYS_SOFTWARE'] = '1'
+    os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = '--disable-gpu --disable-gpu-compositing --disable-dev-shm-usage --disable-features=Vulkan'
     os.environ['QTWEBENGINE_DISABLE_SANDBOX'] = '1'  # Root inside the isolated worker container.
     return root
 
 
 def run(argv, root, label):
     key = 'calibre-' + hashlib.sha256(json.dumps(argv).encode()).hexdigest()
-    completed, stats = supervise(argv, root, key, timeout=1200, label='Calibre · ' + label)
+    display = shutil.which('xvfb-run')
+    if not display:
+        raise RuntimeError('Rendering Calibre non disponibile: aggiorna l’immagine sandbox con xvfb-run e le librerie XCB.')
+    command = [display, '--auto-servernum', '--server-args=-screen 0 1280x1024x24 -nolisten tcp', '--', *argv]
+    completed, stats = supervise(command, root, key, timeout=1200, label='Calibre · ' + label)
     if completed.returncode:
         cause = 'Memoria esaurita. ' if stats.get('oom_kills') else ''
         raise RuntimeError(cause + f'Calibre (exit {completed.returncode}): ' + (completed.stdout + completed.stderr)[-2500:])

@@ -62,6 +62,11 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'no-permission'}).status_code, 403)
                 self.assertEqual(client.get('/api/threads/missing/studio-jobs', headers={'X-Test-User': 'owner'}).status_code, 404)
+                control_url = '/api/threads/conversation/studio-control'
+                self.assertEqual(client.put(control_url,json={'paused':True}).status_code,401)
+                self.assertEqual(client.put(control_url,json={'paused':True},headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.put(control_url,json={'paused':True},headers={'X-Test-User':'owner'}).json()['user_control']['paused'],True)
+                self.assertEqual(client.put(control_url,json={'paused':False},headers={'X-Test-User':'owner'}).json()['user_control']['paused'],False)
                 experience_url = '/api/threads/conversation/studio-experience'
                 self.assertEqual(client.get(experience_url).status_code, 401)
                 self.assertEqual(client.get(experience_url, headers={'X-Test-User':'other'}).status_code, 404)
@@ -71,6 +76,8 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'owner'}).status_code, 200)
                 self.assertEqual(client.put(experience_url,json={'id':'a'*64,'excluded':True},headers={'X-Test-User':'other'}).status_code,404)
                 self.assertEqual(client.post(experience_url+'/prefer',json={'delivery_id':'artcraft-job-123456abcdef','note':'Preferenza personale'},headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.put(experience_url+'/lesson',json={'id':'a'*64,'accepted':True},headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.put(experience_url+'/lesson',json={'id':'a'*64,'accepted':True},headers={'X-Test-User':'owner'}).status_code,409)
                 with patch('studio.docker_runtime.request_stop',return_value={'requested':True}) as stop:
                     stop_url='/api/threads/conversation/studio-jobs/artcraft-job-123456abcdef/stop'
                     self.assertEqual(client.post(stop_url).status_code,401)

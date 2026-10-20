@@ -131,3 +131,23 @@ class ProjectBriefTests(unittest.TestCase):
             with self.subTest(data=str(data)[:80]), self.assertRaises(ValueError):
                 validate_outcome(data)
         self.assertTrue(briefing_issue(None))
+
+    def test_questions_cannot_be_cleared_in_the_same_real_user_turn(self):
+        projects.create_plan(self.root,'Richiesta',[],outcome={'result':'Prodotto', 'questions':['Quale forma?']}, source_turn='human-one')
+        for turn in ('', 'human-one'):
+            with self.assertRaisesRegex(ValueError,'nuova risposta reale'):
+                projects.create_plan(self.root,'',[],outcome={'result':'Prodotto','format':'Pacchetto modificabile'},source_turn=turn)
+        projects.create_plan(self.root,'',[],outcome={'result':'Prodotto','format':'Pacchetto modificabile'},source_turn='human-two')
+        self.assertFalse(projects.read_project(self.root)['orientation']['needs_briefing'])
+
+    def test_owner_pause_survives_replanning_and_blocks_workers_until_explicit_resume(self):
+        projects.create_plan(self.root,'Richiesta completa',[],outcome={'result':'Prodotto','format':'Pacchetto modificabile'})
+        projects.set_user_control(self.root,True)
+        projects.create_plan(self.root,'Nuovo piano del coordinatore',[])
+        invoke=Mock()
+        with self.assertRaisesRegex(ValueError,'pausa'):
+            projects.execute_step(self.root,'workspace','Esegui','',invoke)
+        self.assertFalse(invoke.called)
+        self.assertTrue(projects.read_project(self.root)['user_control']['paused'])
+        projects.set_user_control(self.root,False)
+        projects.execute_step(self.root,'workspace','Esegui','',lambda task,started: json.dumps({'ok':True}))

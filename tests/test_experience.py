@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from studio import experience, projects
+from studio import experience, projects, lessons
 from studio.project_skills import load_compiled
 from studio.source_packages import digest
 from test_project_skills import role
@@ -40,6 +40,15 @@ class ExperienceTests(unittest.TestCase):
              'contract_hash':self.contract,'criteria':criteria,'revision_actions':[{'requirement_id':'b','action':'Includere le risorse e riaprire il pacchetto estratto'}]}}])
         path.write_text(json.dumps(data));self.state = path
 
+    def propose(self, sources=None):
+        sources = sources or [r['id'] for r in experience.entries(self.library)]
+        return lessons.learn(self.library, sources, {
+            'title': 'Riaprire il pacchetto completo',
+            'applies_when': 'Quando una consegna modificabile dipende da risorse collegate',
+            'procedure': ['Includere le dipendenze nel pacchetto', 'Estrarre in una cartella nuova e riaprire il progetto'],
+            'verification': ['Controllare che tutte le risorse siano risolte senza percorsi esterni'],
+            'limits': 'Una verifica strutturale non prova la qualità estetica', 'tools': ['vectorcraft']})
+
     def test_capture_preserves_observed_failures_and_successes_but_not_missing_checks(self):
         self.assertEqual(experience.collect(self.workspace, self.library, 'thread-a'), 2)
         self.assertEqual(experience.collect(self.workspace, self.library, 'thread-a'), 0)
@@ -52,12 +61,17 @@ class ExperienceTests(unittest.TestCase):
 
     def test_next_project_compiles_relevant_experience_with_provenance_and_exclusions(self):
         experience.collect(self.workspace,self.library)
+        proposal = self.propose()
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()), [])
+        lessons.accept(self.library, proposal)
         other=self.root/'user-a/other'
         projects.create_plan(other,'Altro dominio',[]);projects.sync_acceptance(other,['Altro progetto'])
         projects.sync_project_context(other,[self.spec],experience_root=self.library)
         compiled=projects.read_project(other)['roles'][0]; text=load_compiled(other,compiled)
-        self.assertIn('Risorsa collegata mancante',text);self.assertIn('product_sha256',text)
-        self.assertEqual(compiled['experience']['count'],2)
+        self.assertIn('Riaprire il pacchetto completo',text)
+        self.assertNotIn('Risorsa collegata mancante',text);self.assertNotIn('product_sha256',text)
+        self.assertNotIn('Etichette lette nel prodotto',text)
+        self.assertEqual(compiled['experience']['count'],1)
         first=compiled['version']
         for record in experience.entries(self.library):experience.exclude(self.library,record['id'])
         projects.sync_project_context(other,experience_root=self.library)
@@ -74,7 +88,13 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(record['id'],identifier)
         self.assertEqual(record['observation']['status'],'preferred_by_user')
         self.assertEqual(record['observation']['files'][0]['sha256'],digest(self.product))
-        self.assertEqual(experience.select(self.library,[self.spec],projects.applications())[0]['id'],identifier)
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()),[])
+        proposal = self.propose([identifier])
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()),[])
+        lessons.accept(self.library, proposal)
+        selected = experience.select(self.library,[self.spec],projects.applications())[0]
+        self.assertEqual(selected['source_statuses'], ['preferred_by_user'])
+        self.assertEqual(selected['id'], proposal)
         self.assertEqual(experience.prefer(self.workspace,self.library,'artcraft-job-123456abcdef',
             'Cambiare metodo dopo il campione e verificare due casi diversi','thread-a'),identifier)
         self.assertEqual(len(experience.entries(self.library)),1)
@@ -88,6 +108,7 @@ class ExperienceTests(unittest.TestCase):
 
     def test_version_relevance_tampering_and_changed_product(self):
         experience.collect(self.workspace,self.library)
+        proposal = self.propose(); lessons.accept(self.library, proposal)
         apps=copy.deepcopy(projects.applications())
         next(a for a in apps if a['id']=='vectorcraft')['version']='future'
         self.assertEqual(experience.select(self.library,[self.spec],apps),[])
@@ -136,4 +157,129 @@ class ExperienceTests(unittest.TestCase):
         record=next(r for r in experience.entries(self.library) if r['id']==identifier)
         self.assertTrue(record['observation']['scope_known'])
         self.assertIn('vectorcraft',record['observation']['tools'])
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()), [])
+        proposal = self.propose([identifier]); lessons.accept(self.library, proposal)
         self.assertTrue(experience.select(self.library,[self.spec],projects.applications()))
+
+    def test_acceptance_is_individual_revocable_and_bound_to_the_exact_proposal(self):
+        experience.collect(self.workspace, self.library)
+        ids = [r['id'] for r in experience.entries(self.library)]
+        first = self.propose([ids[0]])
+        second = self.propose([ids[1]])
+        self.assertEqual(experience.select(self.library, [self.spec], projects.applications()), [])
+        lessons.accept(self.library, first)
+        self.assertEqual([r['id'] for r in experience.select(self.library,[self.spec],projects.applications())], [first])
+        self.assertFalse(next(r for r in experience.summary(self.library)['lessons'] if r['id']==second)['accepted'])
+        lessons.accept(self.library, first, False)
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()), [])
+        with self.assertRaises(ValueError): lessons.accept(self.library, ids[0])
+        with self.assertRaises(ValueError): lessons.accept(self.root/'user-b/library', first)
+        self.assertEqual(len(experience.entries(self.library)), 2)
+
+    def test_structural_guards_and_dismissal_keep_unhelpful_sources_out_of_skills(self):
+        experience.collect(self.workspace,self.library)
+        proposal = self.propose()
+        lesson = lessons.entries(self.library)[0]['basis']['lesson']
+        source = experience.entries(self.library)[0]['id']
+        for text in ['/mnt/user-data/outputs/project.svg', 'project '+source, 'token sk-'+'a'*35]:
+            bad = {**lesson, 'title': text}
+            with self.subTest(text=text[:20]), self.assertRaises(ValueError): lessons.learn(self.library,[source],bad)
+        with self.assertRaises(ValueError): lessons.learn(self.library,['f'*64],lesson)
+        self.assertEqual(lessons.pending(self.library), [])
+        record = self.library/'lessons'/(proposal+'.json')
+        data=json.loads(record.read_text());data['basis']['lesson']['title']='Altered';record.write_text(json.dumps(data))
+        self.assertEqual(lessons.entries(self.library), [])
+        lessons.dismiss(self.library,[source],'Osservazione specifica senza lezione trasferibile')
+        self.assertNotIn(source, [r['id'] for r in lessons.pending(self.library)])
+        self.assertEqual(len(experience.entries(self.library)),2)
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()), [])
+
+    def sandbox_note(self, impact=None, measurement=None):
+        data=json.loads(self.state.read_text())
+        data['steps'][1]['attempts'][0]['validated']=False
+        # A partial delivery may still contain a useful CLI finding.
+        data['steps'][0]['status']='paused'
+        data['steps'][0]['attempts'][0].update(status='paused',validated=False)
+        self.state.write_text(json.dumps(data))
+        work=self.product.parent/'work';work.mkdir(exist_ok=True)
+        note={'lesson':{'title':'Riaprire le dipendenze prima dell’esportazione',
+            'applies_when':'Quando il documento contiene risorse esterne da distribuire',
+            'procedure':['Risolvere i collegamenti prima di esportare'],
+            'verification':['Riaprire il progetto da una cartella diversa'],
+            'limits':'Non prova la qualità visiva del prodotto', 'tools':['vectorcraft']},
+            'evidence':'Il file esportato è stato riaperto dopo aver risolto i collegamenti',
+            'evidence_paths':[str(self.product)], 'impact':impact or {'level':'major','basis':'observed','reason':'Evita una consegna con risorse mancanti'}}
+        if measurement:note['measurement']=measurement
+        path=work/'tool-lessons.json';path.write_text(json.dumps({'lessons':[note]}))
+        return path,note
+
+    def test_sandbox_tool_use_is_retained_without_a_finished_product_but_requires_acceptance(self):
+        path,note=self.sandbox_note()
+        self.assertEqual(experience.collect(self.workspace,self.library,'thread-a'),1)
+        with patch('studio.sandbox_lessons.digest', wraps=digest) as hashing:
+            self.assertEqual(experience.collect(self.workspace,self.library,'thread-a'),0)
+            self.assertFalse(any(call.args[0] == self.product for call in hashing.call_args_list))
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['status'],'sandbox_observation')
+        self.assertEqual(record['observation']['evidence_files'][0]['sha256'],digest(self.product))
+        pending=lessons.pending(self.library)[0]
+        self.assertEqual(pending['suggested_lesson']['tools'],['vectorcraft'])
+        proposal=lessons.learn(self.library,[record['id']],note['lesson'],note['impact'])
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()),[])
+        lessons.accept(self.library,proposal)
+        selected=experience.select(self.library,[self.spec],projects.applications())[0]
+        self.assertEqual(selected['source_statuses'],['sandbox_observation'])
+        self.assertNotIn('evidence_files',selected)
+        self.assertNotIn('impact',selected) # Project measurements are not procedural knowledge.
+
+    def test_measured_impact_requires_real_distinct_supervisor_records(self):
+        before=self.product.parent/'work/operations'/('a'*24)/'status.json'
+        after=self.product.parent/'work/operations'/('b'*24)/'status.json'
+        for path,seconds in [(before,20),(after,5)]:
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text(json.dumps({'state':'completed','returncode':0,'elapsed_seconds':seconds}))
+        impact={'level':'major','basis':'measured','reason':'Esportazione più rapida sul campione di prova; qualità da verificare'}
+        path,note=self.sandbox_note(impact,{'before':str(before),'after':str(after)})
+        self.assertEqual(experience.collect(self.workspace,self.library),1)
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['measurement']['before']['seconds'],20)
+        lessons.learn(self.library,[record['id']],note['lesson'],impact)
+        path.write_text(json.dumps({'lessons':[{**note,'measurement':{'before':str(before),'after':str(before)}}]}))
+        self.assertEqual(experience.collect(self.workspace,self.root/'bad-measurement'),0)
+
+    def test_significance_is_ordered_and_unmeasured_gains_cannot_claim_measurement(self):
+        experience.collect(self.workspace,self.library)
+        source=experience.entries(self.library)[0]['id']
+        lesson={'title':'Controllare le risorse collegate','applies_when':'Per documenti con dipendenze esterne',
+                'procedure':['Verificare i collegamenti'],'verification':['Riaprire il pacchetto'],
+                'limits':'Non verifica qualità estetica','tools':['vectorcraft']}
+        minor=lessons.learn(self.library,[source],lesson,{'level':'minor','basis':'observed','reason':'Riduce un piccolo passaggio manuale'})
+        major=lessons.learn(self.library,[source],{**lesson,'title':'Evitare sorgenti incompleti'},
+                            {'level':'major','basis':'observed','reason':'Evita una consegna inutilizzabile'})
+        self.assertEqual([r['id'] for r in experience.summary(self.library)['lessons']],[major,minor])
+        with self.assertRaises(ValueError):lessons.learn(self.library,[source],lesson,{'level':'major','basis':'measured','reason':'Presunto miglioramento non misurato'})
+
+    def test_invalid_or_unscoped_worker_notes_never_break_delivery_or_become_lessons(self):
+        path,note=self.sandbox_note()
+        outside=self.root/'other-project.txt';outside.write_text('Other project')
+        path.write_text(json.dumps({'lessons':[{**note,'evidence_paths':[str(outside)]}]}))
+        self.assertEqual(experience.collect(self.workspace,self.library),0)
+        path.write_text('invalid')
+        self.assertEqual(experience.collect(self.workspace,self.library),0)
+        self.assertEqual(experience.summary(self.library)['lessons'],[])
+
+    def test_auxiliary_cli_learning_uses_the_job_environment_not_the_current_catalog(self):
+        from studio.project_skills import scoped_file
+        path,note=self.sandbox_note()
+        data=json.loads(self.state.read_text())
+        data['steps'][0]['attempts'][0]['tool_environment']=scoped_file(self.workspace,'tool-environments/fixture.json',json.dumps({'vectorcraft':'saved-vector','pdfcraft':'saved-pdf'}))
+        self.state.write_text(json.dumps(data))
+        note['lesson']['tools']=['pdfcraft']
+        path.write_text(json.dumps({'lessons':[note]}))
+        self.assertEqual(experience.collect(self.workspace,self.library),1)
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['observation']['tools'],{'pdfcraft':'saved-pdf'})
+        proposal=lessons.learn(self.library,[record['id']],note['lesson'],note['impact'])
+        lessons.accept(self.library,proposal)
+        spec={**self.spec,'tools':['pdfcraft']}
+        self.assertEqual(experience.select(self.library,[spec],projects.applications()),[]) # Version mismatch is not silently promoted.

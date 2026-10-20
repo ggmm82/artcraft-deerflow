@@ -82,3 +82,20 @@ def evaluate(criteria, acceptance, engine):
         relevant = result
     status = 'needs_revision' if any(c['status'] == 'failed' for c in relevant) else 'passed' if relevant and all(c['status'] == 'passed' for c in relevant) else 'needs_review'
     return result, status
+
+
+def requirement_verdicts(criteria):
+    """One verdict per requirement: a favorable subcheck cannot hide a defect."""
+    grouped = {}
+    for criterion in criteria:
+        identifier = criterion.get('requirement_id')
+        if identifier:
+            grouped.setdefault(identifier, []).append(criterion)
+    result = []
+    for identifier, observations in grouped.items():
+        states = [c.get('status') for c in observations]
+        status = 'failed' if 'failed' in states else 'passed' if all(s == 'passed' for s in states) else 'not_run'
+        result.append({'requirement_id': identifier, 'status': status,
+                       'critical': any(c.get('critical', True) for c in observations),
+                       'observations': len(states), 'failed': states.count('failed'), 'not_run': states.count('not_run')})
+    return sorted(result, key=lambda c: (c['status'] != 'failed', c['status'] == 'passed'))

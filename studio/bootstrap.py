@@ -117,8 +117,8 @@ def initialize():
                 changed = True
         template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
         for tool in template.get('tools', []):
-            if tool.get('name') == 'studio_plan' and not any(
-                    t.get('name') == 'studio_plan' for t in content.get('tools', [])):
+            if tool.get('name') in ('studio_plan', 'studio_lessons') and not any(
+                    t.get('name') == tool.get('name') for t in content.get('tools', [])):
                 content.setdefault('tools', []).append(tool)
                 changed = True
         definitions = content.setdefault('subagents', {}).setdefault('custom_agents', {})

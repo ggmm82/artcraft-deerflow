@@ -1,6 +1,7 @@
 """Route chat to the coordinator profile and keep work alive after disconnect."""
 import json
 import re
+import uuid
 from .project_skills import request_text
 
 RUN_PATH = re.compile(r'^/api/(?:threads/[^/]+/)?runs(?:/(?:stream|wait))?/?$')
@@ -38,6 +39,7 @@ def shared_run(body):
     if config.get('configurable') is None or isinstance(config.get('configurable'), dict):
         captured = requests[:1] + requests[-8:] if len(requests) > 9 else requests
         config['configurable'] = {**(config.get('configurable') or {}), 'artcraft_user_messages': captured}
+        config['configurable']['artcraft_user_turn'] = uuid.uuid4().hex if captured else None
         result['config'] = config
     return result
 

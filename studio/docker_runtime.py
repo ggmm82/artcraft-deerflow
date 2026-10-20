@@ -210,6 +210,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
     try:
         if requested():
             return cancelled_before_start()
+        from .projects import assert_user_allows_work, read_project
+        assert_user_allows_work(read_project(workspace) or {})
         update(progress, 'starting')
         if on_started:
             on_started(output_dir)

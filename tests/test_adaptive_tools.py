@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 try:
-    from studio.tools import studio_delegate, studio_plan
+    from studio.tools import studio_delegate, studio_plan, studio_lessons
 except ImportError:
     if os.getenv('STUDIO_REQUIRE_GATEWAY_TESTS') == '1':
         raise
@@ -140,6 +140,8 @@ class AdaptiveToolTests(unittest.TestCase):
                 response = json.loads(studio_delegate.func(agent='wordcraft', task='Avvia comunque', runtime=runtime))
                 self.assertTrue(response['needs_briefing'])
                 self.assertFalse(worker.called)
+                with self.assertRaisesRegex(ValueError, 'nuova risposta reale'):
+                    studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'format': 'Documento', 'questions': []}))
                 runtime.state['messages'].append(SimpleNamespace(type='human', id='answer', content='Documento impaginato e sorgente modificabile'))
                 studio_plan.func(runtime=runtime, outcome_json=json.dumps({'result': 'Prodotto richiesto', 'format': 'Documento impaginato con sorgente modificabile', 'questions': []}))
                 response = json.loads(studio_delegate.func(agent='wordcraft', task='Prepara la prima versione', runtime=runtime))
@@ -212,3 +214,32 @@ class AdaptiveToolTests(unittest.TestCase):
                 runtime.state['messages'].append(SimpleNamespace(type='human', id='explicit-continue'))
                 studio_delegate.func(agent='effectcraft', task='Riprendi la posa', runtime=runtime, step_id='motion')
                 self.assertEqual(worker.call_count, 2)
+
+    def test_lesson_tool_exposes_proposal_but_no_acceptance_argument(self):
+        from studio.team_routing import shared_run
+        from studio.tools import source_turn
+        schema=studio_lessons.tool_call_schema.model_json_schema()
+        self.assertIn('lesson_json',schema['properties'])
+        self.assertNotIn('accepted',schema['properties'])
+        self.assertNotIn('runtime',schema['properties'])
+        runtime=SimpleNamespace(config=shared_run({'input':{'messages':[{'role':'user','content':'Risposta'}]}})['config'])
+        first=source_turn(runtime)
+        self.assertTrue(first)
+        self.assertEqual(source_turn(runtime),first)
+        runtime.config=shared_run({'input':None})['config']
+        self.assertEqual(source_turn(runtime),'')
+
+    def test_large_learning_evidence_stays_addressable_without_overflowing_control_context(self):
+        from studio.tools import lesson_reply
+        from studio.project_skills import read_document
+        with tempfile.TemporaryDirectory() as directory:
+            workspace=Path(directory)
+            result={'pending_sources':[{'id':str(i)*64,'criterion':'Useful operational lesson',
+                'evidence':'Long observed evidence '*1000,'producer_method':{'procedure':['Actual step '*1000]}} for i in range(6)]}
+            with patch('studio.tools.workspace_for',return_value=workspace):
+                text=lesson_reply(SimpleNamespace(),result)
+            self.assertLessEqual(len(text),8000)
+            value=json.loads(text)
+            self.assertEqual(len(value['pending_sources']),6)
+            full=json.loads(read_document(workspace,{'path':value['details_path'],'sha256':value['details_sha256']}))
+            self.assertEqual(full,result)

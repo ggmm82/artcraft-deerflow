@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -21,7 +22,9 @@ from playwright.sync_api import sync_playwright, expect
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--node-modules', type=Path, required=True)
+    parser.add_argument('--screenshots-dir', type=Path)
     args = parser.parse_args()
+    if args.screenshots_dir: args.screenshots_dir.mkdir(parents=True, exist_ok=True)
     modules = args.node_modules.resolve()
     repo = Path(__file__).resolve().parents[1]
     now = datetime.now(timezone.utc)
@@ -49,14 +52,14 @@ def main():
             'request_documents': [{'path': '/mnt/user-data/.studio-project/requests/original.txt'}],
             'request_manifest': {'path': '/mnt/user-data/.studio-project/requests/index.json'}, 'request_count': 12, 'criteria': [
             {'id': 'request_fidelity', 'requirement': 'Contenuto conforme alla richiesta originale', 'critical': True}]},
-        'review_criteria': [{'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
+        'review_criteria': [{'requirement_id':'request_fidelity','criterion':'Aspetto locale riuscito','status':'passed','method':'content','evidence':'Un solo aspetto è riuscito'}, {'requirement_id': 'request_fidelity', 'criterion': 'Conformità', 'method': 'content',
             'status': 'failed', 'evidence': 'Il contenuto è stato sostituito con una variante non richiesta.'}],
         'revision_actions': [{'requirement_id': 'request_fidelity', 'action': 'Correggere il contenuto usando il riferimento originale',
             'strategy': 'change_method', 'priority': 1}],
         'comparison': {'baseline_path': '/mnt/user-data/outputs/previous.txt', 'criteria': [
             {'requirement_id': 'request_fidelity', 'status': 'unchanged', 'evidence': 'Il difetto osservato è ancora presente'}]},
         'deliveries': [{'id': 'final', 'title': 'Robot con musica — versione 2', 'agent': 'filmcraft', 'at': iso(now),
-                       'current': True, 'technical_status': 'needs_revision', 'issues': ['Texture collegata mancante'], 'purpose': 'delivery'},
+                       'version':2, 'category':'version', 'current': True, 'technical_status': 'needs_revision', 'issues': ['Texture collegata mancante'], 'purpose': 'delivery'},
                       {'id': 'old', 'title': 'Prima prova muta', 'agent': 'effectcraft', 'at': iso(now-timedelta(hours=1)),
                        'current': False, 'technical_status': 'not_verified', 'issues': [], 'purpose': 'preview'}],
         'results': [{'path': video_path, 'label': 'preview.mp4', 'agent': 'filmcraft', 'validated': True, 'at': iso(now),
@@ -80,7 +83,7 @@ import {createRoot} from 'react-dom/client';
 import {DelegateProgress} from ''' + json.dumps(str(repo / 'frontend/delegate-progress.tsx')) + ''';
 const root=createRoot(document.getElementById('root')!);
 window.continued=0; window.failContinue=false;
-window.showThread=(threadId='fixture',active=true,pending=true,error=false)=>root.render(<DelegateProgress threadId={threadId} active={active} pending={pending} coordinatorError={error} onContinue={()=>{window.continued++;if(window.failContinue)return Promise.reject(new Error("fixture submit unavailable"))}}/>);
+window.showThread=(threadId='fixture',active=true,pending=true,error=false)=>root.render(<DelegateProgress threadId={threadId} active={active} pending={pending} coordinatorError={error} onPause={()=>{window.paused=(window.paused||0)+1}} onContinue={()=>{window.continued++;if(window.failContinue)return Promise.reject(new Error("fixture submit unavailable"))}}/>);
 window.showThread();
 ''')
         subprocess.run([str(modules / '.bin/esbuild'), str(folder / 'entry.tsx'), '--bundle', '--jsx=automatic',
@@ -126,16 +129,39 @@ window.showThread();
                     state['project']['user_direction'] = {**body, 'revision': 1}
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     self.wfile.write(b'{"running_step_ids":["motion"]}'); return
+                if self.path.endswith('/studio-control'):
+                    state['project']['user_control'] = body
+                    if body['paused']:
+                        state['job'] = {**state['job'], 'phase':'failed', 'resources_reclaimed':not state.get('defer_cleanup',False)}
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'user_control':body}).encode()); return
+                if self.path.endswith('/studio-experience/lesson'):
+                    if state.get('fail_accept'):
+                        self.send_response(409);self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(b'{}');return
+                    state['lesson_accepted'] = body['accepted']
+                    self.do_GET(); return
                 state['experience_excluded'] = body['excluded']
                 self.do_GET()
 
             def do_GET(self):
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    self.wfile.write(json.dumps({'total':1,'excluded':int(state.get('experience_excluded',False)), 'observations':[{
+                    library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':0, 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
                         'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
                         'observation':{'criterion':state.get('preferred_note','Risorse portabili'),'status':'preferred_by_user' if state.get('preferred_note') else 'failed','method':'functional','evidence':'Risorsa collegata mancante',
-                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}).encode()); return
+                        'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}
+                    if state.get('many_lessons'):
+                        template = library['lessons'][0]
+                        library['lessons'] = [{**template,'id':str(i)*64,'accepted':False,
+                            'basis':{**template['basis'],'impact':{'level':level,'basis':basis,'reason':'Prova dichiarata per il collaudo'},
+                                'lesson':{**template['basis']['lesson'],'title':title}}}
+                            for i,(title,level,basis) in enumerate([
+                                ('Piccolo perfezionamento','minor','observed'),
+                                ('Evita consegna inutilizzabile','major','observed'),
+                                ('Beneficio da confermare','major','hypothesis'),
+                                ('Riduzione tempi registrata','major','measured'),
+                                ('Impatto non valutato','unknown','hypothesis')])]
+                    self.wfile.write(json.dumps(library).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
                     self.send_header('Content-Type', 'application/json'); self.end_headers()
@@ -166,6 +192,10 @@ window.showThread();
                 expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
                 expect(page.get_by_test_id('studio-health')).to_contain_text('Nessun nuovo avanzamento')
                 expect(page.get_by_test_id('delegate-job')).to_have_count(0)  # no wall of technical detail
+                def section(name):
+                    if not page.get_by_test_id('studio-drawer').count():
+                        page.get_by_role('button', name='Dettagli progetto', exact=True).click()
+                    page.get_by_role('button', name=name, exact=True).click()
                 composer = page.get_by_role('textbox', name='Scrivi un messaggio')
                 for viewport in ({'width': 1100, 'height': 800}, {'width': 390, 'height': 740}):
                     page.set_viewport_size(viewport)
@@ -174,11 +204,12 @@ window.showThread();
                         box, input_box = dock.bounding_box(), composer.bounding_box()
                         assert box['y'] >= 0 and box['y'] + box['height'] <= input_box['y'] + 1
                         assert input_box['y'] + input_box['height'] <= viewport['height']
-                    page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                    page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                     expect(page.get_by_text('Bozza di lavoro:', exact=False)).to_be_visible()
                     page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
                     drawer = page.get_by_test_id('studio-drawer').bounding_box()
-                    assert drawer['y'] + drawer['height'] <= dock.bounding_box()['y']
+                    assert drawer['y'] >= 0 and drawer['y'] + drawer['height'] <= viewport['height']
+                    assert page.get_by_test_id('studio-drawer').evaluate('(el)=>el.matches(":modal")')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     composer.evaluate('(el)=>el.style.height="140px"')
                     page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
@@ -193,27 +224,62 @@ window.showThread();
                     video.evaluate('(v)=>v.pause()')
                     page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
+                    if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/f'risultato-{viewport["width"]}.png'))
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
-                page.get_by_role('button', name='Progetto', exact=True).click()
+                state['defer_cleanup'] = True
+                page.get_by_role('button', name='Intervieni', exact=True).click()
                 direction = page.get_by_test_id('project-direction')
                 direction.get_by_label('Tecnica visiva, se pertinente').select_option('vector')
                 direction.get_by_label('Indicazioni per questo progetto').fill('Disegni modificabili, senza raster incorporati')
-                direction.get_by_role('button', name='Salva le mie scelte').click()
-                expect(direction).to_contain_text('Scelta salvata per i prossimi incarichi')
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'intervento-mobile.png'))
+                page.get_by_role('button', name='Applica e riprendi').click()
+                page.wait_for_timeout(1500)
+                assert page.evaluate('window.continued') == 0, 'Must wait for actual worker cleanup'
+                assert state['project']['user_control']['paused'] is True
+                state['job']['resources_reclaimed'] = True
+                state['defer_cleanup'] = False
+                expect(page.get_by_test_id('studio-drawer')).to_have_count(0)
+                assert page.evaluate('window.paused') == 1
+                assert page.evaluate('window.continued') == 1
+                page.evaluate('window.continued=0')
+                assert state['project']['user_control']['paused'] is False
                 assert state['project']['user_direction']['visual_approach'] == 'vector'
-                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
-                page.get_by_role('button', name='Esperienza', exact=True).click()
+                state['job'] = job
+                section('Lezioni')
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'lezioni-mobile.png'))
                 experience_panel = page.get_by_test_id('experience-panel')
-                expect(experience_panel).to_contain_text('1 osservazioni conservate')
+                expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
+                state['fail_accept'] = True
+                experience_panel.get_by_role('button',name='Accetta questa lezione',exact=True).click()
+                expect(experience_panel.get_by_role('alert')).to_be_visible()
+                expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
+                state['fail_accept'] = False
+                experience_panel.get_by_role('button',name='Accetta questa lezione',exact=True).click()
+                expect(experience_panel).to_contain_text('Accettata per il riutilizzo')
+                experience_panel.get_by_test_id('accepted-lessons').locator('summary').first.click()
+                experience_panel.get_by_role('button',name='Rimuovi dalle skills',exact=True).click()
+                expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
+                experience_panel.get_by_text('Fonti, preferenze e archivio (1)', exact=True).click()
                 expect(experience_panel).to_contain_text('Risorsa collegata mancante')
-                page.get_by_role('button', name='Escludi dal riutilizzo', exact=True).click()
-                expect(page.get_by_role('button', name='Riattiva il riutilizzo')).to_be_visible()
+                expect(page.get_by_role('button', name='Escludi dal riutilizzo', exact=True)).to_have_count(0)
                 page.get_by_label('Cosa vuoi riutilizzare?').fill('Cambiare metodo dopo il campione e verificare due scene')
                 page.get_by_role('button',name='Conserva questo metodo',exact=True).click()
                 expect(experience_panel).to_contain_text('Metodo preferito dall’utente')
+                state['many_lessons'] = True
+                page.reload(); section('Lezioni')
+                visible_lessons = page.locator('[data-testid=general-lesson]:visible')
+                expect(visible_lessons).to_have_count(3)
+                expect(visible_lessons.nth(0)).to_contain_text('Riduzione tempi registrata')
+                expect(visible_lessons.nth(1)).to_contain_text('Evita consegna inutilizzabile')
+                expect(visible_lessons.nth(2)).to_contain_text('Piccolo perfezionamento')
+                page.get_by_text('Altre proposte (2)',exact=True).click()
+                expect(page.locator('[data-testid=general-lesson]:visible')).to_have_count(5)
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'lezioni-impatto.png'))
+                state['many_lessons'] = False
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
-                page.get_by_role('button', name='Attività', exact=True).click()
+                section('Attività')
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')
+                page.get_by_text('Modello e risorse', exact=True).click()
                 expect(page.get_by_text('RAM worker: 1024 MiB / 2048 MiB · 1.5 CPU')).to_be_visible()
                 page.get_by_role('button',name='Interrompi questa fase',exact=True).click()
                 expect(page.get_by_role('button',name='Arresto richiesto…',exact=True)).to_be_disabled()
@@ -227,7 +293,7 @@ window.showThread();
                     'steps': [{**step, 'role_id': 'coherence' if step['id'] == 'motion' else 'verify' if step['id'] == 'final' else '', 'attempt_count': 1 if step['id'] == 'motion' else 0} for step in project['steps']]}
                 page.reload()
                 expect(page.get_by_test_id('studio-status')).to_have_text('Avanzamento da verificare')
-                page.get_by_role('button', name='Squadra', exact=True).click()
+                section('Squadra')
                 compiled = page.get_by_test_id('compiled-role').first
                 expect(compiled).to_contain_text('Al lavoro')
                 expect(compiled).to_contain_text('Analisi delle dipendenze')
@@ -237,12 +303,13 @@ window.showThread();
                 expect(compiled).to_contain_text('Confrontare il risultato con il brief integrale')
                 expect(compiled).to_contain_text('Versione abcdef012345')
                 state['job'] = job
-                page.get_by_role('button', name='Progetto', exact=True).click()
+                section('Stato')
                 overview = page.get_by_test_id('project-overview')
                 expect(overview).to_contain_text('Video completo da presentare')
                 expect(overview).to_contain_text('MP4 e progetto modificabile')
                 expect(overview).to_contain_text('1 di 4 incarichi conclusi')
-                expect(overview).to_contain_text('Traguardo in corso:')
+                expect(overview).to_contain_text('Responsabilità attuale:')
+                page.get_by_test_id('project-method').locator('summary').click()
                 expect(page.get_by_test_id('project-method')).to_contain_text('Composizione alternativa')
                 expect(page.get_by_test_id('project-method')).to_contain_text('Prova disponibile')
                 expect(page.get_by_test_id('project-method')).to_contain_text('prima di richiedere risorse esterne')
@@ -251,18 +318,19 @@ window.showThread();
                 expect(page.get_by_test_id('revision-actions')).to_contain_text('Serve provare un metodo diverso')
                 expect(page.get_by_test_id('quality-comparison')).to_contain_text('Invariato')
                 expect(page.get_by_test_id('quality-comparison')).to_contain_text('Il difetto osservato è ancora presente')
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 expect(page.get_by_test_id('project-identity')).to_contain_text('Progetto dimostrativo')
                 # A change of live roles must not mix old context into today's remaining work.
                 state['project'] = {**state['project'], 'orientation': {'active_step_ids': ['motion', 'final'],
                     'history_step_ids': ['visual', 'audio'], 'history_count': 2},
                     'steps': [{**step, 'role_id': 'retired' if step['id'] in ('visual', 'audio') else step.get('role_id', '')} for step in state['project']['steps']]}
                 page.reload()
-                page.get_by_role('button', name='Progetto', exact=True).click()
+                section('Stato')
                 expect(page.get_by_test_id('project-position')).to_contain_text('0 di 2 incarichi conclusi')
                 expect(page.get_by_test_id('project-history')).to_contain_text('Altre attività del progetto (2)')
                 page.get_by_test_id('project-history').locator('summary').click()
                 expect(page.get_by_test_id('project-history')).to_contain_text('Verifico il mix recuperato')
-                page.get_by_role('button', name='Squadra', exact=True).click()
+                section('Squadra')
                 expect(page.get_by_test_id('team-plan')).not_to_contain_text('Verifico il mix recuperato')
                 state['project'] = {**project, 'status': 'clarifying', 'outcome': {**project['outcome'], 'format': '', 'questions': ['Una proposta di lavoro o un prodotto pronto da distribuire?']}}
                 state['job'] = {**job, 'phase': 'completed', 'finished_at': iso(now), 'resources_reclaimed': True, 'cleanup_finished_at': iso(now)}
@@ -270,10 +338,10 @@ window.showThread();
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Definiamo il risultato insieme')
                 expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
-                page.get_by_role('button', name='Progetto', exact=True).click()
+                section('Stato')
                 expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
                 expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
-                page.get_by_role('button', name='Attività', exact=True).click()
+                section('Attività')
                 expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Container rimosso')
                 state['job'] = job
                 page.evaluate("window.showThread('fixture',true,true,false)")
@@ -281,9 +349,9 @@ window.showThread();
                 state['project'] = {**project, 'results': [{'path': '/mnt/user-data/outputs/review/report.json',
                     'label': 'report.json', 'agent': 'filmcraft', 'validated': True, 'at': iso(now)}]}
                 page.reload()
-                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 expect(page.get_by_label('Anteprima video')).to_have_attribute('src', '/api/threads/fixture/artifacts'+video_path)
-                page.get_by_test_id('acceptance-criteria').locator('summary').click()
+                page.get_by_test_id('acceptance-criteria').locator('summary').first.click()
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Conserva il contenuto del riferimento fornito')
                 expect(page.get_by_test_id('acceptance-criteria')).to_contain_text('Da correggere')
                 expect(page.get_by_role('link', name='Leggi la richiesta originale completa')).to_have_attribute('href',
@@ -291,7 +359,7 @@ window.showThread();
                 # Document/project outputs use the same result control, not a video-only flow.
                 state['project'] = {**state['project'], 'product_path': '/mnt/user-data/outputs/report/final.docx'}
                 page.reload()
-                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 expect(page.get_by_role('link', name='final.docx')).to_be_visible()
                 expect(page.get_by_label('Anteprima video')).to_have_count(0)
                 # A document without product_path is still discoverable, and old media cannot replace it.
@@ -300,17 +368,17 @@ window.showThread();
                             'open_with': 'Estrarre il pacchetto e seguire README'}
                 state['project'] = {**project, 'product_path': '', 'results': [document, project['results'][2]]}
                 page.reload()
-                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 expect(page.get_by_test_id('primary-result').get_by_role('link', name='release.zip')).to_be_visible()
                 expect(page.get_by_test_id('primary-result')).to_contain_text('Estrarre il pacchetto')
                 expect(page.get_by_label('Anteprima video')).to_have_count(0)
                 expect(page.get_by_test_id('paired-sources')).to_have_count(0)
                 state['project'] = project
                 page.reload()
-                page.get_by_role('button', name='Squadra', exact=True).click()
+                section('Squadra')
                 for name in ('Photocraft', 'Effectcraft', 'Soundcraft', 'Filmcraft'):
                     expect(page.get_by_test_id('team-plan').get_by_text(name, exact=True)).to_be_visible()
-                page.get_by_role('button', name='File e sorgenti', exact=False).click()
+                section('Consegne')
                 groups = page.get_by_test_id('delivery-group')
                 expect(groups).to_have_count(2)
                 expect(groups.first).to_contain_text('Consegna incompleta')
@@ -318,11 +386,35 @@ window.showThread();
                 expect(groups.first).to_contain_text('montaggio.locale.fcproj')
                 expect(groups.first.get_by_role('link', name='bozza.mp4')).to_have_count(0)
                 expect(groups.nth(1).get_by_role('link', name='bozza.mp4')).not_to_be_visible()
+                page.get_by_test_id('supporting-deliveries').locator('summary').first.click()
                 groups.nth(1).locator('summary').first.click()
                 expect(groups.nth(1).get_by_role('link', name='bozza.mp4')).to_be_visible()
-                page.get_by_role('button', name='Attività', exact=True).click()
+                page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
+                section('Stato')
+                assert page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop') == 0, 'A new section must start at its own beginning'
+                # A correction in progress cannot silently replace the selected version.
+                state['project'] = {**project, 'deliveries': [*project['deliveries'],
+                    {'id':'next','title':'Correzione mirata','agent':'workspace','at':'','current':False,
+                     'purpose':'delivery','category':'version','version':3,'execution_status':'running','technical_status':'not_verified','issues':[]},
+                    {'id':'check','title':'Controllo della versione 2','agent':'workspace','at':iso(now),'current':False,
+                     'purpose':'review','category':'review','technical_status':'passed','issues':[],
+                     'review':{'target_delivery_id':'final','target_version':2,'target_label':'Versione 2','status':'needs_revision',
+                        'validated':True,'matches_current_brief':True,'report_path':'/mnt/user-data/outputs/review/report.json','correction_count':2}}]}
+                page.reload()
+                page.get_by_role('button',name='Vedi anteprima',exact=True).click()
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Versione 2')
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Versione 3 in lavorazione')
+                expect(page.get_by_test_id('paired-sources').get_by_role('link',name='Sorgenti.zip')).to_be_visible()
+                section('Consegne')
+                expect(page.get_by_test_id('version-review').first).to_contain_text('Correzioni richieste · versione 2')
+                expect(page.get_by_test_id('delivery-group').filter(has_text='Correzione mirata').first).to_contain_text('In lavorazione')
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'revisioni-mobile.png'))
+                state['project'] = project
+                page.reload()
+                section('Attività')
                 card = page.get_by_test_id('delegate-job')
                 expect(card.get_by_text('18 min', exact=False).first).to_be_visible()
+                card.get_by_text('Tempi e segnali osservati', exact=True).click()
                 expect(card.get_by_text('Non è una stima di consegna.', exact=False)).to_be_visible()
                 page.reload()
                 expect(page.get_by_test_id('studio-summary')).to_have_text('Render finale · 12/48 campioni')
@@ -342,17 +434,25 @@ window.showThread();
                 page.get_by_role('button', name='Riprendi lavoro').click()
                 assert page.evaluate('window.continued') == 2
                 expect(page.get_by_role('button', name='Ripresa richiesta…')).to_be_disabled()
-                expect(page.get_by_role('button', name='Vedi risultato', exact=True)).to_be_enabled()
+                expect(page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$'))).to_be_enabled()
                 state['unavailable'] = True
                 expect(page.get_by_text('Aggiornamenti non disponibili:', exact=False)).to_be_visible(timeout=7000)
-                expect(page.get_by_role('button', name='Vedi risultato', exact=True)).to_be_enabled()
+                expect(page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$'))).to_be_enabled()
                 state['unavailable'] = False
+                state['project'] = {**project, 'user_control':{'paused':True}}
+                state['job'] = {**job,'phase':'failed','resources_reclaimed':True,'finished_at':iso(now)}
+                page.reload(); page.evaluate("window.showThread('fixture',false,false,false)")
+                expect(page.get_by_test_id('studio-status')).to_have_text('Progetto in pausa')
+                page.get_by_role('button',name='Riprendi lavoro',exact=True).click()
+                page.wait_for_function('window.continued === 1')
+                expect(page.get_by_text('In pausa. I file salvati sono conservati.',exact=True)).to_have_count(0)
+                assert state['project']['user_control']['paused'] is False
                 state['project'] = {**project, 'status': 'ready', 'product_path': video_path, 'quality_status': 'passed',
                     'deliveries': [{**d, 'technical_status': 'passed', 'issues': []} for d in project['deliveries']]}
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto', timeout=7000)
                 expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
-                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 expect(page.get_by_text('Prodotto finale', exact=True)).to_be_visible()
                 page.evaluate("window.showThread('another-conversation',false,false,false)")
                 expect(dock).to_have_count(0)
@@ -361,7 +461,7 @@ window.showThread();
                 state['project'] = {**state['project'], 'status': 'review', 'quality_status': 'needs_review'}
                 expect(page.get_by_test_id('studio-status')).to_have_text('Una versione è disponibile', timeout=7000)
                 expect(page.get_by_role('button', name='Riprendi lavoro')).to_have_count(0)
-                page.get_by_role('button', name='Vedi risultato', exact=True).click()
+                page.get_by_role('button', name=re.compile('^(Vedi anteprima|Apri consegna)$')).click()
                 page.get_by_role('button', name='Ho verificato: accetta questa versione').click()
                 expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto')
                 expect(page.get_by_text('Questa versione è stata accettata da te.')).to_be_visible()
