@@ -107,6 +107,9 @@ window.showThread();
 
             def do_POST(self):
                 data = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+                if self.path.endswith('/studio-experience/prefer'):
+                    state['preferred_note'] = data['note']
+                    self.do_GET(); return
                 valid = self.path == '/api/threads/fixture/studio-delivery/accept' and data.get('delivery_id') == 'final'
                 if valid:
                     state['project'] = {**state['project'], 'status': 'ready', 'quality_status': 'accepted_by_user'}
@@ -124,7 +127,7 @@ window.showThread();
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     self.wfile.write(json.dumps({'total':1,'excluded':int(state.get('experience_excluded',False)), 'observations':[{
                         'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
-                        'observation':{'criterion':'Risorse portabili','status':'failed','method':'functional','evidence':'Risorsa collegata mancante',
+                        'observation':{'criterion':state.get('preferred_note','Risorse portabili'),'status':'preferred_by_user' if state.get('preferred_note') else 'failed','method':'functional','evidence':'Risorsa collegata mancante',
                         'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
@@ -190,6 +193,9 @@ window.showThread();
                 expect(experience_panel).to_contain_text('Risorsa collegata mancante')
                 page.get_by_role('button', name='Escludi dal riutilizzo', exact=True).click()
                 expect(page.get_by_role('button', name='Riattiva il riutilizzo')).to_be_visible()
+                page.get_by_label('Cosa vuoi riutilizzare?').fill('Cambiare metodo dopo il campione e verificare due scene')
+                page.get_by_role('button',name='Conserva questo metodo',exact=True).click()
+                expect(experience_panel).to_contain_text('Metodo preferito dall’utente')
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 page.get_by_role('button', name='Attività', exact=True).click()
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')

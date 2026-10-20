@@ -258,7 +258,7 @@ def main():
                                 input=(json.dumps({'event': 'user', 'message': {'content': prompt}}) + '\n') if engine == 'gemini' else prompt,
                                 env={**(cli_env() if engine == 'gemini' else os.environ), 'ARTCRAFT_OUTPUT_DIR': str(output_dir)},
                                 timeout=job['timeout'], on_event=lambda event: reporter.cli_event(engine, event),
-                                model_wait_seconds=(job.get('resources') or {}).get('model_wait_seconds', 600),
+                                model_wait_seconds=(job.get('resources') or {}).get('model_wait_seconds', 0),
                                 waiting_model=lambda: reporter.execution_state == 'model')
             if result.returncode:
                 reporter.emit('failed')

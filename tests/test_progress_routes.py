@@ -70,6 +70,7 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'other'}).status_code, 404)
                 self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'owner'}).status_code, 200)
                 self.assertEqual(client.put(experience_url,json={'id':'a'*64,'excluded':True},headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.post(experience_url+'/prefer',json={'delivery_id':'artcraft-job-123456abcdef','note':'Preferenza personale'},headers={'X-Test-User':'other'}).status_code,404)
                 accept_url = '/api/threads/conversation/studio-delivery/accept'
                 data = {'delivery_id': 'nonexistent'}
                 self.assertEqual(client.post(accept_url, json=data).status_code, 401)

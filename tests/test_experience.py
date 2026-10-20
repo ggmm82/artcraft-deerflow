@@ -23,14 +23,14 @@ class ExperienceTests(unittest.TestCase):
         spec = role(); spec['tools'] = ['vectorcraft']
         projects.sync_project_context(self.workspace, [spec])
         self.spec = spec
-        out = self.workspace / 'outputs/product'; out.mkdir(parents=True)
+        out = self.workspace / 'outputs/workspace/artcraft-job-123456abcdef'; out.mkdir(parents=True)
         self.product = out / 'product.svg'; self.product.write_text('<svg/>')
         review = self.workspace / 'outputs/reviewer'; review.mkdir()
         self.report = review / 'quality-review.json'; self.report.write_text('{"fixture":"actual report"}')
         path = self.workspace / '.studio-project/project.json'
         data = json.loads(path.read_text()); self.contract = data['acceptance']['hash']
         data['steps'][0].update(status='completed', attempts=[{
-            'status':'completed','validated':True,'role_id':'design',
+            'status':'completed','validated':True,'role_id':'design','output_dir':str(out),
             'context':{'role':data['roles'][0]['version']},'role_scope':data['roles'][0]['scope'],'output_files':[str(self.product)]}])
         criteria = [{'requirement_id':'a','criterion':'Leggibilità delle etichette nella consegna','method':'structural','status':'passed','evidence':'Etichette lette nel prodotto'},
                     {'requirement_id':'b','criterion':'Risorse collegate portabili','method':'functional','status':'failed','evidence':'Risorsa collegata mancante'},
@@ -64,6 +64,22 @@ class ExperienceTests(unittest.TestCase):
         compiled=projects.read_project(other)['roles'][0]
         self.assertEqual(compiled['experience']['count'],0);self.assertNotEqual(compiled['version'],first)
         self.assertEqual(len(experience.entries(self.library)),2)
+
+    def test_explicit_preference_preserves_method_without_marking_checks_or_project_ready(self):
+        before=json.loads(self.state.read_text())
+        identifier=experience.prefer(self.workspace,self.library,'artcraft-job-123456abcdef',
+            'Cambiare metodo dopo il campione e verificare due casi diversi','thread-a')
+        self.assertEqual(json.loads(self.state.read_text()).get('status'),before.get('status'))
+        record=experience.entries(self.library)[0]
+        self.assertEqual(record['id'],identifier)
+        self.assertEqual(record['observation']['status'],'preferred_by_user')
+        self.assertEqual(record['observation']['files'][0]['sha256'],digest(self.product))
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications())[0]['id'],identifier)
+        self.assertEqual(experience.prefer(self.workspace,self.library,'artcraft-job-123456abcdef',
+            'Cambiare metodo dopo il campione e verificare due casi diversi','thread-a'),identifier)
+        self.assertEqual(len(experience.entries(self.library)),1)
+        with self.assertRaises(ValueError):
+            experience.prefer(self.workspace,self.library,'missing','Un metodo non verificato')
 
     def test_old_review_is_retained_after_the_user_changes_the_current_brief(self):
         projects.sync_acceptance(self.workspace,['Richiesta reale','Nuova modifica del brief'])

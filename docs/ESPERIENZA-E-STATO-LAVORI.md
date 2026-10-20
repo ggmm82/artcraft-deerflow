@@ -11,7 +11,7 @@ credenziali viene pubblicato.
 
 Le deleghe sono sincrone: durante una delega il coordinatore non può inviare un
 secondo comando al worker. Un supervisore indipendente applica alle CLI Codex e
-Antigravity il budget senza eventi del modello (10 minuti iniziali), configurabile
+Antigravity un budget opzionale senza eventi del modello (disattivato inizialmente), configurabile
 nello stesso pannello **La tua squadra → Risorse**. Se scade in attesa del modello,
 termina la CLI e restituisce al coordinatore un errore recuperabile con i file
 parziali. Non si applica durante un comando nativo in esecuzione. I trasporti API
@@ -38,7 +38,7 @@ osservazioni pertinenti per ruolo (entro un budget di testo). La selezione è
 basata sugli strumenti o, per ruoli senza CLI, sulla sovrapposizione dei termini;
 non è una ricerca semantica e può tralasciare esperienze utili. Le esperienze di
 CLI con versione diversa o sconosciuta restano archiviate ma non vengono inserite
-automaticamente. La versione della skill include lo snapshot delle osservazioni:
+automaticamente, salvo le preferenze esplicite dell’utente che restano candidati da verificare. La versione della skill include lo snapshot delle osservazioni:
 le versioni precedenti rimangono riproducibili. Il brief attuale prevale sempre.
 
 ## Controllo e recupero
@@ -61,3 +61,17 @@ Per non perdere l'esperienza nei deploy conserva e includi nei backup l'intero
 volume `deerflow-data`, insieme alle cartelle dei progetti che contengono i file
 originali. L'export JSON è un'esportazione delle osservazioni; non è un backup dei
 prodotti né offre importazione automatica di procedure considerate affidabili.
+
+## Conservare un metodo preferito
+
+In **Esperienza**, scegli la lavorazione e descrivi cosa vuoi riutilizzare, poi premi
+**Conserva questo metodo**. Si conservano la tua valutazione, il contesto dichiarato
+del produttore, modello, strumenti e hash dei file. La preferenza è separata dagli
+esiti delle verifiche e non porta il progetto a ready. Può riguardare un campione
+riuscito anche se la consegna completa deve ancora finire.
+
+Il software non deduce da un'immagine il processo che l'ha generata: i passaggi e
+le capacità non registrati restano sconosciuti. I file restano nei progetti di
+origine e vanno inclusi nel backup del volume. Una preferenza può suggerire una
+procedura alla prossima skill pertinente; non garantisce lo stesso risultato né
+trasforma una bitmap in tracciati modificabili.

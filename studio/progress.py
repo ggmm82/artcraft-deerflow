@@ -291,6 +291,10 @@ class Reporter:
                 self.emit('running_tool', 'Esecuzione di uno strumento MCP')
             elif kind == 'item.completed' and item.get('type') == 'mcp_tool_call':
                 self.emit('waiting_model', 'Strumento MCP concluso; elaborazione del risultato')
+            elif kind == 'item.started' and item.get('type') in ('image_generation', 'image_generation_call'):
+                self.emit('running_tool', 'Generazione di immagini tramite il modello')
+            elif kind == 'item.completed' and item.get('type') in ('image_generation', 'image_generation_call'):
+                self.emit('waiting_model', 'Generazione immagini conclusa; elaborazione del risultato')
             elif kind == 'turn.started':
                 self.emit('waiting_model')
         elif kind == 'step_update':

@@ -75,3 +75,20 @@ async def experience_select(thread_id: ThreadId, body: ExperienceSelection, requ
         return await run_in_threadpool(summary, experience_root())
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Esperienza non disponibile') from error
+
+
+class PreferredMethod(BaseModel):
+    delivery_id: str = Field(pattern='^artcraft-job-[a-f0-9]{12}$')
+    note: str = Field(min_length=5, max_length=2000)
+
+
+@router.post('/api/threads/{thread_id}/studio-experience/prefer')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def experience_prefer(thread_id: ThreadId, body: PreferredMethod, request: Request, response: Response):
+    from .experience import prefer, summary
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    try:
+        await run_in_threadpool(prefer, workspace, experience_root(), body.delivery_id, body.note, str(thread_id))
+        return await run_in_threadpool(summary, experience_root())
+    except (OSError, ValueError) as error:
+        raise HTTPException(409, 'Metodo non conservato: verifica lavorazione, file e descrizione') from error

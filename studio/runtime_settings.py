@@ -39,7 +39,7 @@ def effective(value=None):
         if cpus > host['cpus'] or memory > memory_ceiling:
             raise ValueError('Budget superiore alla capacità disponibile dopo la riserva per i servizi. Usa Automatico o riduci CPU/RAM.')
     return {'cpus': cpus, 'memory_mib': memory, 'tmp_mib': min(1024, max(128, memory // 4)),
-            'threads': max(1, math.ceil(cpus)), 'model_wait_seconds': value.get('model_wait_seconds', 600), 'capacity_detected': host['detected']}
+            'threads': max(1, math.ceil(cpus)), 'model_wait_seconds': value.get('model_wait_seconds', 0), 'capacity_detected': host['detected']}
 
 
 def read():
@@ -55,8 +55,8 @@ def read():
 def save(value):
     if value.get('mode') not in ('auto', 'manual') or type(value.get('cpus')) not in (int, float) or not math.isfinite(value['cpus']) or not .5 <= value['cpus'] <= 32 or type(value.get('memory_mib')) is not int or not 512 <= value['memory_mib'] <= 65536:
         raise ValueError('Budget non valido: CPU 0,5–32 e RAM 512–65536 MiB')
-    if type(value.get('model_wait_seconds', 600)) is not int or not 60 <= value.get('model_wait_seconds', 600) <= 1500:
-        raise ValueError('Budget di attesa modello: da 60 a 1500 secondi')
+    if type(value.get('model_wait_seconds', 0)) is not int or value.get('model_wait_seconds', 0) != 0 and not 60 <= value.get('model_wait_seconds', 0) <= 1500:
+        raise ValueError('Budget di attesa modello: 0 (disattivato) oppure da 60 a 1500 secondi')
     effective(value)
     with state.LOCK:
         state.atomic_json(state.STATE / 'runtime.json', value)

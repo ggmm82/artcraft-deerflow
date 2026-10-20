@@ -68,7 +68,7 @@ function JobCard({ job, now }: { job: JobProgress; now: number }) {
       {job.last_model_event_at && <p>Ultimo evento ricevuto dal modello: {duration(secondsSince(job.last_model_event_at, now))} fa</p>}
       {job.last_file_change_at && <p>Ultima modifica dei file: {duration(secondsSince(job.last_file_change_at, now))} fa</p>}
       {remaining !== null && remaining > 0 && <p>Limite di esecuzione tra {duration(remaining)}. Non è una stima di consegna.</p>}
-      {job.limits?.model_wait_seconds && ["codex", "gemini"].includes(job.engine) && <p>Budget senza eventi del modello: {duration(job.limits.model_wait_seconds)}; poi il coordinatore può ripianificare.</p>}
+      {(job.limits?.model_wait_seconds ?? 0) > 0 && ["codex", "gemini"].includes(job.engine) && <p>Budget senza eventi del modello: {duration(job.limits?.model_wait_seconds ?? 0)}; poi il coordinatore può ripianificare.</p>}
       {heartbeat !== null && heartbeat <= 15 && <p>Monitor della sandbox presente · non conferma l’avanzamento del modello</p>}
     </div>}
     {health && <p className="rounded-md border border-amber-500/50 p-2 text-sm" role="status">{health}</p>}
@@ -379,7 +379,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
-      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} />}
+      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} />}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} />)}</div>}
       </div>
     </div>}

@@ -139,7 +139,7 @@ def select(root, specs, apps):
         observation = record['observation']
         tools = observation.get('tools', {})
         role_tools = {t for s in specs for t in s.get('tools', [])}
-        if not observation.get('scope_known') or record['id'] in excluded or any(versions.get(t) != v for t, v in tools.items()):
+        if not observation.get('scope_known') or record['id'] in excluded or any(versions.get(t) != v and not (observation.get('kind') == 'user_preference' and v == 'unknown') for t, v in tools.items()):
             continue
         words = set(re.findall(r'\w{5,}', observation['criterion'].lower()))
         if tools and not set(tools).intersection(role_tools) or not tools and len(words & vocabulary) < 3:
@@ -167,3 +167,47 @@ def summary(root, export=False):
     records = entries(root)
     return {'total': len(records), 'excluded': len(excluded),
             'observations': [{**r, 'excluded': r['id'] in excluded} for r in (records if export else records[:200])]}
+
+
+def prefer(workspace, root, delivery_id, note, source_thread=None):
+    """Explicit user preference for a method; never marks a project ready or a test passed."""
+    from .projects import locked as project_lock, load, artifact_path
+    if not isinstance(note, str) or not 5 <= len(note.strip()) <= 2000:
+        raise ValueError('Descrivi cosa vuoi riutilizzare (5–2000 caratteri)')
+    with project_lock(workspace) as folder:
+        project = load(folder, workspace)
+        attempt = next((a for s in (project or {}).get('steps', []) for a in s['attempts']
+                        if Path(a.get('output_dir', '')).name == delivery_id and a.get('validated')), None)
+        if not attempt:
+            raise ValueError('Scegli una lavorazione conclusa con file verificati')
+        files = []
+        for name in attempt.get('output_files', []):
+            path = artifact_path(workspace, name)
+            if path:
+                files.append({'path': name, 'sha256': digest(path)})
+        if not files:
+            raise ValueError('I file del metodo non sono più disponibili')
+        role = json.loads(read_document(workspace, attempt['role_scope'])) if attempt.get('role_scope') else next(
+            (r for r in project.get('roles', []) if r['id'] == attempt.get('role_id') and r.get('version') == (attempt.get('context') or {}).get('role')), {})
+        role_skill = next((r.get('skill') for r in project.get('roles', []) if r.get('version') == role.get('version')), None)
+        observation = redact_memory({
+            'kind': 'user_preference', 'project_id': project['id'], 'source_thread': source_thread,
+            'criterion': note.strip(), 'method': 'user_feedback', 'status': 'preferred_by_user',
+            'evidence': 'Preferenza espressa dall’utente per questa lavorazione; non è un collaudo tecnico o un risultato riproducibile garantito.',
+            'corrections': [], 'procedure': role.get('procedure', []),
+            'tools': {t: role.get('tool_versions', {}).get(t, 'unknown') for t in role.get('tools', [])},
+            'scope_known': bool(role), 'models': (attempt.get('context') or {}).get('provider', {}),
+            'role_skill': role_skill, 'files': files,
+            'product_sha256': fingerprint(files), 'report_sha256': '',
+            'contract_hash': (project.get('acceptance') or {}).get('hash'),
+            'limitations': (attempt.get('delivery_record') or {}).get('issues', []),
+            'instruction': 'Considera questo metodo come candidato preferito; riscopri le capacità disponibili, '
+                           'confronta il brief attuale e verifica un campione. Le versioni sconosciute non sono compatibilità accertata.',
+        })
+        observation['origin_id'] = fingerprint(observation)
+        record = {'id': fingerprint(observation), 'at': utcnow(), 'observation': observation}
+    with locked(root) as folder:
+        path = folder / (record['id'] + '.json')
+        if not path.exists():
+            atomic_json(path, record)
+    return record['id']

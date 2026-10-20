@@ -5,12 +5,14 @@ import { getBackendBaseURL } from "@/core/config";
 
 type Observation = { id: string; at: string; excluded: boolean; observation: {
   criterion: string; status: string; method: string; evidence: string; corrections: string[];
-  tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string;
+  tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string; limitations?: string[];
 } };
 type Library = { total: number; excluded: number; observations: Observation[] };
-export function ExperiencePanel({ threadId }: { threadId: string }) {
+export function ExperiencePanel({ threadId, deliveries = [] }: { threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
   const [library, setLibrary] = useState<Library | null>(null);
   const [error, setError] = useState("");
+  const [delivery, setDelivery] = useState(deliveries.find(d => d.purpose !== "review")?.id ?? "");
+  const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const alive = useRef(false);
   const base = `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-experience`;
@@ -27,7 +29,7 @@ export function ExperiencePanel({ threadId }: { threadId: string }) {
   async function change(path: string, body?: object) {
     setBusy(true); setError("");
     try {
-      const response = await fetch(base + path, { method: body ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      const response = await fetch(base + path, { method: path === "/prefer" || !body ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
       if (!response.ok) throw new Error();
       const data = await response.json() as Library;
       if (alive.current) setLibrary(data);
@@ -52,12 +54,20 @@ export function ExperiencePanel({ threadId }: { threadId: string }) {
       <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("/collect")}>Recupera esperienza di questa chat</button>
       <button className="rounded border px-3 py-2" disabled={!library} onClick={() => void download()}>Esporta esperienza</button>
     </div>
+    <div className="space-y-2 rounded border p-3">
+      <p className="font-medium">Conserva un metodo che ti ha soddisfatto</p>
+      <label className="block">Lavorazione<select className="w-full rounded border p-2" value={delivery} onChange={event => setDelivery(event.target.value)}>{deliveries.filter(d => d.purpose !== "review").map(d => <option key={d.id} value={d.id}>{d.title || d.id}</option>)}</select></label>
+      <label className="block">Cosa vuoi riutilizzare?<textarea className="w-full rounded border p-2" maxLength={2000} value={note} onChange={event => setNote(event.target.value)} placeholder="Ad esempio: cambiare metodo dopo il campione, conservare la struttura valida, verificare due casi diversi." /></label>
+      <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !delivery || note.trim().length < 5} onClick={() => void change("/prefer", { delivery_id: delivery, note })}>Conserva questo metodo</button>
+      <p>Registra la tua preferenza, la procedura dichiarata e gli hash dei file. Non approva automaticamente tutti i requisiti e non ricostruisce operazioni non registrate.</p>
+    </div>
     {error && <p role="alert">{error}</p>}
     {library?.total === 0 && <p>Nessuna revisione utilizzabile ancora registrata. I soli comandi riusciti non diventano buone pratiche.</p>}
     {library?.observations.map(record => <article className="space-y-2 rounded border p-3" key={record.id}>
       <p className="font-medium">{record.observation.criterion}</p>
-      <p>{record.observation.status === "passed" ? "Esito positivo osservato" : "Difetto osservato"} · {record.observation.method} · {record.excluded ? "Esclusa" : "Disponibile per selezione"}</p>
+      <p>{record.observation.status === "preferred_by_user" ? "Metodo preferito dall’utente" : record.observation.status === "passed" ? "Esito positivo osservato" : "Difetto osservato"} · {record.observation.method} · {record.excluded ? "Esclusa" : "Disponibile per selezione"}</p>
       <p>{record.observation.evidence}</p>
+      {record.observation.limitations?.map((limit, i) => <p key={i}>Limite conservato: {limit}</p>)}
       {record.observation.corrections.map((action, i) => <p key={i}>Correzione proposta: {action}</p>)}
       <p>Strumenti: {Object.entries(record.observation.tools).map(([tool, version]) => `${tool} ${version}`).join(", ") || "Workspace generale"}</p>
       {record.observation.source_thread && <a className="underline" href={`/workspace/chats/${encodeURIComponent(record.observation.source_thread)}`}>Apri il progetto di origine</a>}
