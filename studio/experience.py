@@ -7,7 +7,7 @@ import re
 
 from .acceptance import fingerprint
 from .progress import utcnow
-from .project_skills import redact_memory, scoped_file, read_document
+from .project_skills import redact_memory, scoped_file, read_document, ROLE_ID
 from .source_packages import digest
 from .state import atomic_json
 
@@ -73,8 +73,15 @@ def method_record(workspace, attempt):
     path = artifact_path(workspace, str(Path(attempt.get('output_dir', '')) / 'work/method.json'))
     trace = artifact_path(workspace, str(Path(attempt.get('output_dir', '')) / 'work/tool-events.json'))
     trace_ref = {'path': str(trace), 'sha256': digest(trace)} if trace else None
+    generation = []
+    work = Path(workspace) / Path(str(Path(attempt.get('output_dir', '')) / 'work')).relative_to('/mnt/user-data') if str(attempt.get('output_dir', '')).startswith('/mnt/user-data/') else None
+    if work and work.resolve().is_relative_to(Path(workspace).resolve()) and not work.is_symlink():
+        for candidate in sorted(work.glob('imagegen-*.json'))[:12]:
+            report = artifact_path(workspace, '/mnt/user-data/' + candidate.relative_to(workspace).as_posix())
+            if report and report.stat().st_size <= 16000:
+                generation.append({'path': '/mnt/user-data/' + report.relative_to(workspace).as_posix(), 'sha256': digest(report)})
     if not path or path.stat().st_size > 16000:
-        return {'status': 'not_recorded', 'tool_events': trace_ref, 'notice': 'Procedimento eseguito non registrato; non dedurlo dal risultato.'}
+        return {'status': 'not_recorded', 'tool_events': trace_ref, 'generation_records': generation, 'notice': 'Procedimento eseguito non registrato; non dedurlo dal risultato.'}
     try:
         value = json.loads(path.read_text())
         if not isinstance(value, dict) or not isinstance(value.get('approach'), str):
@@ -94,10 +101,41 @@ def method_record(workspace, attempt):
             if script and script.stat().st_size <= 1048576 and script.suffix.lower() in ('.py', '.js', '.mjs', '.cjs', '.sh', '.json'):
                 scripts.append({'path': filename, 'sha256': digest(script)})
         return redact_memory({'status': 'reported', 'path': str(path), 'sha256': digest(path),
-                              'declared_method': clean, 'scripts': scripts, 'tool_events': trace_ref,
+                              'declared_method': clean, 'scripts': scripts, 'tool_events': trace_ref, 'generation_records': generation,
                               'notice': 'Procedimento dichiarato dal produttore, non rieseguito dal registro esperienza.'})
     except (OSError, ValueError, TypeError):
         return {'status': 'invalid', 'notice': 'Procedimento registrato in formato non utilizzabile.'}
+
+
+def producer_role(workspace, attempt, roles):
+    """Recover declared tool/procedure context from immutable legacy skill versions."""
+    from .projects import artifact_path
+    if attempt.get('role_scope'):
+        return json.loads(read_document(workspace, attempt['role_scope']))
+    identifier, version = attempt.get('role_id', ''), (attempt.get('context') or {}).get('role', '')
+    current = roles.get(identifier, {})
+    if current.get('version') == version:
+        return current
+    if not isinstance(identifier, str) or not ROLE_ID.fullmatch(identifier) or not isinstance(version, str) or not ID.fullmatch(version):
+        return {}
+    name = f'/mnt/user-data/.studio-project/roles/{identifier}/{version}/SKILL.md'
+    path = artifact_path(workspace, name)
+    if not path or path.stat().st_size > 100000:
+        return {}
+    text = path.read_text()
+    def section(title):
+        marker = '## ' + title + '\n\n'
+        return text.split(marker, 1)[1].split('\n\n## ', 1)[0] if text.count(marker) == 1 else ''
+    try:
+        tools, _ = json.JSONDecoder().raw_decode(section('Strumenti effettivi').lstrip())
+        if not isinstance(tools, list) or any(not isinstance(t, dict) or not isinstance(t.get('id'), str) or not isinstance(t.get('version'), str) for t in tools):
+            return {}
+        return {'id': identifier, 'version': version,
+                'procedure': [line[2:] for line in section('Metodo operativo').splitlines() if line.startswith('- ')][:12],
+                'tools': [t['id'] for t in tools], 'tool_versions': {t['id']: t['version'] for t in tools},
+                'skill': {'path': name, 'sha256': digest(path)}, 'scope_origin': 'saved_legacy_skill'}
+    except (ValueError, TypeError):
+        return {}
 
 
 def collect(workspace, root, source_thread=None):
@@ -124,7 +162,7 @@ def collect(workspace, root, source_thread=None):
                 # Scope reuse to the producer's tools, not the reviewer's toolset.
                 producer = next((a for s in project['steps'] for a in reversed(s['attempts'])
                                  if review['product_path'] in a.get('output_files', [])), {})
-                role = json.loads(read_document(workspace, producer['role_scope'])) if producer.get('role_scope') else roles.get(producer.get('role_id'), {})
+                role = producer_role(workspace, producer, roles)
                 if role.get('version') != (producer.get('context') or {}).get('role'):
                     role = {}
                 tools = {t: role.get('tool_versions', {}).get(t, 'unknown') for t in role.get('tools', []) if t in apps}
@@ -220,9 +258,8 @@ def prefer(workspace, root, delivery_id, note, source_thread=None):
                 files.append({'path': name, 'sha256': digest(path)})
         if not files:
             raise ValueError('I file del metodo non sono più disponibili')
-        role = json.loads(read_document(workspace, attempt['role_scope'])) if attempt.get('role_scope') else next(
-            (r for r in project.get('roles', []) if r['id'] == attempt.get('role_id') and r.get('version') == (attempt.get('context') or {}).get('role')), {})
-        role_skill = next((r.get('skill') for r in project.get('roles', []) if r.get('version') == role.get('version')), None)
+        role = producer_role(workspace, attempt, {r['id']: r for r in project.get('roles', [])})
+        role_skill = role.get('skill') or next((r.get('skill') for r in project.get('roles', []) if r.get('version') == role.get('version')), None)
         observation = redact_memory({
             'kind': 'user_preference', 'project_id': project['id'], 'source_thread': source_thread,
             'criterion': note.strip(), 'method': 'user_feedback', 'status': 'preferred_by_user',

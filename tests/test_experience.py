@@ -127,3 +127,13 @@ class ExperienceTests(unittest.TestCase):
         method=record['observation']['producer_method']
         self.assertEqual(method['status'],'reported');self.assertEqual(method['scripts'][0]['sha256'],digest(script))
         self.assertIn('non rieseguito',method['notice'])
+
+    def test_a_pre_update_success_is_recovered_after_roles_have_been_recompiled(self):
+        data=json.loads(self.state.read_text());data['steps'][0]['attempts'][0].pop('role_scope')
+        self.state.write_text(json.dumps(data))
+        projects.sync_project_context(self.workspace,memory={'later':'Subsequent project stage'})
+        identifier=experience.prefer(self.workspace,self.library,'artcraft-job-123456abcdef','Metodo preferito della prima lavorazione')
+        record=next(r for r in experience.entries(self.library) if r['id']==identifier)
+        self.assertTrue(record['observation']['scope_known'])
+        self.assertIn('vectorcraft',record['observation']['tools'])
+        self.assertTrue(experience.select(self.library,[self.spec],projects.applications()))

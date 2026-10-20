@@ -133,7 +133,10 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         value = {**value, 'results': value.get('results', [])[:8],
                  'deliveries': value.get('deliveries', [])[:5]}
     from .control_memory import reply
-    return reply(workspace, {'project': value}, 'plan')
+    from .state import team
+    from .acceptance import generation_capabilities
+    return reply(workspace, {'project': value,
+        'generation_capabilities': generation_capabilities(team('squad')['engine'], (value or {}).get('user_direction'))}, 'plan')
 
 
 @tool('studio_delegate', parse_docstring=True)
@@ -212,6 +215,8 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     from .acceptance import capabilities
     compact['experience'] = experience
     compact['verification_capabilities'] = capabilities(profile['engine'])
+    from .acceptance import generation_capabilities
+    compact['generation_capabilities'] = generation_capabilities(profile['engine'], project.get('user_direction'))
     from .control_memory import reply, counts
     compact['check_counts'] = counts(handoff.get('checks', []))
     compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))

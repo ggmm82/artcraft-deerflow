@@ -10,8 +10,8 @@ def main():
     contracts = [
         (['codex', '--version'], ['0.162.1']),
         (['codex', 'login', '--help'], ['--device-auth']),
-        (['codex', 'exec', '--help'], ['--model', '--json', '--output-last-message',
-             '--skip-git-repo-check', '--dangerously-bypass-approvals-and-sandbox']),
+        (['codex', 'app-server', '--help'], ['--listen', 'stdio://', 'generate-json-schema']),
+        (['codex', 'features', 'list'], ['image_generation']),
         (['agy', '--version'], [antigravity_version]),
         (['agy', '--help'], ['--print', '--output-format', '--model', '--add-dir',
                             '--json-schema', '--agent', '--disable-slash-commands',

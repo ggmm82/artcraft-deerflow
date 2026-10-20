@@ -202,6 +202,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
                    'acceptance': acceptance, 'role': role, 'compiled_skill': role_text}
+        from .projects import read_project
+        payload['user_direction'] = (read_project(workspace) or {}).get('user_direction')
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())

@@ -96,3 +96,46 @@ della chat sia le etichette Docker di installazione e workspace. Il coordinatore
 riceve l'interruzione e i percorsi parziali; non deve rilanciare automaticamente lo
 stesso incarico. Restano i file già salvati, mentre lo stato non salvato del
 processo può andare perso. Il comando non richiede socket nelle sandbox.
+
+## Cambiare metodo durante il progetto
+
+In **Progetto → Le tue scelte sul metodo** puoi scegliere immagini generate,
+grafica vettoriale modificabile, tecnica mista o lasciare la scelta alla squadra.
+«Come indicato nel brief o in chat» mantiene le indicazioni già date. Il campo
+libero vale per qualsiasi tipo di progetto: stile, strumenti, sorgenti e cambi
+di direzione. Le scelte del pannello appartengono all'utente e un aggiornamento
+del piano del coordinatore non le sovrascrive. In chat il coordinatore chiede
+soltanto le scelte decisive ancora mancanti; non chiede di nuovo quelle esplicite.
+
+Salvare aggiorna memoria e contratto dei prossimi incarichi e invalida le vecchie
+approvazioni; non cambia retroattivamente un worker già avviato. Per cambiare
+subito usa **Attività → Interrompi questa fase**, poi chiedi in chat di ripianificare.
+I file precedenti restano disponibili. Non è prevista la modifica in diretta di
+un prompt mentre una singola generazione è già in corso.
+
+## Generazione nativa Codex
+
+Codex CLI è fissata alla **0.162.1**. Il worker usa il protocollo ufficiale
+`codex app-server` su stdio, senza aprire porte: `exec --json` di questa versione
+non pubblica gli eventi `imageGeneration`. Il bridge osserva avvio/conclusione
+reali e trasferisce soltanto il PNG indicato da `savedPath` all'interno di
+`CODEX_HOME/generated_images`, mai i file di autenticazione. Con la scelta
+«Grafica vettoriale modificabile» disabilita la feature `image_generation`.
+Le altre modalità permettono il tool, senza imporne l'uso. La disponibilità
+configurata è distinta da quella verificata con l'account, il modello e la quota.
+
+Le copie sono in `generated_images/<sha256>.png`, senza conversioni: i byte e i
+metadati incorporati restano intatti. `work/imagegen-<sha256>.json` registra tool,
+evento, prompt esposto come `revisedPrompt`, trasparenza, dimensioni e hash.
+Il produttore deve conservare anche prompt e riferimenti realmente usati in
+`work/method.json` o file collegati. Il registro esperienza conserva i riferimenti
+e gli hash dei rapporti nativi; non ricostruisce prompt storici sconosciuti.
+Il trasferimento controlla struttura/chunk/CRC del PNG, non la qualità visiva o
+l'autenticità crittografica C2PA. Un PNG non è un sorgente a livelli o vettoriale:
+layout, testo e asset vanno consegnati distintamente con i limiti reali.
+
+La CI esegue il binario Codex fissato contro un servizio HTTP locale, con credenziali
+fittizie e rete esterna disabilitata: verifica eventi immagini, copia PNG,
+provenienza, esecuzione di un comando e assenza del tool nella modalità vettoriale.
+Il protocollo app-server è marcato experimental dal fornitore: la versione resta
+fissata e gli aggiornamenti richiedono il superamento di questo contratto.

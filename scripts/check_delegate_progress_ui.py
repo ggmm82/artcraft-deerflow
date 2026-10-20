@@ -122,6 +122,10 @@ window.showThread();
 
             def do_PUT(self):
                 body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', '0'))))
+                if self.path.endswith('/studio-direction'):
+                    state['project']['user_direction'] = {**body, 'revision': 1}
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(b'{"running_step_ids":["motion"]}'); return
                 state['experience_excluded'] = body['excluded']
                 self.do_GET()
 
@@ -190,6 +194,14 @@ window.showThread();
                     page.get_by_test_id('studio-drawer-content').evaluate('(el)=>el.scrollTop=el.scrollHeight')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                page.get_by_role('button', name='Progetto', exact=True).click()
+                direction = page.get_by_test_id('project-direction')
+                direction.get_by_label('Tecnica visiva, se pertinente').select_option('vector')
+                direction.get_by_label('Indicazioni per questo progetto').fill('Disegni modificabili, senza raster incorporati')
+                direction.get_by_role('button', name='Salva le mie scelte').click()
+                expect(direction).to_contain_text('Scelta salvata per i prossimi incarichi')
+                assert state['project']['user_direction']['visual_approach'] == 'vector'
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 page.get_by_role('button', name='Esperienza', exact=True).click()
                 experience_panel = page.get_by_test_id('experience-panel')
                 expect(experience_panel).to_contain_text('1 osservazioni conservate')

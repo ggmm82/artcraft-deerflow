@@ -162,6 +162,9 @@ def sync_acceptance(workspace, requests, criteria=None):
         if not value:
             return
         old = value.get('acceptance') or {}
+        direction = value.get('user_direction')
+        if direction:
+            requests = [*requests, 'Scelta esplicita dell’utente dal pannello progetto: ' + json.dumps(direction, ensure_ascii=False)]
         previous = old.get('user_requests', [])
         documents = json.loads(read_document(workspace, old['request_manifest'])) if old.get('request_manifest') else []
         if not documents and previous:
@@ -191,6 +194,40 @@ def sync_acceptance(workspace, requests, criteria=None):
         atomic_json(folder / 'project.json', value)
 
 
+def set_user_direction(workspace, visual_approach, instructions):
+    """Only the owner API writes this choice; coordinator plans cannot replace it."""
+    if visual_approach not in ('unspecified', 'generated', 'vector', 'mixed', 'automatic'):
+        raise ValueError('Tecnica visiva non riconosciuta')
+    if not isinstance(instructions, str) or len(instructions) > 2000:
+        raise ValueError('Istruzioni entro 2000 caratteri')
+    from .project_skills import request_text
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value:
+            raise ValueError('Definisci prima il progetto')
+        old = value.get('user_direction') or {}
+        if old.get('visual_approach') == visual_approach and old.get('instructions', '') == instructions.strip():
+            return _direction_result(value)
+        direction = {'visual_approach': visual_approach, 'instructions': request_text(instructions.strip()),
+                     'revision': old.get('revision', 0) + 1, 'updated_at': utcnow()}
+        value['user_direction'] = direction
+        value.pop('user_acceptance', None)
+        if value.get('status') == 'ready':
+            value['status'] = 'review'
+        value['updated_at'] = utcnow()
+        # Invalidate old approvals immediately, even before the next coordinator turn.
+        if value.get('acceptance'):
+            value['acceptance']['hash'] = fingerprint({'previous': value['acceptance']['hash'], 'user_direction': direction})
+        atomic_json(folder / 'project.json', value)
+        return _direction_result(value)
+
+
+def _direction_result(value):
+    return {'user_direction': value['user_direction'],
+            'running_step_ids': [s['id'] for s in value.get('steps', []) if s['status'] == 'running'],
+            'instruction': 'Scelta salvata per i prossimi incarichi. Le fasi già avviate conservano il loro incarico: interrompile dal pannello Attività per cambiare subito. Riporta questa scelta in chat per chiedere al coordinatore la ripianificazione.'}
+
+
 def read_project(workspace):
     """Compact operational memory: histories remain on disk, not in every LLM turn."""
     if not (Path(workspace) / '.studio-project').exists():
@@ -206,6 +243,7 @@ def read_project(workspace):
     result['roles'] = value.get('roles', [])
     result['memory'] = value.get('memory')
     result['outcome'] = value.get('outcome')
+    result['user_direction'] = value.get('user_direction')
     result['strategy'] = value.get('strategy')
     result['method_recovery'] = value.get('method_recovery')
     result['orientation'] = orientation(value)
@@ -548,6 +586,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
                     'retry_blocked': True, 'available_results': read_results(value, workspace)}, ensure_ascii=False)
         sources = read_results(value, workspace)
         contract_text = ('\n\nPiano del coordinatore (non sostituisce la richiesta utente): ' + value['brief'] + '\nScopo incarico: ' + purpose + '\nAttività: ' + step['goal'] +
+                    '\nScelta esplicita corrente dell’utente; prevale su ipotesi e metodi preferiti precedenti:\n' + json.dumps(value.get('user_direction'), ensure_ascii=False) +
                     '\nRisultato e forma della consegna concordati (le richieste originali prevalgono):\n' + json.dumps(value.get('outcome'), ensure_ascii=False) +
                     '\nRichiesta originale e criteri di accettazione del prodotto:\n' + json.dumps(compact_acceptance(value.get('acceptance')), ensure_ascii=False) +
                     '\nRisultati disponibili dei colleghi (anche provvisori):\n' + json.dumps(sources, ensure_ascii=False) +
@@ -668,6 +707,7 @@ def sync_project_context(workspace, roles=None, memory=None, experience_root=Non
             current.update(redact_memory(memory))
         if value.get('outcome'):
             current['project_outcome'] = value['outcome']
+        current['user_direction'] = value.get('user_direction')
         if value.get('strategy'):
             current['method_selection'] = value['strategy']['record']
         serialized = json.dumps(current, ensure_ascii=False, sort_keys=True, indent=2)

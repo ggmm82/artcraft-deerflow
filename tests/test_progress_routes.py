@@ -77,6 +77,14 @@ class ProgressRouteTests(unittest.TestCase):
                     self.assertEqual(client.post(stop_url,headers={'X-Test-User':'other'}).status_code,404)
                     self.assertEqual(client.post(stop_url,headers={'X-Test-User':'owner'}).status_code,200)
                     stop.assert_called_once()
+                direction_url = '/api/threads/conversation/studio-direction'
+                direction = {'visual_approach': 'vector', 'instructions': 'Disegni modificabili'}
+                self.assertEqual(client.put(direction_url,json=direction).status_code,401)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'no-permission'}).status_code,403)
+                self.assertEqual(client.put(direction_url,json=direction,headers={'X-Test-User':'owner'}).status_code,200)
+                self.assertEqual(client.get(url,headers={'X-Test-User':'owner'}).json()['project']['user_direction']['visual_approach'],'vector')
+                self.assertEqual(client.put(direction_url,json={'visual_approach':'invalid'},headers={'X-Test-User':'owner'}).status_code,422)
                 accept_url = '/api/threads/conversation/studio-delivery/accept'
                 data = {'delivery_id': 'nonexistent'}
                 self.assertEqual(client.post(accept_url, json=data).status_code, 401)

@@ -100,6 +100,31 @@ class ProjectBriefTests(unittest.TestCase):
         self.assertEqual(memory['project_outcome']['format'], 'Prodotto impaginato e sorgente')
         self.assertEqual(second['acceptance']['hash'], first['acceptance']['hash'])  # A coordinator reformulation is not a user instruction.
 
+    def test_owner_method_choice_reaches_workers_and_invalidates_old_approvals(self):
+        projects.create_plan(self.root, 'Illustrazione', [], outcome={'result': 'Scena', 'format': 'Sorgente modificabile'})
+        projects.sync_acceptance(self.root, ['Illustrazione richiesta'])
+        projects.sync_project_context(self.root, [role()])
+        before = projects.read_project(self.root)
+        choice = projects.set_user_direction(self.root, 'vector', 'Tutti gli elementi disegnati modificabili')
+        self.assertEqual(choice['user_direction']['revision'], 1)
+        self.assertNotEqual(before['acceptance']['hash'], projects.read_project(self.root)['acceptance']['hash'])
+        projects.sync_acceptance(self.root, ['Illustrazione richiesta'])
+        projects.sync_project_context(self.root)
+        after = projects.read_project(self.root)
+        self.assertNotEqual(before['roles'][0]['version'], after['roles'][0]['version'])
+        memo = json.loads(read_document(self.root, after['memory']))
+        self.assertEqual(memo['user_direction']['visual_approach'], 'vector')
+        tasks = []
+        projects.execute_step(self.root, 'workspace', 'Produci', '',
+            lambda task, started: tasks.append(task) or json.dumps({'ok': True}))
+        self.assertIn('Tutti gli elementi disegnati modificabili', tasks[0])
+        projects.create_plan(self.root, 'Piano nuovo del coordinatore', [])
+        self.assertEqual(projects.read_project(self.root)['user_direction'], choice['user_direction'])
+        self.assertEqual(projects.set_user_direction(self.root, 'vector', 'Tutti gli elementi disegnati modificabili')['user_direction']['revision'], 1)
+        self.assertEqual(projects.set_user_direction(self.root, 'mixed', 'Testi separati')['user_direction']['revision'], 2)
+        for invalid in ('invented', ''):
+            with self.assertRaises(ValueError): projects.set_user_direction(self.root, invalid, '')
+
     def test_no_silent_truncation_or_fictional_domain_fields(self):
         for data in ({'result': 'Solo argomento'}, {'result': 'Prodotto', 'format': 'x' * 501},
                      {'questions': ['q'] * 4}, {'profession': 'Invented fixed catalog'}):

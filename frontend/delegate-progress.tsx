@@ -16,7 +16,8 @@ type Criterion = { requirement_id?: string; criterion: string; status: string; e
 type Outcome = { title: string; result: string; format: string; use: string; quality: string; constraints: string[]; assumptions: string[]; questions: string[] };
 type ProjectRole = { experience?: { count: number; ids: string[] }; id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
-type Project = { strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type UserDirection = { visual_approach: string; instructions: string; revision: number };
+type Project = { user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -34,6 +35,47 @@ function StatusBadge({ children, tone = "neutral" }: { children: ReactNode; tone
 const stepTone = (state: string): Tone => state === "running" ? "active" : state === "completed" ? "done"
   : ["paused", "needs_revision", "review"].includes(state) ? "attention" : "neutral";
 const tabStyle = "rounded-lg border border-transparent px-3 py-2 transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-expanded:border-border aria-expanded:bg-muted aria-expanded:font-semibold disabled:opacity-50";
+
+function ProjectDirection({ threadId, saved }: { threadId: string; saved?: UserDirection | null }) {
+  const [choice, setChoice] = useState(saved?.visual_approach || "unspecified");
+  const [instructions, setInstructions] = useState(saved?.instructions || "");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  async function apply() {
+    setBusy(true); setNotice("");
+    try {
+      const response = await fetch(`${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/studio-direction`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visual_approach: choice, instructions }),
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json() as { running_step_ids?: string[] };
+      setNotice(data.running_step_ids?.length
+        ? "Scelta salvata per i prossimi incarichi. Per cambiare subito, interrompi la fase in Attività e chiedi in chat di ripianificare. I file salvati restano disponibili."
+        : "Scelta salvata. Scrivi in chat di proseguire con queste indicazioni: guideranno la squadra e le verifiche.");
+    } catch { setNotice("Scelta non salvata. Riprova prima di proseguire."); }
+    finally { setBusy(false); }
+  }
+  return <section className="space-y-3 rounded-xl border p-4" data-testid="project-direction">
+    <h4 className="font-semibold">Le tue scelte sul metodo</h4>
+    <p className="text-muted-foreground text-xs">Puoi cambiarle durante il progetto. Prevalgono sui metodi preferiti della squadra; le fasi già avviate vanno interrotte separatamente.</p>
+    <label className="block space-y-1"><span>Tecnica visiva, se pertinente</span>
+      <select className="bg-background w-full rounded border p-2" value={choice} onChange={e => setChoice(e.target.value)}>
+        <option value="unspecified">Come indicato nel brief o in chat</option>
+        <option value="generated">Immagini generate</option>
+        <option value="vector">Grafica vettoriale modificabile</option>
+        <option value="mixed">Combinazione di immagini e vettori</option>
+        <option value="automatic">Lascio scegliere alla squadra</option>
+      </select>
+    </label>
+    <label className="block space-y-1"><span>Indicazioni per questo progetto</span>
+      <textarea className="w-full rounded border p-2" maxLength={2000} rows={3} value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Stile, strumenti, sorgenti richiesti o cambi di direzione…" />
+    </label>
+    {choice === "vector" && <p className="text-muted-foreground text-xs">La generazione nativa di immagini sarà disattivata nei prossimi worker Codex. Un PNG inserito in un SVG non soddisfa la richiesta di vettori modificabili.</p>}
+    <button type="button" className="rounded border px-3 py-1.5 disabled:opacity-50" disabled={busy} onClick={() => void apply()}>{busy ? "Salvataggio…" : "Salva le mie scelte"}</button>
+    {notice && <p role="status">{notice}</p>}
+  </section>;
+}
 
 function JobCard({ job, now, threadId }: { job: JobProgress; now: number; threadId: string }) {
   const [stopping, setStopping] = useState(false);
@@ -258,6 +300,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {project.outcome?.use && <p><strong>Uso e destinatari:</strong> {project.outcome.use}</p>}
           {project.outcome?.quality && <p><strong>Qualità attesa:</strong> {project.outcome.quality}</p>}
         </section>
+        <ProjectDirection key={threadId} threadId={threadId} saved={project.user_direction} />
         {questions.length > 0 && <section className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4" data-testid="brief-questions">
           <h4 className="font-semibold">Le scelte che mancano</h4>
           <ul className="list-inside list-disc">{questions.map((q, i) => <li key={i}>{q}</li>)}</ul>

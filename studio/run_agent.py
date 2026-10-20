@@ -49,13 +49,6 @@ def copy_credentials(source, destination, engine):
 
 
 def command(engine, model, prompt, output):
-    if engine == 'codex':
-        args = ['codex', 'exec', '--json', '--skip-git-repo-check',
-                '--dangerously-bypass-approvals-and-sandbox',
-                '--output-last-message', str(output)]
-        if model:
-            args += ['--model', model]
-        return args + ['-']
     if engine == 'gemini':
         args = ['agy', '--dangerously-skip-permissions', '--input-format', 'stream-json', '--output-format', 'stream-json',
                 '--add-dir', '/mnt/user-data', '--print-timeout', '25m',
@@ -196,7 +189,8 @@ def main():
         'Python: /usr/bin/python3 (non python). CLI native e craft: /usr/local/bin; '
         'non usare /opt/artcraft/bin, che non esiste.',
         'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
-        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai.',
+        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai. '
+        'Il runtime trasferisce automaticamente i PNG restituiti dalla generazione nativa in ARTCRAFT_OUTPUT_DIR/generated_images: usa quelle copie, senza esplorare la cartella delle credenziali.',
         'Input e risultati degli altri specialisti: /mnt/user-data. '
         'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
         'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
@@ -241,6 +235,17 @@ def main():
         'Fasi ammesse: planning, creating, exporting, checking, finalizing. '
         'Non inventare percentuali o tempi di completamento.'
     ])
+    prompt += ('\nScelte esplicite dell’utente dal pannello (prevalgono su metodi preferiti e ipotesi): ' +
+               json.dumps(job.get('user_direction'), ensure_ascii=False) +
+               '\nUn’immagine raster inserita in un SVG non è un disegno vettoriale modificabile. '
+               'Se la tecnica richiesta non è disponibile, riferisci il limite senza sostituirla in silenzio.')
+    native_images = engine == 'codex' and (job.get('user_direction') or {}).get('visual_approach') != 'vector'
+    if native_images:
+        prompt += ('\nCapacità nativa configurata: image_gen.imagegen di Codex. Disponibilità effettiva soggetta a login, modello e quota. '
+                   'Usala solo se coerente con la scelta dell’utente: non è obbligatoria. '
+                   'Per gli asset generati consulta generated_images e work/imagegen-*.json: il runtime copia il PNG e registra prompt riveduto, hash e dimensioni reali. '
+                   'Conserva inoltre in work i prompt originari e i riferimenti agli input effettivamente usati, senza credenziali. '
+                   'Il PNG non contiene livelli separati: se servono testi e impaginazione modificabili, crea un progetto con quelle componenti separate e dichiara i limiti della parte raster.')
     if engine == 'gemini':
         prompt += ('\nChiusura obbligatoria Antigravity: quando file e handoff.json sono pronti, '
                    'chiama il tool nativo finish e consegna un oggetto con summary contenente '
@@ -264,6 +269,14 @@ def main():
                     from deepseek import run
             os.environ['ARTCRAFT_OUTPUT_DIR'] = str(output_dir)
             message = run(job['model'], prompt, output_dir, job['timeout'], progress=reporter)
+        elif engine == 'codex':
+            try:
+                from .codex_native import run
+            except ImportError:
+                from codex_native import run
+            reporter.emit('waiting_model')
+            reporter.model_wait_seconds = (job.get('resources') or {}).get('model_wait_seconds', 0)
+            message = run(job['model'], prompt, output_dir, job['timeout'], reporter, image_generation=native_images)
         else:
             reporter.emit('waiting_model')
             result = run_cli(command(engine, job['model'], prompt, final), cwd=output_dir,
@@ -278,15 +291,12 @@ def main():
                               'exit_code': result.returncode,
                               'error': worker_error(engine, result)}))
                 return result.returncode
-            if engine == 'codex':
-                message = final.read_text() if final.exists() else result.stdout
-            else:
-                parsed = result_envelope(result.stdout)
-                if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
-                    raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
-                message = parsed.get('structured_output', {}).get('summary')
-                if not isinstance(message, str) or not message.strip():
-                    raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
+            parsed = result_envelope(result.stdout)
+            if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
+                raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
+            message = parsed.get('structured_output', {}).get('summary')
+            if not isinstance(message, str) or not message.strip():
+                raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
         reporter.emit('checking')
         try:
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)

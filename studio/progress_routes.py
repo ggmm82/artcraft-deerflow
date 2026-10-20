@@ -13,6 +13,23 @@ from .projects import read_project, accept_delivery
 router = APIRouter()
 
 
+class ProjectDirection(BaseModel):
+    visual_approach: str = Field(pattern='^(unspecified|generated|vector|mixed|automatic)$')
+    instructions: str = Field(default='', max_length=2000)
+
+
+@router.put('/api/threads/{thread_id}/studio-direction')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def project_direction(thread_id: ThreadId, body: ProjectDirection, request: Request, response: Response):
+    from .projects import set_user_direction
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        return await run_in_threadpool(set_user_direction, workspace, body.visual_approach, body.instructions)
+    except ValueError as error:
+        raise HTTPException(409, str(error)) from error
+
+
 @router.get('/api/threads/{thread_id}/studio-jobs')
 @require_permission('threads', 'read', owner_check=True, require_existing=True)
 async def job_progress(thread_id: ThreadId, request: Request, response: Response):

@@ -10,6 +10,14 @@ def capabilities(engine):
             'technical': True, 'visual': engine in ('codex', 'gemini'), 'listening': False}
 
 
+def generation_capabilities(engine, direction=None):
+    allowed = (direction or {}).get('visual_approach') != 'vector'
+    return {'native_images': {'configured': engine == 'codex', 'allowed_by_user': allowed,
+            'tool': 'image_gen.imagegen' if engine == 'codex' else None,
+            'availability': 'Verificare con una chiamata reale: dipende da account, modello e quota.',
+            'output': 'PNG raster, non sorgente vettoriale o livelli separati.'}}
+
+
 def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
