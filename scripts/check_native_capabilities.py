@@ -17,12 +17,16 @@ def main():
         from deerflow.config.paths import get_paths
         from deerflow.skills.storage import get_or_new_user_skill_storage
         from deerflow.persistence.agents import get_agent_store
-        from studio.capability_policy import native_policy, stage_skills, install_managed_skills
+        from studio.capability_policy import native_policy, stage_skills, install_managed_skills, migrate_existing_users
         from studio.state import update_agent
         assert get_app_config().agents_api.enabled is True
         install_managed_skills()
         update_agent('blender', {'engine': 'inherit', 'enabled': False})
         one, two = 'native-policy-a', 'native-policy-b'
+        for user in (one, two):
+            get_paths().user_dir(user).mkdir(parents=True, exist_ok=True)
+        migrate_existing_users()
+        assert (get_paths().user_dir(one) / 'artcraft-native-skills-migrated.json').is_file()
         assert 'blender' in native_policy(one)['blocked']
         store = get_or_new_user_skill_storage(one)
         # An unrelated user-authored skill must not hide the managed CLI skills.

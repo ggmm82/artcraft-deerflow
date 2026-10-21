@@ -42,6 +42,22 @@ def current_policy():
     return native_policy(get_effective_user_id())
 
 
+def migrate_existing_users():
+    """Import old global disables before the native Capability Center is served."""
+    from deerflow.config.paths import get_paths, _validate_user_id
+    if not any(not config.get('enabled', True) for config in catalog().values()):
+        return
+    users = get_paths().base_dir / 'users'
+    if users.is_dir():
+        for directory in users.iterdir():
+            if directory.is_dir() and not directory.is_symlink():
+                try:
+                    user_id = _validate_user_id(directory.name)
+                except ValueError:
+                    continue
+                native_policy(user_id)
+
+
 def legacy_policy():
     settings = catalog()
     return policy_from_names({'artcraft-' + a['id'] for a in applications()

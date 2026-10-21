@@ -65,8 +65,14 @@ async def save_agent(identifier: str, value: AgentConfig, request: Request):
             from deerflow.config import get_app_config
             await update_skill('artcraft-' + identifier, SkillUpdateRequest(enabled=value.enabled), request, get_app_config())
         payload = value.model_dump()
-        payload['enabled'] = value.enabled if value.enabled is not None else identifier in policy['allowed']
-        return update_agent(identifier, payload)
+        # Preserve the original global legacy import baseline. A user's native
+        # toggle must not change another user's future migration defaults.
+        payload['enabled'] = catalog().get(identifier, {}).get('enabled', True) if policy['source'] == 'deerflow' else (
+            value.enabled if value.enabled is not None else identifier in policy['allowed'])
+        saved = update_agent(identifier, payload)
+        if policy['source'] == 'deerflow':
+            saved = {**saved, 'enabled': identifier in current_policy()['allowed']}
+        return saved
     except ValueError as error:
         raise HTTPException(400, str(error)) from None
 

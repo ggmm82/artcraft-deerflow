@@ -41,6 +41,10 @@ request('/api/skills/artcraft-blender', {'enabled':False}, method='PUT')
 assert json.loads(request('/studio/api/catalog'))['agents']['blender']['enabled'] is False
 request('/api/skills/artcraft-blender', {'enabled':True}, method='PUT')
 assert json.loads(request('/studio/api/catalog'))['agents']['blender']['enabled'] is True
+request('/studio/api/agents/blender', {'engine':'inherit','enabled':False}, method='PUT')
+assert next(s for s in json.loads(request('/api/skills'))['skills'] if s['name'] == 'artcraft-blender')['enabled'] is False
+request('/api/skills/artcraft-blender', {'enabled':True}, method='PUT')
+assert json.loads(request('/studio/api/catalog'))['agents']['blender']['enabled'] is True
 
 
 catalog = json.loads(request('/studio/api/catalog'))

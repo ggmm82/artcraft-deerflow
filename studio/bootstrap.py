@@ -187,8 +187,9 @@ def initialize():
 
 def main():
     initialize()
-    from .capability_policy import install_managed_skills
+    from .capability_policy import install_managed_skills, migrate_existing_users
     install_managed_skills()
+    migrate_existing_users()
     from .docker_runtime import cleanup_orphans
     cleanup_orphans()
     # exec preserves signal delivery, while the env secrets stay in this process tree.
