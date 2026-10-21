@@ -1,6 +1,6 @@
 # Capacità operative: cadcraft
 
-Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Disegno tecnico, quote, blocchi, geometrie CAD e tavole di progetto.
 **Sorgenti:** DXF/DWG o formato nativo realmente supportato, con unità e quote.
@@ -29,5 +29,5 @@ GLB non è automaticamente un documento CAD apribile nell’app. Geometria valid
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 426 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `d0905fdd4ce7227d6f26d8627c5907ac4d6ce40fad52021b54e0e9be2dc7b4dc`.
+Catalogo esaminato: 426 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `d0905fdd4ce7227d6f26d8627c5907ac4d6ce40fad52021b54e0e9be2dc7b4dc`.
 Fonte: https://github.com/storytold/cadcraft/tree/v0.7.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

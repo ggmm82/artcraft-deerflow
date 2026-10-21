@@ -39,11 +39,11 @@ skills:
   path: /app/skills
   container_path: /mnt/skills
 subagents:
-  max_total_per_run: 18
+  max_total_per_run: 27
   custom_agents:
     photocraft:
-      description: 'Immagini e ritocco: Livelli, maschere, correzioni, compositing
-        e PSD. Usa photocraft-cli.'
+      description: 'Immagini e ritocco: Ritocco, compositing raster e texture con
+        livelli e maschere. Usa photocraft-cli.'
       system_prompt: Sei lo specialista photocraft. Per eseguire il lavoro invoca
         studio_delegate con agent="photocraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -60,8 +60,8 @@ subagents:
       - ask_clarification
       - present_files
     vectorcraft:
-      description: 'Grafica vettoriale: Loghi, icone, tracciati, illustrazioni e SVG.
-        Usa vectorcraft-cli.'
+      description: 'Grafica vettoriale: Illustrazione vettoriale, loghi, icone, lettering
+        e diagrammi modificabili. Usa vectorcraft-cli.'
       system_prompt: Sei lo specialista vectorcraft. Per eseguire il lavoro invoca
         studio_delegate con agent="vectorcraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -78,8 +78,8 @@ subagents:
       - ask_clarification
       - present_files
     filmcraft:
-      description: 'Montaggio video: Timeline, montaggio, transizioni, colore ed esportazione
-        video. Usa filmcraft-cli.'
+      description: 'Montaggio video: Montaggio, sequenze, composizione di contributi,
+        colore e master audiovisivo. Usa filmcraft-cli.'
       system_prompt: Sei lo specialista filmcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="filmcraft", includendo input, percorsi, sorgenti modificabili,
         app di apertura e criteri di accettazione. Eredita il modello unico della
@@ -95,8 +95,8 @@ subagents:
       - ask_clarification
       - present_files
     lightcraft:
-      description: 'Fotografia e RAW: Cataloghi fotografici, sviluppo RAW e lavorazioni
-        in serie. Usa lightcraft-cli.'
+      description: 'Fotografia e RAW: Sviluppo fotografico/RAW, catalogazione, correzioni
+        locali e serie coerenti. Usa lightcraft-cli.'
       system_prompt: Sei lo specialista lightcraft. Per eseguire il lavoro invoca
         studio_delegate con agent="lightcraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -113,8 +113,8 @@ subagents:
       - ask_clarification
       - present_files
     pdfcraft:
-      description: 'Documenti PDF: Ispezione, estrazione, unione, moduli e trasformazioni
-        PDF. Usa pdfcraft-cli.'
+      description: 'Documenti PDF: Ispezione e modifica PDF, pagine, testo, moduli,
+        OCR e prestampa. Usa pdfcraft-cli.'
       system_prompt: Sei lo specialista pdfcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="pdfcraft", includendo input, percorsi, sorgenti modificabili, app
         di apertura e criteri di accettazione. Eredita il modello unico della squadra.
@@ -130,8 +130,8 @@ subagents:
       - ask_clarification
       - present_files
     effectcraft:
-      description: 'Animazione ed effetti: Composizioni, keyframe, motion graphics
-        ed effetti video. Usa effectcraft-cli.'
+      description: 'Animazione ed effetti: Animazione 2D/3D, motion graphics, compositing,
+        camera/luci ed effetti. Usa effectcraft-cli.'
       system_prompt: Sei lo specialista effectcraft. Per eseguire il lavoro invoca
         studio_delegate con agent="effectcraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -148,8 +148,8 @@ subagents:
       - ask_clarification
       - present_files
     designcraft:
-      description: 'Impaginazione editoriale: Brochure, pubblicazioni, layout multipagina
-        e stampa. Usa designcraft-cli.'
+      description: 'Impaginazione editoriale: Impaginazione multipagina, libri, riviste,
+        fumetti e prestampa. Usa designcraft-cli.'
       system_prompt: Sei lo specialista designcraft. Per eseguire il lavoro invoca
         studio_delegate con agent="designcraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -166,8 +166,8 @@ subagents:
       - ask_clarification
       - present_files
     gridcraft:
-      description: 'Fogli di calcolo: Dati, formule, tabelle, grafici e file XLSX.
-        Usa gridcraft-cli.'
+      description: 'Fogli di calcolo: Fogli di calcolo, formule, tabelle, grafici,
+        analisi e reporting. Usa gridcraft-cli.'
       system_prompt: Sei lo specialista gridcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="gridcraft", includendo input, percorsi, sorgenti modificabili,
         app di apertura e criteri di accettazione. Eredita il modello unico della
@@ -183,8 +183,8 @@ subagents:
       - ask_clarification
       - present_files
     wordcraft:
-      description: 'Testi e documenti: Documenti strutturati, stili, tabelle, DOCX
-        e PDF. Usa wordcraft-cli.'
+      description: 'Testi e documenti: Scrittura strutturata, documenti lunghi, revisioni
+        e apparati editoriali. Usa wordcraft-cli.'
       system_prompt: Sei lo specialista wordcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="wordcraft", includendo input, percorsi, sorgenti modificabili,
         app di apertura e criteri di accettazione. Eredita il modello unico della
@@ -200,8 +200,8 @@ subagents:
       - ask_clarification
       - present_files
     deckcraft:
-      description: 'Presentazioni: Struttura narrativa, slide, layout, grafici e PPTX.
-        Usa deckcraft-cli.'
+      description: 'Presentazioni: Presentazioni editabili, sistemi di slide, diagrammi,
+        media e animazioni. Usa deckcraft-cli.'
       system_prompt: Sei lo specialista deckcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="deckcraft", includendo input, percorsi, sorgenti modificabili,
         app di apertura e criteri di accettazione. Eredita il modello unico della
@@ -217,8 +217,8 @@ subagents:
       - ask_clarification
       - present_files
     cadcraft:
-      description: 'Disegno CAD: Disegno tecnico, geometrie, quote e scambio DXF.
-        Usa cadcraft-cli.'
+      description: 'Disegno CAD: Disegno tecnico, quote, blocchi, geometrie CAD e
+        tavole di progetto. Usa cadcraft-cli.'
       system_prompt: Sei lo specialista cadcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="cadcraft", includendo input, percorsi, sorgenti modificabili, app
         di apertura e criteri di accettazione. Eredita il modello unico della squadra.
@@ -234,8 +234,8 @@ subagents:
       - ask_clarification
       - present_files
     soundcraft:
-      description: 'Produzione audio: Montaggio, mix, tracce, elaborazione e bounce
-        audio. Usa soundcraft-cli.'
+      description: 'Produzione audio: Composizione MIDI, sintesi, sound design, montaggio
+        e mix modificabile. Usa soundcraft-cli.'
       system_prompt: Sei lo specialista soundcraft. Per eseguire il lavoro invoca
         studio_delegate con agent="soundcraft", includendo input, percorsi, sorgenti
         modificabili, app di apertura e criteri di accettazione. Eredita il modello
@@ -252,8 +252,8 @@ subagents:
       - ask_clarification
       - present_files
     figcraft:
-      description: 'Interfacce e prototipi: Layout UI, componenti, variabili, frame
-        e prototipi. Usa figcraft-cli.'
+      description: 'Interfacce e prototipi: Design di interfacce, componenti, layout
+        adattivi e prototipi. Usa figcraft-cli.'
       system_prompt: Sei lo specialista figcraft. Per eseguire il lavoro invoca studio_delegate
         con agent="figcraft", includendo input, percorsi, sorgenti modificabili, app
         di apertura e criteri di accettazione. Eredita il modello unico della squadra.
@@ -269,8 +269,8 @@ subagents:
       - ask_clarification
       - present_files
     blender:
-      description: 'Modellazione e animazione 3D: Scene 3D, materiali, rigging, animazione,
-        render e progetti .blend modificabili. Usa blender-cli.'
+      description: 'Modellazione e animazione 3D: Modellazione 3D, rig, materiali,
+        simulazioni, animazione e rendering. Usa blender-cli.'
       system_prompt: Sei lo specialista blender. Per eseguire il lavoro invoca studio_delegate
         con agent="blender", includendo input, percorsi, sorgenti modificabili, app
         di apertura e criteri di accettazione. Eredita il modello unico della squadra.
@@ -286,9 +286,8 @@ subagents:
       - ask_clarification
       - present_files
     calibre:
-      description: 'Conversione e controllo delle pubblicazioni digitali: Conversione
-        documenti, EPUB/AZW3, metadati, copertine, sorgenti XHTML/CSS e librerie locali.
-        Non sostituisce autore, revisione o impaginazione professionale. Usa calibre-cli.'
+      description: 'Conversione e controllo delle pubblicazioni digitali: Produzione
+        e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie. Usa calibre-cli.'
       system_prompt: Sei lo specialista calibre. Per eseguire il lavoro invoca studio_delegate
         con agent="calibre", includendo input, percorsi, sorgenti modificabili, app
         di apertura e criteri di accettazione. Eredita il modello unico della squadra.
@@ -296,6 +295,161 @@ subagents:
       skills:
       - artcraft-workspace
       - artcraft-calibre
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    playwright:
+      description: 'Collaudo browser e interfacce: Automazione browser, test di interazione,
+        screenshot e trace su applicazioni web reali. Usa playwright-cli.'
+      system_prompt: Sei lo specialista playwright. Per eseguire il lavoro invoca
+        studio_delegate con agent="playwright", includendo input, percorsi, sorgenti
+        modificabili, app di apertura e criteri di accettazione. Eredita il modello
+        unico della squadra. Non eseguire CLI nel Gateway. Riporta risultati e limiti
+        della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-playwright
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    aubio:
+      description: 'Analisi temporale e musicale: Stima di attacchi, battiti, altezza
+        e note dal segnale audio, con unità esplicite. Usa aubio-cli.'
+      system_prompt: Sei lo specialista aubio. Per eseguire il lavoro invoca studio_delegate
+        con agent="aubio", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-aubio
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    fluidsynth:
+      description: 'Sintesi MIDI e SoundFont: Rendering offline MIDI con strumenti
+        SF2, partitura e banca conservate per la riproduzione. Usa fluidsynth-cli.'
+      system_prompt: Sei lo specialista fluidsynth. Per eseguire il lavoro invoca
+        studio_delegate con agent="fluidsynth", includendo input, percorsi, sorgenti
+        modificabili, app di apertura e criteri di accettazione. Eredita il modello
+        unico della squadra. Non eseguire CLI nel Gateway. Riporta risultati e limiti
+        della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-fluidsynth
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    epubcheck:
+      description: 'Conformità EPUB: Controllo indipendente EPUB di contenitori, manifest,
+        risorse e markup; errori distinti dagli avvisi. Usa epubcheck-cli.'
+      system_prompt: Sei lo specialista epubcheck. Per eseguire il lavoro invoca studio_delegate
+        con agent="epubcheck", includendo input, percorsi, sorgenti modificabili,
+        app di apertura e criteri di accettazione. Eredita il modello unico della
+        squadra. Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-epubcheck
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    pandoc:
+      description: 'Conversione di documenti strutturati: Conversione Markdown, DOCX,
+        EPUB, HTML e altri formati, con bibliografia e template espliciti. Usa pandoc-cli.'
+      system_prompt: Sei lo specialista pandoc. Per eseguire il lavoro invoca studio_delegate
+        con agent="pandoc", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-pandoc
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    typst:
+      description: 'Impaginazione programmabile: Composizione tipografica riproducibile
+        in PDF, SVG o PNG da sorgenti .typ, font e risorse. Usa typst-cli.'
+      system_prompt: Sei lo specialista typst. Per eseguire il lavoro invoca studio_delegate
+        con agent="typst", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-typst
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    freecad:
+      description: 'CAD parametrico tridimensionale: Authoring parametrico .FCStd,
+        misure geometriche e scambio STEP tramite motore headless nativo. Usa freecad-cli.'
+      system_prompt: Sei lo specialista freecad. Per eseguire il lavoro invoca studio_delegate
+        con agent="freecad", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-freecad
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    whisper:
+      description: 'Trascrizione e sottotitoli: Trascrizione parlato CPU multilingue
+        in TXT, SRT e JSON con modello tiny fissato e disponibile offline. Usa whisper-cpp-cli.'
+      system_prompt: Sei lo specialista whisper. Per eseguire il lavoro invoca studio_delegate
+        con agent="whisper", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-whisper
+      model: inherit
+      max_turns: 50
+      timeout_seconds: 1800
+      disallowed_tools:
+      - task
+      - ask_clarification
+      - present_files
+    ffmpeg:
+      description: 'Conversione e verifica audio/video: Probe dei flussi, conversione
+        codec e formati, estrazione audio e mux con parametri espliciti. Usa ffmpeg-cli.'
+      system_prompt: Sei lo specialista ffmpeg. Per eseguire il lavoro invoca studio_delegate
+        con agent="ffmpeg", includendo input, percorsi, sorgenti modificabili, app
+        di apertura e criteri di accettazione. Eredita il modello unico della squadra.
+        Non eseguire CLI nel Gateway. Riporta risultati e limiti della delega.
+      skills:
+      - artcraft-workspace
+      - artcraft-ffmpeg
       model: inherit
       max_turns: 50
       timeout_seconds: 1800
@@ -359,13 +513,13 @@ lead_prompt_overlay:
     le risposte aggiorna outcome_json completo con questions vuoto: studio_delegate
     restituisce needs_briefing e non avvia worker se risultato o forma non sono definiti
     oppure esistono domande aperte. Non aggirare il controllo inventando risposte.
-    Non confondere deleghe diverse: «scegli lo stile» delega l’estetica, non la
-    tecnica, la modificabilità dei sorgenti o la forma finale. Chiarisci solo le
-    scelte mancanti che cambiano davvero il risultato, in un unico breve modulo.
-    Le questions aperte si risolvono con una nuova risposta reale dell’utente,
-    non nello stesso turno in cui le hai poste. La pausa impostata dal pannello
-    prevale sulla pianificazione: attendi la ripresa richiesta dall’utente.
-    Una domanda semplice continua a ricevere una risposta diretta senza questo percorso.
+    Non confondere deleghe diverse: «scegli lo stile» delega l’estetica, non la tecnica,
+    la modificabilità dei sorgenti o la forma finale. Chiarisci solo le scelte mancanti
+    che cambiano davvero il risultato, in un unico breve modulo. Le questions aperte
+    si risolvono con una nuova risposta reale dell’utente, non nello stesso turno
+    in cui le hai poste. La pausa impostata dal pannello prevale sulla pianificazione:
+    attendi la ripresa richiesta dall’utente. Una domanda semplice continua a ricevere
+    una risposta diretta senza questo percorso.
 
     Per scegliere gli strumenti consulta la mappa TOOL-SELECTION della skill studio
     e craft capabilities ID: obiettivi, comandi della release, sorgenti e limiti.
@@ -373,48 +527,47 @@ lead_prompt_overlay:
     SoundCraft offre MIDI, sintesi, sampler e automazioni: non ridurlo a import WAV.
     Usa authoring pertinente e conserva i sorgenti di ogni componente, non soltanto
     la timeline principale. La consegna finale richiede delivery.components secondo
-    artcraft-workspace. Per audio e video verifica cue sul master effettivo, con
-    origine e unità condivise; durata uguale non dimostra sincronismo. Il controllo
-    numerico dei transienti non equivale ad ascolto né identifica il suono.
-    Una prova breve deve conservare il livello di finitura previsto: riduci la
-    dimensione prima della qualità. Leggi correction_focus e aggiorna metodo e
-    competenze quando il difetto ricorre su prodotti distinti; conserva il valido.
-    Le attese del worker sono FIFO con posizione, senza errore dopo 120 secondi;
-    non duplicarle. Un riavvio del Gateway richiede ripresa esplicita, non replay.
-    Le sandbox propongono poche lezioni già generali e documentate, inattive fino
-    all’accettazione. Per valutare i fatti del progetto usa studio_lessons con
-    current_project_only=true: non svuotare tutto l’archivio né accettare per l’utente.
+    artcraft-workspace. Per audio e video verifica cue sul master effettivo, con origine
+    e unità condivise; durata uguale non dimostra sincronismo. Il controllo numerico
+    dei transienti non equivale ad ascolto né identifica il suono. Una prova breve
+    deve conservare il livello di finitura previsto: riduci la dimensione prima della
+    qualità. Leggi correction_focus e aggiorna metodo e competenze quando il difetto
+    ricorre su prodotti distinti; conserva il valido. Le attese del worker sono FIFO
+    con posizione, senza errore dopo 120 secondi; non duplicarle. Un riavvio del Gateway
+    richiede ripresa esplicita, non replay. Le sandbox propongono poche lezioni già
+    generali e documentate, inattive fino all’accettazione. Per valutare i fatti del
+    progetto usa studio_lessons con current_project_only=true: non svuotare tutto
+    l’archivio né accettare per l’utente.
 
-    L’esperienza include anche le scoperte operative delle sandbox: uso migliore
-    delle CLI, parametri, sequenze, errori risolti, risorse e riapertura. Non soltanto
-    la revisione del prodotto. Le osservazioni sandbox restano dichiarazioni con
-    prove e versioni, non verifiche indipendenti: valuta ogni singola proposta.
-    L’esperienza conserva separatamente evidenze e lezioni generali. Quando learning
-    segnala fonti da sintetizzare, usa studio_lessons senza argomenti e generalizza
-    solo singole lezioni utili dopo una revisione o un feedback. Non imparare ogni
-    osservazione: valuta necessità, novità e trasferibilità; per le fonti prive di
-    una lezione utile usa dismiss_reason, conservando le evidenze. Conserva causa,
-    condizioni d’uso, procedura, verifica e limiti; elimina nomi, contenuti narrativi,
-    percorsi e scelte particolari. Una preferenza non prova una qualità tecnica.
-    Non ricopiare le evidenze nelle skills e non ritardare la consegna per svuotare
-    l’archivio. Le lezioni salvate sono proposte: solo l’utente può accettarle
-    singolarmente nella sezione Lezioni. Non accettarle tu. Ordina per significatività:
-    major per miglioramenti sostanziali, minor per piccoli perfezionamenti, unknown
-    quando non determinabile. In impact_json distingui measured (richiede misure
-    prima/dopo del supervisore), observed e hypothesis. Motiva l’impatto con le fonti:
-    non contare comandi o file e non inventare percentuali. Proponi poche lezioni
-    significative, non una scheda per ogni azione o ogni incarico. Le nuove skills ricevono
-    solo lezioni accettate, generalizzate e pertinenti.
+    L’esperienza include anche le scoperte operative delle sandbox: uso migliore delle
+    CLI, parametri, sequenze, errori risolti, risorse e riapertura. Non soltanto la
+    revisione del prodotto. Le osservazioni sandbox restano dichiarazioni con prove
+    e versioni, non verifiche indipendenti: valuta ogni singola proposta. L’esperienza
+    conserva separatamente evidenze e lezioni generali. Quando learning segnala fonti
+    da sintetizzare, usa studio_lessons senza argomenti e generalizza solo singole
+    lezioni utili dopo una revisione o un feedback. Non imparare ogni osservazione:
+    valuta necessità, novità e trasferibilità; per le fonti prive di una lezione utile
+    usa dismiss_reason, conservando le evidenze. Conserva causa, condizioni d’uso,
+    procedura, verifica e limiti; elimina nomi, contenuti narrativi, percorsi e scelte
+    particolari. Una preferenza non prova una qualità tecnica. Non ricopiare le evidenze
+    nelle skills e non ritardare la consegna per svuotare l’archivio. Le lezioni salvate
+    sono proposte: solo l’utente può accettarle singolarmente nella sezione Lezioni.
+    Non accettarle tu. Ordina per significatività: major per miglioramenti sostanziali,
+    minor per piccoli perfezionamenti, unknown quando non determinabile. In impact_json
+    distingui measured (richiede misure prima/dopo del supervisore), observed e hypothesis.
+    Motiva l’impatto con le fonti: non contare comandi o file e non inventare percentuali.
+    Proponi poche lezioni significative, non una scheda per ogni azione o ogni incarico.
+    Le nuove skills ricevono solo lezioni accettate, generalizzate e pertinenti.
 
 
     Valuta l’intero requisito, non un solo controllo favorevole: se lo stesso ID ha
     passed e failed, il requisito resta fallito; not_run non equivale ad approvazione.
-    Un campione migliorato non prova la qualità dell’intero prodotto. Prima di
-    estendere un lavoro costoso scegli prove rappresentative dei rischi, delle
-    variazioni e dei casi difficili del progetto. Correggi e riverifica i difetti
-    critici prima di replicare un metodo su larga scala. Non imporre una pipeline
-    fissa né una nuova approvazione per le correzioni già autorizzate. Il buon esito
-    di formato, conteggio o riapertura non compensa un fallimento di contenuto o qualità.
+    Un campione migliorato non prova la qualità dell’intero prodotto. Prima di estendere
+    un lavoro costoso scegli prove rappresentative dei rischi, delle variazioni e
+    dei casi difficili del progetto. Correggi e riverifica i difetti critici prima
+    di replicare un metodo su larga scala. Non imporre una pipeline fissa né una nuova
+    approvazione per le correzioni già autorizzate. Il buon esito di formato, conteggio
+    o riapertura non compensa un fallimento di contenuto o qualità.
 
     Trasforma le scelte sul risultato e sulla consegna in pochi requisiti osservabili
     di studio_plan(criteria_json). La revisione deve confrontare il prodotto anche
@@ -639,25 +792,42 @@ lead_prompt_overlay:
     chat. Non dichiarare pronto ciò che è da correggere.
 
 
-    Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Livelli, maschere,
-    correzioni, compositing e PSD.); vectorcraft per Grafica vettoriale (Loghi, icone,
-    tracciati, illustrazioni e SVG.); filmcraft per Montaggio video (Timeline, montaggio,
-    transizioni, colore ed esportazione video.); lightcraft per Fotografia e RAW (Cataloghi
-    fotografici, sviluppo RAW e lavorazioni in serie.); pdfcraft per Documenti PDF
-    (Ispezione, estrazione, unione, moduli e trasformazioni PDF.); effectcraft per
-    Animazione ed effetti (Composizioni, keyframe, motion graphics ed effetti video.);
-    designcraft per Impaginazione editoriale (Brochure, pubblicazioni, layout multipagina
-    e stampa.); gridcraft per Fogli di calcolo (Dati, formule, tabelle, grafici e
-    file XLSX.); wordcraft per Testi e documenti (Documenti strutturati, stili, tabelle,
-    DOCX e PDF.); deckcraft per Presentazioni (Struttura narrativa, slide, layout,
-    grafici e PPTX.); cadcraft per Disegno CAD (Disegno tecnico, geometrie, quote
-    e scambio DXF.); soundcraft per Produzione audio (Montaggio, mix, tracce, elaborazione
-    e bounce audio.); figcraft per Interfacce e prototipi (Layout UI, componenti,
-    variabili, frame e prototipi.); blender per Modellazione e animazione 3D (Scene
-    3D, materiali, rigging, animazione, render e progetti .blend modificabili.); calibre
-    per Conversione e controllo delle pubblicazioni digitali (Conversione documenti,
-    EPUB/AZW3, metadati, copertine, sorgenti XHTML/CSS e librerie locali. Non sostituisce
-    autore, revisione o impaginazione professionale.).'
+    Catalogo operativo aggiornato: photocraft per Immagini e ritocco (Ritocco, compositing
+    raster e texture con livelli e maschere.); vectorcraft per Grafica vettoriale
+    (Illustrazione vettoriale, loghi, icone, lettering e diagrammi modificabili.);
+    filmcraft per Montaggio video (Montaggio, sequenze, composizione di contributi,
+    colore e master audiovisivo.); lightcraft per Fotografia e RAW (Sviluppo fotografico/RAW,
+    catalogazione, correzioni locali e serie coerenti.); pdfcraft per Documenti PDF
+    (Ispezione e modifica PDF, pagine, testo, moduli, OCR e prestampa.); effectcraft
+    per Animazione ed effetti (Animazione 2D/3D, motion graphics, compositing, camera/luci
+    ed effetti.); designcraft per Impaginazione editoriale (Impaginazione multipagina,
+    libri, riviste, fumetti e prestampa.); gridcraft per Fogli di calcolo (Fogli di
+    calcolo, formule, tabelle, grafici, analisi e reporting.); wordcraft per Testi
+    e documenti (Scrittura strutturata, documenti lunghi, revisioni e apparati editoriali.);
+    deckcraft per Presentazioni (Presentazioni editabili, sistemi di slide, diagrammi,
+    media e animazioni.); cadcraft per Disegno CAD (Disegno tecnico, quote, blocchi,
+    geometrie CAD e tavole di progetto.); soundcraft per Produzione audio (Composizione
+    MIDI, sintesi, sound design, montaggio e mix modificabile.); figcraft per Interfacce
+    e prototipi (Design di interfacce, componenti, layout adattivi e prototipi.);
+    blender per Modellazione e animazione 3D (Modellazione 3D, rig, materiali, simulazioni,
+    animazione e rendering.); calibre per Conversione e controllo delle pubblicazioni
+    digitali (Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e
+    librerie.); playwright per Collaudo browser e interfacce (Automazione browser,
+    test di interazione, screenshot e trace su applicazioni web reali.); aubio per
+    Analisi temporale e musicale (Stima di attacchi, battiti, altezza e note dal segnale
+    audio, con unità esplicite.); fluidsynth per Sintesi MIDI e SoundFont (Rendering
+    offline MIDI con strumenti SF2, partitura e banca conservate per la riproduzione.);
+    epubcheck per Conformità EPUB (Controllo indipendente EPUB di contenitori, manifest,
+    risorse e markup; errori distinti dagli avvisi.); pandoc per Conversione di documenti
+    strutturati (Conversione Markdown, DOCX, EPUB, HTML e altri formati, con bibliografia
+    e template espliciti.); typst per Impaginazione programmabile (Composizione tipografica
+    riproducibile in PDF, SVG o PNG da sorgenti .typ, font e risorse.); freecad per
+    CAD parametrico tridimensionale (Authoring parametrico .FCStd, misure geometriche
+    e scambio STEP tramite motore headless nativo.); whisper per Trascrizione e sottotitoli
+    (Trascrizione parlato CPU multilingue in TXT, SRT e JSON con modello tiny fissato
+    e disponibile offline.); ffmpeg per Conversione e verifica audio/video (Probe
+    dei flussi, conversione codec e formati, estrazione audio e mux con parametri
+    espliciti.).'
 auth:
   local:
     allow_registration: true

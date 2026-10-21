@@ -7,10 +7,80 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import stat
+import subprocess
 import tarfile
 import tempfile
 import time
 import urllib.request
+import zipfile
+
+
+def safe_unzip(archive, destination):
+    """EPUBCheck distribution: reject traversal, symlinks and excessive expansion."""
+    destination = destination.resolve()
+    with zipfile.ZipFile(archive) as zipped:
+        if sum(item.file_size for item in zipped.infolist()) > 512 * 1024 * 1024:
+            raise ValueError('ZIP distribution too large')
+        for item in zipped.infolist():
+            name = Path(item.filename)
+            target = destination / name
+            if (name.is_absolute() or '..' in name.parts or '\\' in item.filename
+                    or stat.S_ISLNK(item.external_attr >> 16) or not target.resolve().is_relative_to(destination)):
+                raise ValueError('Unsafe ZIP member: ' + item.filename)
+            if item.is_dir(): target.mkdir(parents=True, exist_ok=True)
+            else:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with zipped.open(item) as source, target.open('wb') as output:
+                    shutil.copyfileobj(source, output)
+
+
+def install_deb(asset, archive):
+    """Primary .deb is hashed; dependencies use authenticated Debian repositories."""
+    archive.chmod(0o644)
+    subprocess.run(['apt-get', 'update'], check=True)
+    subprocess.run(['apt-get', 'install', '-y', '--no-install-recommends', str(archive)], check=True,
+                   env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive'})
+    version = subprocess.check_output(['dpkg-query', '-W', '-f=${Version}', asset['package']], text=True)
+    if version != asset['package_version']:
+        raise RuntimeError('Installed Debian version differs from lock: ' + asset['package'])
+
+
+def install_toolkit(app, archive, destination, root, bin_dir, arch):
+    kind = app['install']['kind']
+    destination.mkdir(parents=True, exist_ok=True)
+    if kind == 'debian':
+        install_deb(app['assets'][arch], archive)
+        return app['install']['native_path']
+    if kind == 'zip':
+        safe_unzip(archive, destination)
+        return str(next(destination.rglob('epubcheck.jar')))
+    if kind == 'npm':
+        target = root / 'toolkit'
+        target.mkdir(parents=True, exist_ok=True)
+        for name in ('package.json', 'package-lock.json'):
+            shutil.copy2(root / 'toolkit-lock' / name, target / name)
+        subprocess.run(['npm', 'ci', '--prefix', str(target), '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund'], check=True)
+        version = json.loads((target / 'node_modules/@playwright/test/package.json').read_text())['version']
+        if version != app['version']: raise RuntimeError('NPM version differs from application lock')
+        subprocess.run(['node', str(target / 'node_modules/playwright/cli.js'), 'install', 'chromium', '--only-shell'], check=True,
+                       env={**os.environ, 'PLAYWRIGHT_BROWSERS_PATH': str(root / 'playwright-browsers')})
+        subprocess.run(['npm', 'cache', 'clean', '--force'], check=True)
+        return str(target / 'node_modules/playwright/cli.js')
+    if kind == 'whisper-cmake':
+        safe_extract(archive, destination)
+        source = destination / app['install']['source_dir']
+        build = destination / 'build'
+        subprocess.run(['cmake', '-S', str(source), '-B', str(build), '-DCMAKE_BUILD_TYPE=Release',
+                        '-DGGML_NATIVE=OFF', '-DGGML_CUDA=OFF', '-DWHISPER_BUILD_TESTS=OFF',
+                        '-DBUILD_SHARED_LIBS=OFF'], check=True)
+        subprocess.run(['cmake', '--build', str(build), '--config', 'Release', '--target', 'whisper-cli', '--parallel', '2'], check=True)
+        binary = build / 'bin/whisper-cli'
+        (bin_dir / 'whisper-cli').symlink_to(binary)
+        # The public-domain JFK speech is kept only as an offline native fixture.
+        shutil.copy2(source / 'samples/jfk.wav', destination / 'jfk.wav')
+        return str(binary)
+    raise ValueError('Unsupported installation kind: ' + kind)
 
 
 def safe_extract(archive, destination):
@@ -112,11 +182,26 @@ def main():
         print(f'Installazione {app["id"]} {app["version"]} ({arch})', flush=True)
         destination = args.root / 'apps' / app['id']
         with tempfile.TemporaryDirectory(prefix='artcraft-install-') as temp:
+            for resource in app.get('resources', []):
+                resource_archive = Path(temp) / resource['name']
+                download(resource, resource_archive)
+                if resource.get('kind') == 'debian':
+                    install_deb(resource, resource_archive)
+                else:
+                    target = args.root / resource['install_path']
+                    if not target.resolve().is_relative_to(args.root.resolve()):
+                        raise ValueError('Resource outside installation root')
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(resource_archive, target)
             archive = Path(temp) / asset['name']
             download(asset, archive)
-            safe_extract(archive, destination)
-        binary = install_binaries(app, destination, args.bin_dir)
+            if app.get('install'):
+                binary = install_toolkit(app, archive, destination, args.root, args.bin_dir, arch)
+            else:
+                safe_extract(archive, destination)
+                binary = install_binaries(app, destination, args.bin_dir)
         installed.append({'id': app['id'], 'version': app['version'], 'binary': str(binary), 'sha256': asset['sha256']})
+    shutil.rmtree('/var/lib/apt/lists', ignore_errors=True)
     (args.root / 'installed.json').write_text(json.dumps(installed, indent=2) + '\n')
     print(f'Installate {len(installed)} CLI.', flush=True)
 

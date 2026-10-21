@@ -1,6 +1,6 @@
 # Capacità operative: calibre
 
-Versione esaminata: **9.16.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **9.16.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie.
 **Sorgenti:** XHTML/CSS/OPF e risorse, ebook ricostruibile e input editoriali.
@@ -29,5 +29,5 @@ L’adattatore non esaurisce ebook-convert, ebook-meta, ebook-polish, calibre-de
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 8 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `32fa21ebc9d7245671a7475b582d90847d530faffecdbea7b81042aba0da9065`.
+Catalogo esaminato: 8 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `32fa21ebc9d7245671a7475b582d90847d530faffecdbea7b81042aba0da9065`.
 Fonte: https://github.com/kovidgoyal/calibre. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

@@ -4,11 +4,11 @@ from pathlib import Path
 import subprocess
 
 try:
-    from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
+    from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
     from .acceptance import METHODS, evaluate
     from .revision import actions, comparison
 except ImportError:
-    from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook
+    from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
     from acceptance import METHODS, evaluate
     from revision import actions, comparison
 
@@ -94,6 +94,14 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
             except (OSError, ValueError, subprocess.SubprocessError) as error:
                 record['verification'] = {'status': 'failed', 'error': str(error)[:1200]}
                 issues.append(path.name + ': ' + str(error)[:1200])
+        if path.suffix.lower() == '.fcstd' and item['role'] == 'editable_source':
+            try:
+                record['verification'] = inspect_freecad(path, root, native=native)
+                if record['verification']['status'] != 'passed':
+                    issues.append(path.name + ': verifica FreeCAD non eseguita')
+            except (OSError, ValueError, subprocess.SubprocessError) as error:
+                record['verification'] = {'status': 'failed', 'error': str(error)[:1000]}
+                issues.append(path.name + ': ' + str(error)[:1000])
         if item['role'] == 'source_archive':
             try:
                 if path.suffix.lower() != '.zip':
@@ -126,6 +134,12 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
             (f['role'] == 'source_archive' and any(c.get('check') == 'blender_reopen' and c.get('status') == 'passed'
                 for c in f.get('verification', {}).get('checks', []))) for f in files):
         issues.append('Consegna Blender senza .blend modificabile riaperto e verificato: GLB, script o video da soli non sono il progetto nativo')
+    if purpose == 'delivery' and 'freecad' in active_tools and not any(
+            (f['role'] == 'editable_source' and Path(f['path']).suffix.lower() == '.fcstd'
+             and f.get('verification', {}).get('status') == 'passed') or
+            (f['role'] == 'source_archive' and any(c.get('check') == 'freecad_reopen' and c.get('status') == 'passed'
+                for c in f.get('verification', {}).get('checks', []))) for f in files):
+        issues.append('Consegna FreeCAD senza .FCStd modificabile riaperto e verificato: STEP, mesh o script da soli non sono il progetto parametrico')
     if purpose == 'delivery' and renders:
         for item in files:
             if item['role'] != 'export' or Path(item['path']).suffix.lower() not in ('.mp4', '.mov', '.webm', '.mkv'):

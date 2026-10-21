@@ -3,11 +3,13 @@ FROM node:22-bookworm-slim
 USER root
 ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates python3 binutils ffmpeg xz-utils libsm6 libice6 libxfixes3 libxrender1 libxxf86vm1 libgomp1 fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core \
+    ca-certificates python3 binutils xz-utils libsm6 libice6 libxfixes3 libxrender1 libxxf86vm1 libgomp1 fontconfig fonts-dejavu-core fonts-liberation fonts-noto-core \
     libasound2 libfontconfig1 libfreetype6 libglib2.0-0 libgtk-3-0 \
     libgl1 libegl1 libx11-6 libxcursor1 libxi6 libxrandr2 libxkbcommon0 \
     xvfb xauth libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxkbcommon-x11-0 \
     libnss3 libopengl0 libvulkan1 mesa-vulkan-drivers libgl1-mesa-dri libdbus-1-3 git \
+    cmake g++ make default-jre-headless libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxcomposite1 libxdamage1 libgbm1 libpango-1.0-0 libcairo2 libatspi2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 ENV AGY_CLI_DISABLE_AUTO_UPDATE=true
 RUN npm install -g @openai/codex@0.162.1 \
@@ -15,17 +17,21 @@ RUN npm install -g @openai/codex@0.162.1 \
 COPY scripts/install_antigravity.py scripts/antigravity.lock.json /opt/artcraft/
 RUN python3 /opt/artcraft/install_antigravity.py "$TARGETARCH" && agy --version
 COPY versions.lock.json /opt/artcraft/versions.lock.json
-COPY scripts/install_artcraft.py scripts/craft.py scripts/smoke.py scripts/acceptance.py /opt/artcraft/
-COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
-COPY studio/operations.py studio/resource_usage.py /opt/artcraft/
-RUN chmod 755 /opt/artcraft/blender_cli.py && ln -s /opt/artcraft/blender_cli.py /usr/local/bin/blender-cli
-RUN chmod 755 /opt/artcraft/calibre_cli.py && ln -s /opt/artcraft/calibre_cli.py /usr/local/bin/calibre-cli
+COPY scripts/install_artcraft.py /opt/artcraft/
+COPY config/toolkit /opt/artcraft/toolkit-lock/
 COPY scripts/check_provider_clis.py /opt/artcraft/
 RUN python3 /opt/artcraft/check_provider_clis.py
-RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" \
-    && chmod 755 /opt/artcraft/craft.py \
+# Install hashed native distributions before copying frequently revised adapters.
+RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" && fc-cache -f
+COPY scripts/craft.py scripts/smoke.py scripts/acceptance.py scripts/acceptance_toolkit.py /opt/artcraft/
+COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
+COPY scripts/toolkit_cli.py scripts/toolkit_specs.py scripts/toolkit_job.py scripts/toolkit_browser.cjs scripts/toolkit_capture.py /opt/artcraft/
+COPY studio/operations.py studio/resource_usage.py /opt/artcraft/
+RUN chmod 755 /opt/artcraft/craft.py /opt/artcraft/blender_cli.py /opt/artcraft/calibre_cli.py /opt/artcraft/toolkit_cli.py \
     && ln -s /opt/artcraft/craft.py /usr/local/bin/craft \
-    && fc-cache -f \
+    && ln -s /opt/artcraft/blender_cli.py /usr/local/bin/blender-cli \
+    && ln -s /opt/artcraft/calibre_cli.py /usr/local/bin/calibre-cli \
+    && for app in playwright aubio fluidsynth epubcheck pandoc typst freecad whisper-cpp ffmpeg; do ln -s /opt/artcraft/toolkit_cli.py "/usr/local/bin/$app-cli"; done \
     && python3 /opt/artcraft/smoke.py --output /opt/artcraft/build-checks.json
 COPY skills /mnt/skills
 COPY config/tool-capabilities.json /opt/artcraft/tool-capabilities.json
@@ -38,5 +44,6 @@ COPY studio/codex_native.py /opt/studio/
 COPY studio/source_packages.py studio/deliveries.py studio/acceptance.py studio/revision.py /opt/studio/
 COPY studio/component_sources.py studio/timing.py /opt/studio/
 ENV TZ=Europe/Rome LANG=C.UTF-8 LC_ALL=C.UTF-8 NO_BROWSER=true
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/artcraft/playwright-browsers
 WORKDIR /mnt/user-data
 CMD ["python3", "/opt/artcraft/smoke.py", "--mcp", "--output", "/tmp/smoke.json"]

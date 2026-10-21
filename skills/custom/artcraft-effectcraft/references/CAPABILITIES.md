@@ -1,6 +1,6 @@
 # Capacità operative: effectcraft
 
-Versione esaminata: **v0.10.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.10.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti.
 **Sorgenti:** .ecproj e asset; parti, proprietà e keyframe conservati.
@@ -29,5 +29,5 @@ Advanced 3D può comporre mesh/materiali/camera, oltre alle primitive. Non è un
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 731 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `a32ee6d152a08c4954a0c184c306645249e9f41fe3137e9543d4025777bbc6e1`.
+Catalogo esaminato: 731 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `a32ee6d152a08c4954a0c184c306645249e9f41fe3137e9543d4025777bbc6e1`.
 Fonte: https://github.com/storytold/effectcraft/tree/v0.10.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

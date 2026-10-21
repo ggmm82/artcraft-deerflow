@@ -38,7 +38,7 @@ def validate(root, *, native=False, catalog_dir=None):
             if group['evidence']!='registered' or not group['commands'] or set(group['commands'])-ids:
                 raise ValueError('Capacità o livello di prova non valido: '+identifier)
         if native or catalog_dir:
-            if catalog_dir and identifier not in ('blender','calibre'):
+            if catalog_dir and identifier not in ('blender','calibre') and not apps[identifier].get('adapter'):
                 text=(Path(catalog_dir)/identifier/'commands.txt').read_text()
             else:
                 argv=[apps[identifier]['executable'],*apps[identifier]['registry_args']]

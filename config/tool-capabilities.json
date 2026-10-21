@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audited_date": "2026-10-20",
+  "audited_date": "2026-10-21",
   "applications": [
     {
       "id": "photocraft",
@@ -7666,6 +7666,269 @@
       "evidence": "Native registry of pinned release; registration is not an end-to-end execution test.",
       "reference": "https://github.com/kovidgoyal/calibre",
       "ids_sha256": "455264ec969c3cdcb072b2a6b32de94ad56783b052c3ad57b5ac105fb75ccb0f"
+    },
+    {
+      "id": "playwright",
+      "version": "1.62.0",
+      "choose_for": "Automazione browser, test di interazione, screenshot e trace su applicazioni web reali",
+      "sources": "Codice applicativo, test .test.cjs o automazione .cjs, configurazione, screenshot e trace pertinenti",
+      "limits": "Collaudo reale Chromium headless CPU; non certifica tutti i browser, accessibilità o qualità visiva. Non vede automaticamente servizi interni: verifica URL e autenticazione. Gli script sono codice eseguito dentro la sandbox, non nel Gateway.",
+      "groups": [
+        {
+          "goal": "Run an explicit local *.test.cjs with Chromium, one worker, JSON report and failure traces.",
+          "commands": [
+            "playwright.test"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Run an explicit local Node .cjs browser automation script; keep script, assertions and evidence.",
+          "commands": [
+            "playwright.execute"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Capture a web URL or a workspace file URL in headless Chromium. Not a visual approval.",
+          "commands": [
+            "playwright.screenshot"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "playwright.execute",
+        "playwright.screenshot",
+        "playwright.test"
+      ],
+      "catalog_count": 3,
+      "catalog_sha256": "892afd5ea439b449e1817bc660f49e52a3e13915c12ee10b5dec5a46c412e669",
+      "ids_sha256": "1d6a670af12f7e8d92ad949ce63a27e9cc8d7233837caaaf8d9958afe095726b",
+      "reference": "https://playwright.dev/docs/test-cli"
+    },
+    {
+      "id": "aubio",
+      "version": "0.4.9",
+      "choose_for": "Stima di attacchi, battiti, altezza e note dal segnale audio, con unità esplicite",
+      "sources": "Audio originale, parametri di analisi, report con unità, ricetta ripetibile; sorgenti musicali conservati dagli strumenti di authoring",
+      "limits": "Stime del segnale, non riconoscimento della melodia, trascrizione affidabile di strumenti polifonici o giudizio musicale. Un battito stimato non prova da solo la sincronizzazione audiovisiva.",
+      "groups": [
+        {
+          "goal": "Estimate onset/beat times in seconds, overall tempo in BPM, pitch in Hz or MIDI-like notes. Estimates do not recognize a song or certify quality.",
+          "commands": [
+            "aubio.analyze"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "aubio.analyze"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "dbd77e7cb5592ba672ce9ae3dcbd670cdecc32e5d30e56cbdd1a7720374ff2a7",
+      "ids_sha256": "c0dd0154e48855d8adcd01c8b10b529fbbb100749e00914ca9d6c69ae4f05a61",
+      "reference": "https://aubio.org/manual/latest/cli.html"
+    },
+    {
+      "id": "fluidsynth",
+      "version": "2.3.1",
+      "choose_for": "Rendering offline MIDI con strumenti SF2, partitura e banca conservate per la riproduzione",
+      "sources": "MIDI, SoundFont SF2 effettivo, licenza della banca e render-settings.json; sessione SoundCraft e stem per il mix",
+      "limits": "Sintesi MIDI con banca di campioni, non DAW multitraccia o compositore autonomo. TimGM6mb incluso è una banca General MIDI compatta: non garantisce timbri orchestrali professionali. Una registrazione WAV non conserva note modificabili.",
+      "groups": [
+        {
+          "goal": "Offline MIDI + SF2 synthesis into a new portable folder: WAV, MIDI, bank and render settings. No audio device.",
+          "commands": [
+            "fluidsynth.render"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "fluidsynth.render"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "152c39608a9e6cb0390c86e159536199ad52df4d52a4fd829dd79588f376eb40",
+      "ids_sha256": "268b5efb2ad64c66e19475df5f89579f5aec1a2ab7c1c524feebedfe9a699188",
+      "reference": "https://www.fluidsynth.org/api/fluidsynth_shell.html"
+    },
+    {
+      "id": "epubcheck",
+      "version": "v5.4.0",
+      "choose_for": "Controllo indipendente EPUB di contenitori, manifest, risorse e markup; errori distinti dagli avvisi",
+      "sources": "EPUB e sorgenti XHTML/CSS/OPF, media e font prodotti dagli strumenti di authoring; report JSON come prova",
+      "limits": "Conformità EPUB indipendente, non leggibilità, qualità editoriale, accessibilità completa o compatibilità garantita con ogni lettore. Non ripara automaticamente i problemi.",
+      "groups": [
+        {
+          "goal": "Run independent EPUB conformance validation; report errors and warnings, not editorial or visual quality.",
+          "commands": [
+            "epubcheck.check"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "epubcheck.check"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "fe8a1e2b34793cb89fa6580ab1824d35cec9edb325c77c924a309f58dc207e3a",
+      "ids_sha256": "a1f797bdd7066edb44ccf9183808260e4bb7bee922a4b9186d7e3544725ef8ce",
+      "reference": "https://www.w3.org/publishing/epubcheck/docs/cli/"
+    },
+    {
+      "id": "pandoc",
+      "version": "3.12.1",
+      "choose_for": "Conversione Markdown, DOCX, EPUB, HTML e altri formati, con bibliografia e template espliciti",
+      "sources": "Documento strutturato originale, Markdown/AST quando usato, template, bibliografia CSL/BibTeX, font/media e ricetta di conversione",
+      "limits": "Conversione semantica, non ricostruzione perfetta di layout complessi o conversione PDF in authoring equivalente. Il PDF richiede un motore di impaginazione esplicito: usa Typst o un percorso collaudato, non LaTeX non installato.",
+      "groups": [
+        {
+          "goal": "Convert a structured source into a new document. Preserve templates, bibliography, assets and conversion recipe.",
+          "commands": [
+            "pandoc.convert"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "pandoc.convert"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "67c7be201f45f38254879da6507c27e126de615b31fddfac06f1ee7096c08aa7",
+      "ids_sha256": "86bac9ed6b7d3953b967784df3c3b2910ae2b7e7ce1e31b111ff95f369d849ab",
+      "reference": "https://pandoc.org/MANUAL.html"
+    },
+    {
+      "id": "typst",
+      "version": "v0.15.1",
+      "choose_for": "Composizione tipografica riproducibile in PDF, SVG o PNG da sorgenti .typ, font e risorse",
+      "sources": "Sorgenti .typ, template e moduli locali, dati, immagini, font e ricetta di compilazione",
+      "limits": "Motore tipografico programmabile, non un editor grafico WYSIWYG o garanzia di PDF/X, CMYK, accessibilità o conformità di stampa. Pacchetti e font devono essere disponibili e versionati; non presupporre download in un worker offline.",
+      "groups": [
+        {
+          "goal": "Compile a local .typ source into PDF, SVG or PNG with explicit resource root. Does not certify print readiness.",
+          "commands": [
+            "typst.compile"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "typst.compile"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "0a7f891aaeb164d02b3bd296a0fbbc1730c9fbb10b0a6ba2d899fcdcf702ab90",
+      "ids_sha256": "59e7aa1ce48f19d77712daf51e61f6d219d3475961cb563874d5b0713a30c98a",
+      "reference": "https://typst.app/docs/reference/"
+    },
+    {
+      "id": "freecad",
+      "version": "0.20.2",
+      "choose_for": "Authoring parametrico .FCStd, misure geometriche e scambio STEP tramite motore headless nativo",
+      "sources": "Documento nativo .FCStd con albero parametrico, script .py realmente usato, dati e riferimenti; STEP come export di scambio",
+      "limits": "Motore FreeCAD headless Debian 0.20.2, non la release upstream 1.x. Le API vanno verificate contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita.",
+      "groups": [
+        {
+          "goal": "Run an explicit Python authoring script in native headless FreeCAD; save .FCStd and geometry evidence in the output folder.",
+          "commands": [
+            "freecad.execute"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Reopen .FCStd, report native objects, parametric properties and solid volumes. No GUI or engineering certification.",
+          "commands": [
+            "freecad.inspect"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Reopen .FCStd and export selected solid shapes to a new STEP; STEP is not a parametric authoring source.",
+          "commands": [
+            "freecad.export_step"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "freecad.execute",
+        "freecad.export_step",
+        "freecad.inspect"
+      ],
+      "catalog_count": 3,
+      "catalog_sha256": "36a22868e1df180eee35a31b4f7a316030bc3cebe17bd9c5eb59565fa801157b",
+      "ids_sha256": "4e7532772b27cf5ad69c4d19642a85108e8105b54dd80c1f6de900aba85449fd",
+      "reference": "https://freecad.github.io/SourceDoc/"
+    },
+    {
+      "id": "whisper",
+      "version": "v1.9.5",
+      "choose_for": "Trascrizione parlato CPU multilingue in TXT, SRT e JSON con modello tiny fissato e disponibile offline",
+      "sources": "Audio originale o riferimento autorizzato, TXT/SRT/JSON modificabili, lingua e configurazione, identificativo e hash del modello",
+      "limits": "Riconoscimento del parlato CPU con tiny multilingue: può sbagliare nomi, numeri e lingue e inventare testo nel rumore o nella musica. Non riconosce una melodia e non equivale ad ascolto percettivo o valutazione del mix.",
+      "groups": [
+        {
+          "goal": "CPU speech transcription into TXT/SRT/JSON with pinned multilingual tiny model. Does not assess music or speaker identity.",
+          "commands": [
+            "whisper.transcribe"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "whisper.transcribe"
+      ],
+      "catalog_count": 1,
+      "catalog_sha256": "238253cca6185b3d88cdf04e72ad9f7e17f4a0c61ef47f2f62b691894914d8b7",
+      "ids_sha256": "b6f318d152182c7ed03da0f455230a24e10496e0d76b6fcc871c340cd9a8ec28",
+      "reference": "https://github.com/ggml-org/whisper.cpp"
+    },
+    {
+      "id": "ffmpeg",
+      "version": "5.1.9",
+      "choose_for": "Probe dei flussi, conversione codec e formati, estrazione audio e mux con parametri espliciti",
+      "sources": "Input originali, progetti delle app di authoring, media collegati, ricetta/parametri di conversione e mux",
+      "limits": "Motore media, non sorgente di montaggio, compositing o composizione musicale. Un mux non prova la sincronizzazione; transcode non migliora un asset scadente. Filtri e codec upstream si scoprono con gli help nativi, il catalogo MCP espone solo le operazioni elencate.",
+      "groups": [
+        {
+          "goal": "Inspect actual streams, codecs, duration, rates and container metadata with ffprobe.",
+          "commands": [
+            "ffmpeg.probe"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Create a new media export with explicit codec/rate/size. Preserve authoring projects and dependencies separately.",
+          "commands": [
+            "ffmpeg.transcode"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Extract/decode audio to a new PCM16 WAV with declared sample rate and channels.",
+          "commands": [
+            "ffmpeg.extract_audio"
+          ],
+          "evidence": "registered"
+        },
+        {
+          "goal": "Mux supplied video and audio from a shared zero origin; preserve video and encode AAC, without asserting sync.",
+          "commands": [
+            "ffmpeg.mux"
+          ],
+          "evidence": "registered"
+        }
+      ],
+      "catalog_ids": [
+        "ffmpeg.extract_audio",
+        "ffmpeg.mux",
+        "ffmpeg.probe",
+        "ffmpeg.transcode"
+      ],
+      "catalog_count": 4,
+      "catalog_sha256": "bb0b9d72d9199f4b54f3012825c0b27cffd8f72a654e1779169f0404dca0134d",
+      "ids_sha256": "d30f51b5c259d00c62a881912f4d93ae9f197fd60ff2d35968ff319729e51c9a",
+      "reference": "https://ffmpeg.org/ffmpeg.html"
     }
   ]
 }

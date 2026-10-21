@@ -28,7 +28,7 @@ def render(root):
             '3. `craft tools '+app['id']+' --out "$ARTCRAFT_OUTPUT_DIR/work/'+app['id']+'-tools.json"`: schemi MCP della release.',
             '4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.',
             '5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.', '',
-            'Catalogo esaminato: '+str(app['catalog_count'])+' ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `'+app['catalog_sha256']+'`.',
+            'Catalogo esaminato: '+str(app['catalog_count'])+' ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `'+app['catalog_sha256']+'`.',
             'Fonte: '+app['reference']+'. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.','']
         rendered[ref]='\n'.join(lines)
     index += ['', '## Passaggi tra strumenti', '',

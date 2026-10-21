@@ -82,3 +82,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 ## Qualità del prodotto
 
 Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+
+## Scelta rispetto a FreeCAD
+
+Per tavole e disegno 2D in DXF resta pertinente CADCraft. Per solidi 3D parametrici con quote modificabili, ricalcolo e sorgente `.FCStd`, valuta la skill `artcraft-freecad`. Non usare entrambe per principio: sceglile dai requisiti e conserva il sorgente dell’app realmente usata. STEP/GLB/DXF di scambio non ricostruiscono automaticamente l’albero parametrico. Per rendering e animazione valuta Blender.

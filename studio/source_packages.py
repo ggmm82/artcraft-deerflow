@@ -21,6 +21,7 @@ MAX_FILES = 12000
 # They are never executed here: prepare() below is the trusted runtime code.
 # Keep these identities when extending format checks, so existing sources reopen.
 RELEASED_PREPARERS = {
+    'ca41c6293e01c00de24a64c0451fb31392e2f2e8ec9c8abd1e0d1a4e5dce2586',  # PR23 / 2de17e3
     'dc64bb7d149025adba6c380ab676d0d19bbb74ea0779f70e0e514dd1a8b4c73a',  # 6e19bcabb8
     '5cc17a70890beeb481d9782cb85ecf184b64b137e1eee02f440a16eb2ddf9ede',  # 0f7da4742f
 }
@@ -187,12 +188,40 @@ def inspect_ebook(path, boundary, *, native=True):
             'warnings': info.get('issues', []), 'note': info.get('note', 'Controllo nativo; GUI e resa non provate')}
 
 
+def inspect_freecad(path, boundary, *, native=True):
+    """Actual native reopening; neither a STEP export nor a ZIP header is enough."""
+    if not native:
+        return {'file': Path(path).name, 'status': 'not_run', 'check': 'freecad_reopen'}
+    boundary = Path(boundary).resolve()
+    with tempfile.TemporaryDirectory(prefix='.freecad-proof-', dir=boundary) as temp:
+        output = Path(temp) / 'inspection.json'
+        result = subprocess.run(['freecad-cli', 'call', 'inspect', json.dumps({'input': str(path), 'output': str(output)})],
+            cwd=boundary, env={**os.environ, 'ARTCRAFT_WORKSPACE_ROOT': str(boundary), 'ARTCRAFT_OUTPUT_DIR': temp},
+            capture_output=True, text=True, timeout=120)
+        if result.returncode:
+            raise ValueError('FreeCAD: riapertura fallita: ' + result.stderr[-1000:])
+        info = json.loads(output.read_text())
+    objects = info.get('objects', [])
+    if not objects or any(o.get('invalid') or o.get('valid') is False for o in objects):
+        raise ValueError('FreeCAD: documento vuoto, oggetti invalidi o solidi non validi')
+    for reference in info.get('dependencies', []):
+        ref = Path(reference)
+        actual = (Path(path).parent / ref).resolve()
+        if ref.is_absolute() or not actual.is_relative_to(boundary) or not actual.is_file():
+            raise ValueError('FreeCAD: dipendenza mancante o non portabile: ' + reference)
+    return {'file': Path(path).relative_to(boundary).as_posix(), 'status': 'passed', 'check': 'freecad_reopen',
+            'objects': len(objects), 'dependencies': len(info.get('dependencies', [])),
+            'note': 'Riapertura e geometria native; vincoli progettuali, GUI e conformità ingegneristica non certificate'}
+
+
 def inspect_tree(folder, *, native=False, budget=None, depth=0):
     folder = Path(folder).resolve()
     projects, checks = [], []
     for path in sorted(folder.rglob('*.blend')):
         checks.append(inspect_blend(path, folder, native=native))
     for path in sorted(folder.rglob('*')):
+        if path.suffix.lower() == '.fcstd':
+            checks.append(inspect_freecad(path, folder, native=native))
         if path.suffix.lower() in ('.epub', '.azw3'):
             checks.append(inspect_ebook(path, folder, native=native))
         if path.suffix in NATIVE:
@@ -261,6 +290,7 @@ def verify_archive(archive, *, native=False):
                 'coverage': 'CRC e inventario; dipendenze/struttura FilmCraft, EffectCraft, SoundCraft; '
                             'Blender: riapertura, geometria e dipendenze se native=True; '
                             'Calibre: struttura e risorse EPUB/AZW3 se native=True; '
+                            'FreeCAD: riapertura, oggetti e geometria .FCStd se native=True; '
                             'altri formati richiedono la prova specifica della skill'}
 
 

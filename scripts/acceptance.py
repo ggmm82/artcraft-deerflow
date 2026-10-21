@@ -447,6 +447,13 @@ def calibre(c):
 
 CASES = {name: globals()[name] for name in ('photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft',
             'effectcraft', 'designcraft', 'gridcraft', 'wordcraft', 'deckcraft', 'cadcraft', 'soundcraft', 'figcraft', 'blender', 'calibre')}
+try:
+    from .acceptance_toolkit import CASES as TOOLKIT_CASES
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from acceptance_toolkit import CASES as TOOLKIT_CASES
+CASES.update(TOOLKIT_CASES)
 
 
 def main():
