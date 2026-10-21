@@ -108,7 +108,7 @@ def learn(root, source_ids, value, impact=None):
         path.parent.mkdir(exist_ok=True, mode=0o700)
         if not path.exists():
             record = {'id': identifier, 'at': utcnow(), 'basis': basis,
-                      'notice': 'Lezione proposta, da accettare singolarmente; le evidenze non garantiscono un risultato universale.'}
+                      'notice': 'Metodo da accettare singolarmente o conoscenza tecnica da verificare automaticamente; le evidenze non garantiscono un risultato universale.'}
             if len(json.dumps(record, ensure_ascii=False, indent=2).encode()) + 1 > 16000:
                 raise ValueError('Lezione troppo lunga: conserva una sola lezione sintetica alla volta')
             atomic_json(path, record)
@@ -116,7 +116,7 @@ def learn(root, source_ids, value, impact=None):
 
 
 def propose_findings(root, source_thread, limit=3):
-    """Promote already-generalized, evidenced worker findings to INACTIVE proposals.
+    """Preserve generalized worker findings under their approval policy.
 
     Never invent a procedure from raw review facts. Existing lessons and source
     decisions win; the same recipe/version is not proposed again for each job.
@@ -125,6 +125,8 @@ def propose_findings(root, source_thread, limit=3):
     existing = entries(root)
     covered = {s for r in existing for s in r['basis']['source_ids']} | disabled(root) | set(reviewed(root))
     known = {(fingerprint(r['basis']['lesson']), tuple(sorted(r['basis']['tool_versions'].items()))) for r in existing}
+    verified = {(fingerprint(r['basis']['lesson']), tuple(sorted(r['basis']['tool_versions'].items())))
+                for r in existing if r['id'] in accepted(root)}
     saved = []
     for record in sorted(observations(root), key=lambda r: rank(r['observation'])):
         source = record['observation']
@@ -136,10 +138,14 @@ def propose_findings(root, source_thread, limit=3):
         try:
             lesson = validate(source.get('suggested_lesson'))
             identity = (fingerprint(lesson), tuple(sorted(source.get('tools', {}).items())))
-            if identity in known:
+            upgrade = (lesson.get('category') == 'tool_operation'
+                       and source.get('technical_validation', {}).get('status') == 'passed')
+            if identity in known and (not upgrade or identity in verified):
                 continue
             saved.append(learn(root, [record['id']], lesson, impact))
             known.add(identity)
+            if upgrade:
+                verified.add(identity)
         except (ValueError, KeyError, TypeError):
             continue
         if len(saved) >= limit:

@@ -302,6 +302,19 @@ class ExperienceTests(unittest.TestCase):
         item, = experience.summary(self.library)['lessons']
         self.assertEqual((item['category'], item['accepted']), ('tool_operation', False))
 
+    def test_new_technical_test_can_upgrade_an_unverified_note_without_repeated_proposals(self):
+        path, note = self.sandbox_note()
+        note['lesson']['category'] = 'tool_operation'
+        path.write_text(json.dumps({'lessons': [note]}))
+        experience.collect(self.workspace, self.library, 'thread-a')
+        old, = lessons.propose_findings(self.library, 'thread-a')
+        self.assertNotIn(old, lessons.accepted(self.library))
+        self.verified_note()
+        experience.collect(self.workspace, self.library, 'thread-a')
+        new, = lessons.propose_findings(self.library, 'thread-a')
+        self.assertIn(new, lessons.automatic(self.library))
+        self.assertEqual(lessons.propose_findings(self.library, 'thread-a'), [])
+
     def test_measured_impact_requires_real_distinct_supervisor_records(self):
         before=self.product.parent/'work/operations'/('a'*24)/'status.json'
         after=self.product.parent/'work/operations'/('b'*24)/'status.json'
