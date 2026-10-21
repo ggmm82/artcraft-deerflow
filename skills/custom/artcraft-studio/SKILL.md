@@ -21,7 +21,7 @@ Spiega brevemente il risultato previsto e l’utilità dei ruoli. Mantieni stato
 
 ## Scelta degli strumenti dal risultato
 
-Consulta [la mappa dei 15 strumenti](references/TOOL-SELECTION.md), poi le capacità della sola app pertinente. `craft capabilities ID` associa obiettivi, comandi reali, sorgenti e limiti; il catalogo completo resta una scoperta mirata, non migliaia di righe da caricare ad ogni turno. Le capacità sono distinte da ricette provate e qualità osservata. Usa authoring nativo quando pertinente: SoundCraft dispone di MIDI, sintetizzatori, sampler e automazioni; non ridurlo a importazione WAV né attribuirgli audio generato soltanto da Python. Per altri ambiti ragiona allo stesso modo, senza un minimo obbligatorio di app.
+Consulta [la mappa degli strumenti](references/TOOL-SELECTION.md), poi le capacità della sola app pertinente. `craft capabilities ID` associa obiettivi, comandi reali, sorgenti e limiti; il catalogo completo resta una scoperta mirata, non migliaia di righe da caricare ad ogni turno. Le capacità sono distinte da ricette provate e qualità osservata. Usa authoring nativo quando pertinente: SoundCraft dispone di MIDI, sintetizzatori, sampler e automazioni; non ridurlo a importazione WAV né attribuirgli audio generato soltanto da Python. Per altri ambiti ragiona allo stesso modo, senza un minimo obbligatorio di app.
 
 ## Ruoli e skill dinamiche
 

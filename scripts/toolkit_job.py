@@ -12,6 +12,10 @@ def main():
     sys.path.insert(0, '/usr/lib/freecad/lib')
     import FreeCAD as App
     import Part
+    # In embedded headless Python, creating PartDesign::Body does not load the
+    # native _PartDesign module automatically. Register Body/Pad/Pocket types
+    # before authoring or restoring a parametric document (no GUI dependency).
+    import _PartDesign
     action, source, target = sys.argv[1:]
     target = Path(target)
     if action == 'version':
