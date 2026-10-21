@@ -11,6 +11,14 @@ def modernize_codex_payload(payload: dict[str, Any]) -> dict[str, Any]:
     public API and otherwise answers with a generic HTTP 400.
     """
     compatible = dict(payload)
+    # Native Agent bootstrap can disable thinking. The pinned factory maps
+    # that to `none`, which gpt-6.1-sol rejects even though normal chat works.
+    # Use its lowest supported level; preserve explicit valid user choices and
+    # other models' contracts. Copy nested fields so retries retain the input.
+    model = str(payload.get("model", ""))
+    reasoning = payload.get("reasoning")
+    if (model == "gpt-6.1-sol" or model.startswith("gpt-6.1-sol-")) and isinstance(reasoning, dict) and reasoning.get("effort") == "none":
+        compatible["reasoning"] = {**reasoning, "effort": "low"}
     compatible.setdefault("tool_choice", "auto")
     compatible.setdefault("parallel_tool_calls", bool(compatible.get("tools")))
     compatible.setdefault("include", ["reasoning.encrypted_content"])

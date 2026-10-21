@@ -7,6 +7,16 @@ from unittest.mock import patch
 
 @unittest.skipUnless(importlib.util.find_spec('deerflow'), 'Requires pinned gateway dependencies')
 class CodexProviderTests(unittest.TestCase):
+    def test_native_agent_bootstrap_without_thinking_reaches_supported_transport(self):
+        from langchain_core.messages import HumanMessage
+        from studio.codex_provider import StudioCodexChatModel
+        credential = SimpleNamespace(access_token='fixture-token', account_id='fixture-account')
+        with patch.object(StudioCodexChatModel, '_load_codex_auth', return_value=credential):
+            model = StudioCodexChatModel(model='gpt-6.1-sol', reasoning_effort='none')
+            with patch('studio.codex_provider.request_codex', return_value={'output': []}) as transport:
+                model._call_codex_api([HumanMessage('Create an Agent profile')])
+        self.assertEqual(transport.call_args.args[1]['reasoning']['effort'], 'low')
+
     def test_transient_http_failure_reaches_native_bounded_retry(self):
         import httpx
         from langchain_core.messages import HumanMessage

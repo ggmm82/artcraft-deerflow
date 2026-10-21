@@ -181,6 +181,9 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
     workspace = workspace_for(runtime)
     from .capability_policy import runtime_policy, public, require_tools
     policy = runtime_policy(runtime)
+    if strategy_json:
+        from .strategy import check_capability_choice
+        check_capability_choice(json.loads(strategy_json), policy)
     if roles_json:
         for spec in json.loads(roles_json):
             require_tools(policy, spec.get('tools', []))
