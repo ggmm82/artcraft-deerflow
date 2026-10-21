@@ -40,6 +40,20 @@ class AdaptiveToolTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'disabilitato'):
                 studio_plan.func(runtime=runtime, brief='Only native enabled tools', roles_json=json.dumps([spec]))
 
+    def test_disabled_tool_does_not_persist_a_premature_blocked_plan(self):
+        from studio.projects import read_project
+        scoped = {**self.capabilities, 'allowed': ['freecad'], 'blocked': ['blender']}
+        runtime = SimpleNamespace(state={'messages': []})
+        with tempfile.TemporaryDirectory() as folder, \
+             patch('studio.tools.workspace_for', return_value=Path(folder)), \
+             patch('studio.capability_policy.runtime_policy', return_value=scoped):
+            with self.assertRaisesRegex(ValueError, 'scelta dell’utente'):
+                studio_plan.func(runtime=runtime, brief='Editable 3D scene', status='blocked',
+                    strategy_json=json.dumps({'state':'needs_user','method':'Blender',
+                        'reason':'Disabled app','stop_reason':'capability_limit',
+                        'user_action':'Enable Blender','alternatives':[]}))
+            self.assertFalse(read_project(Path(folder)))
+
     def test_failed_sample_replans_and_new_method_reaches_worker(self):
         from studio.projects import read_project
         from studio.project_skills import read_document

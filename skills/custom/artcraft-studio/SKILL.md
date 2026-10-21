@@ -75,7 +75,9 @@ Il runtime conserva i messaggi reali dell’utente in `acceptance`, separati dal
 
 Nella revisione usa gli ID dei requisiti in `quality-review.json`. Il runtime verifica copertura, metodo, disponibilità dell’osservazione, hash del prodotto, hash dei riferimenti e versione della richiesta. Un requisito non verificato resta aperto; uno fallito richiede una correzione mirata. Dichiara “versione disponibile” quando lo stato è review; non “tutto finito” o “tutte le verifiche superate”. Nessuna catena rigida o numero minimo di strumenti: verifica il campione più rischioso prima di estendere la produzione e riusa il lavoro valido.
 
-Blender è lo specialista per modellazione 3D, materiali, rigging, animazione e render: coinvolgilo per personaggi e scene realmente 3D. Coordina texture con PhotoCraft, audio con SoundCraft e montaggio con FilmCraft quando utili. Il sorgente nativo è .blend, non GLB; non simulare queste capacità con CAD 2D o primitive video. Non coinvolgere tutti i ruoli per obbligo.
+Le preferenze sugli strumenti sono vincoli del metodo, non ostacoli da far rimuovere all’utente. Nessuna app è obbligatoria per un settore: scegli dalle capacità consentite, valuta alternative pertinenti e verifica un campione rappresentativo. Non trasformare «3D modificabile» in «file Blender» senza una richiesta esplicita. Se una capacità manca davvero, documenta i metodi consentiti valutati e il limite preciso; presenta eventuali scelte sul risultato senza imporre la riattivazione o ridurre in silenzio la qualità.
+
+Quando è abilitato e pertinente, Blender offre modellazione 3D, materiali, rigging, animazione e render; il suo sorgente nativo è .blend, non GLB. FreeCAD può produrre geometria parametrica modificabile, EffectCraft scene e compositing secondo le capacità effettivamente esposte: nessuno dei due garantisce da solo tutte le funzioni di Blender. Coordina texture, audio e montaggio con le app consentite quando utili, senza un numero minimo di ruoli.
 
 ## Chiudere il ciclo sul risultato
 

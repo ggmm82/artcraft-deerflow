@@ -7,6 +7,30 @@ from .project_skills import read_document, request_text, scoped_file
 from .source_packages import digest
 
 
+def check_capability_choice(value, policy):
+    """Do not turn an excluded tool into an obligatory production method."""
+    if not isinstance(value, dict):
+        raise ValueError('Il metodo deve essere un oggetto JSON')
+    alternatives = value.get('alternatives', [])
+    if not isinstance(alternatives, list) or any(not isinstance(a, dict) or
+            not isinstance(a.get('tools', []), list) or
+            any(not isinstance(t, str) for t in a.get('tools', [])) for a in alternatives):
+        raise ValueError('Alternative: oggetti con una lista di strumenti')
+    allowed = set(policy.get('allowed', []))
+    for item in alternatives:
+        if item.get('status') in ('candidate', 'tested') and set(item.get('tools', [])) - allowed:
+            raise ValueError('Il metodo proposto usa strumenti disabilitati: scegli capacità consentite.')
+    if value.get('state') == 'needs_user' and value.get('stop_reason') == 'capability_limit' and policy.get('blocked'):
+        # A blocked app only rules out that method. Assess a permitted method,
+        # including workspace-only work, before claiming the result is blocked.
+        assessed = [a for a in alternatives if not (set(a.get('tools', [])) - allowed)]
+        if not assessed or any(a.get('status') == 'candidate' for a in assessed):
+            raise ValueError('Uno strumento disabilitato è una scelta dell’utente, non un obbligo da riattivare. '
+                'Valuta prima un metodo con gli strumenti consentiti e registralo in alternatives con ragione concreta. '
+                'Prova un piccolo campione se fattibile; se manca davvero una capacità, spiega il limite senza '
+                'abbassare i requisiti o imporre la riattivazione.')
+
+
 def proof_path(workspace, value):
     root = Path(workspace).resolve()
     path = Path(value)
