@@ -48,6 +48,16 @@ class CompletionContractsTests(unittest.TestCase):
             self.assertEqual(report.read_bytes(),original)
             self.assertEqual(product.read_text(),'current product')
             self.assertFalse(prepare_review_handoff(output,root,'codex',acceptance))
+            # Earlier real failures had a report but an invalid source_status
+            # or foreign output metadata. Preserve their assessment and audit.
+            broken = {**handoff, 'output_files':[str(product)],
+                      'checks':[{'name':'Unresolved defect','status':'failed','evidence':'Observed defect remains.'}]}
+            original_manifest=json.dumps(broken).encode()
+            (output/'handoff.json').write_bytes(original_manifest)
+            self.assertTrue(prepare_review_handoff(output,root,'codex',acceptance))
+            repaired=validate_handoff(output,root,require_delivery=True)
+            self.assertEqual(repaired['checks'][-1]['status'],'failed')
+            self.assertEqual((output/'work/review-handoff-original.json').read_bytes(),original_manifest)
             (output/'handoff.json').unlink();product.write_text('changed after observation')
             with self.assertRaisesRegex(ValueError,'hash osservato'):
                 prepare_review_handoff(output,root,'codex',acceptance)
