@@ -1,12 +1,16 @@
 ---
 name: artcraft-vectorcraft
-description: "Loghi, icone, tracciati, illustrazioni e SVG. Usa questa skill per lavorare con vectorcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Illustrazione vettoriale, loghi, icone, lettering e diagrammi modificabili. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Grafica vettoriale
 
 Specialista: `vectorcraft` per `studio_delegate`; nome della skill: `artcraft-vectorcraft`.
 CLI: `vectorcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Illustrazione vettoriale, loghi, icone, lettering e diagrammi modificabili. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities vectorcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

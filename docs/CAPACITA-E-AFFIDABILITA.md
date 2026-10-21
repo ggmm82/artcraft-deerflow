@@ -1,0 +1,23 @@
+# Capacità degli strumenti e affidabilità delle lavorazioni
+
+La [mappa di scelta](../skills/custom/artcraft-studio/references/TOOL-SELECTION.md) collega il risultato alle 15 app installate, ai comandi della versione fissata, ai sorgenti e ai limiti. Ogni skill ha una scheda `references/CAPABILITIES.md`. L'indice e le schede sono generati da `config/tool-capabilities.json`; la CI impedisce divergenze di versione e ID inesistenti. `craft capabilities APP` restituisce una scheda compatta: il registro completo si richiede solo quando serve.
+
+Il controllo locale ha confrontato 6.667 ID con i cataloghi dei binari nativi e dei due adattatori. Non sono 6.667 operazioni collaudate: le ricette indicano i workflow realmente provati. Blender resta utilizzabile attraverso bpy oltre ai sei ingressi dell'adattatore; Calibre dispone anche delle proprie CLI complete. La nuova prova SoundCraft crea uno strumento sottrattivo e tre note MIDI, salva e trasferisce il `.scraft`, lo riapre e produce un bounce stereo non silenzioso. È una prova di authoring e persistenza, non di qualità musicale. I tre clock SoundCraft sono distinti: secondi nel bounce CLI, campioni nel bounce MCP, tick negli eventi MIDI.
+
+La selezione non impone una squadra fissa: ruoli, competenze e metodo restano compilati dal problema. Una prova breve deve dimostrare la finitura prevista; per una qualità insufficiente si cambia metodo o competenza sul difetto osservato prima di estendere la produzione. `correction_focus` mantiene fino a tre correzioni prioritarie e rileva difetti ricorrenti su versioni distinte collegate da un confronto validato, evitando di contare recensioni duplicate o prodotti diversi. Non certifica che un modello abbia acquisito una professione.
+
+## Cosa cambia per le consegne
+
+Le nuove consegne finali registrano `delivery.components`: ogni componente collega artefatti, strumento effettivo e sorgenti scaricabili, anche dentro ZIP verificati. Una timeline non copre automaticamente i sorgenti di audio, immagini o mesh. Una componente SoundCraft richiede `.scraft`; una sintesi via codice deve dichiarare quel metodo e conservare ricetta e parametri. Il controllo è di inventario: non prova l'equivalenza di una ricetta né la compatibilità GUI. Gli originali caricati riutilizzati senza elaborazione sono riconosciuti solo se identici. Rapporti di sola analisi non richiedono finti sorgenti modificabili; le consegne storiche restano leggibili.
+
+Per il sincronismo, una mappa di cue associa istanti visivi osservati ai transienti del master video effettivo. La regressione usa un MP4 codificato con evento visivo a un secondo e suono a 2,5 secondi: uguale durata, ma errore rilevato. Con suono allineato il controllo passa. Audio continuo o ambiguo resta non verificato e richiede una valutazione pertinente, senza forzare cue artificiali per tutti i progetti. Il controllo non identifica semanticamente il suono, non verifica da solo l'istante visivo dichiarato e non equivale ad ascolto.
+
+Campioni e verifiche mantengono la propria categoria anche se selezionati come anteprima: due pagine campione non diventano la versione completa di un libro. I registri tecnici noti restano in `work/`, separati dai download; un rapporto di qualità utile non viene scartato soltanto per questi metadati. Una baseline senza confronto conserva i criteri del rapporto, ma non inventa un miglioramento prima/dopo.
+
+## Attesa ed esperienza
+
+Il worker unico ammette gli incarichi in ordine FIFO con posizione visibile. L'attesa non consuma il budget del worker e non fallisce dopo 120 secondi. Annullare un incarico in coda non arresta il container di un'altra chat. La chiusura del browser conserva l'attesa; al riavvio del Gateway le chiamate perse sono segnalate come riprendibili, senza rieseguire automaticamente un incarico. I file restano conservati.
+
+Le lezioni già generalizzate dalle sandbox, con prove reali e impatto osservato/misurato, possono diventare poche proposte inattive. I fatti delle revisioni non vengono automaticamente trasformati in conoscenza. **Valuta le osservazioni** avvia, a lavoro terminato, una richiesta esplicita per il solo progetto corrente. La sezione Lezioni mostra prima quelle più significative; soltanto l'utente accetta singolarmente il riutilizzo. I dati specifici restano nelle prove.
+
+Prove automatiche: FIFO/annullamento/riavvio, conservazione delle recensioni, campioni e versioni, correzioni ricorrenti, proposte inattive e isolamento dei progetti, sorgenti per componente, sincronismo su MP4 reale, coerenza dei cataloghi e browser desktop/mobile. La CI mantiene inoltre i workflow nativi di tutte le app e aggiunge confronto dei cataloghi e authoring MIDI SoundCraft offline.

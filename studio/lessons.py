@@ -102,25 +102,58 @@ def learn(root, source_ids, value, impact=None):
         path.parent.mkdir(exist_ok=True, mode=0o700)
         if not path.exists():
             record = {'id': identifier, 'at': utcnow(), 'basis': basis,
-                      'notice': 'Lezione proposta dal coordinatore, da accettare singolarmente; le evidenze non garantiscono un risultato universale.'}
+                      'notice': 'Lezione proposta, da accettare singolarmente; le evidenze non garantiscono un risultato universale.'}
             if len(json.dumps(record, ensure_ascii=False, indent=2).encode()) + 1 > 16000:
                 raise ValueError('Lezione troppo lunga: conserva una sola lezione sintetica alla volta')
             atomic_json(path, record)
         return identifier
 
 
-def pending(root, limit=6):
+def propose_findings(root, source_thread, limit=3):
+    """Promote already-generalized, evidenced worker findings to INACTIVE proposals.
+
+    Never invent a procedure from raw review facts. Existing lessons and source
+    decisions win; the same recipe/version is not proposed again for each job.
+    """
+    from .experience import entries as observations, disabled
+    existing = entries(root)
+    covered = {s for r in existing for s in r['basis']['source_ids']} | disabled(root) | set(reviewed(root))
+    known = {(fingerprint(r['basis']['lesson']), tuple(sorted(r['basis']['tool_versions'].items()))) for r in existing}
+    saved = []
+    for record in sorted(observations(root), key=lambda r: rank(r['observation'])):
+        source = record['observation']
+        impact = source.get('impact') or {}
+        if (record['id'] in covered or source.get('source_thread') != source_thread
+                or source.get('kind') != 'sandbox_tool_use' or not source.get('evidence_files')
+                or impact.get('level') not in ('major', 'minor') or impact.get('basis') not in ('observed', 'measured')):
+            continue
+        try:
+            lesson = validate(source.get('suggested_lesson'))
+            identity = (fingerprint(lesson), tuple(sorted(source.get('tools', {}).items())))
+            if identity in known:
+                continue
+            saved.append(learn(root, [record['id']], lesson, impact))
+            known.add(identity)
+        except (ValueError, KeyError, TypeError):
+            continue
+        if len(saved) >= limit:
+            break
+    return saved
+
+
+def pending(root, limit=6, *, source_thread=None):
     from .experience import entries as observations, disabled
     covered = {s for r in entries(root) for s in r['basis']['source_ids']}
     excluded = disabled(root) | set(reviewed(root))
-    return [{'id': r['id'], 'criterion': r['observation'].get('criterion'),
+    return [{'id': r['id'], 'source_thread':r['observation'].get('source_thread'), 'criterion': r['observation'].get('criterion'),
              'evidence': r['observation'].get('evidence'), 'status': r['observation'].get('status'),
              'corrections': r['observation'].get('corrections', []), 'tools': r['observation'].get('tools', {}),
              'suggested_lesson': r['observation'].get('suggested_lesson'),
              'producer_method': r['observation'].get('producer_method'), 'procedure': r['observation'].get('procedure', []),
              'impact': r['observation'].get('impact'), 'measurement': r['observation'].get('measurement'),
              'evidence_files': r['observation'].get('evidence_files', []), 'limitations': r['observation'].get('limitations', [])}
-            for r in sorted(observations(root), key=lambda r: rank(r['observation'])) if r['id'] not in covered and r['id'] not in excluded][:limit]
+            for r in sorted(observations(root), key=lambda r: rank(r['observation'])) if r['id'] not in covered and r['id'] not in excluded
+            and (source_thread is None or r['observation'].get('source_thread')==source_thread)][:limit]
 
 
 def reviewed(root):

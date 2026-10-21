@@ -25,10 +25,12 @@ def experience_root(runtime):
 
 def preserve_experience(workspace, runtime):
     from .experience import collect
-    from .lessons import pending
+    from .lessons import pending, propose_findings
     try:
-        saved = collect(workspace, experience_root(runtime), (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id'))
-        return {'saved': saved, 'pending': len(pending(experience_root(runtime))),
+        thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
+        saved = collect(workspace, experience_root(runtime), thread)
+        proposals = propose_findings(experience_root(runtime), thread)
+        return {'saved': saved, 'proposed_lessons': len(proposals), 'pending': len(pending(experience_root(runtime))),
                 'instruction': 'Usa studio_lessons per generalizzare poche evidenze in lezioni riutilizzabili; i fatti specifici non entrano nelle skills.'}
     except (OSError, ValueError, TypeError):
         return {'error': 'Esperienza non archiviata: conserva il volume dati e riprova il recupero dalla scheda Esperienza.'}
@@ -100,7 +102,7 @@ def lesson_reply(runtime, value):
 
 
 @tool('studio_lessons', parse_docstring=True)
-def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str = '', dismiss_reason: str = '', impact_json: str = '') -> str:
+def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str = '', dismiss_reason: str = '', impact_json: str = '', current_project_only: bool = False) -> str:
     """Generalize saved evidence into conditional reusable lessons, never project facts.
 
     Read without arguments to inspect up to six pending evidence records. Extract
@@ -121,6 +123,7 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
 
     Args:
         runtime: Injected DeerFlow runtime.
+        current_project_only: Restrict pending evidence to this conversation; use when evaluating its old observations without producing new work.
         source_ids_json: JSON list of one to six real saved evidence IDs.
         impact_json: Optional JSON level major/minor/unknown, basis measured/observed/hypothesis and reason grounded in the selected evidence. No fabricated measurements. This ranks proposals, not a product quality certificate.
         dismiss_reason: Instead of saving a lesson, explain why the selected source IDs do not warrant one. Do not combine with lesson_json.
@@ -128,15 +131,16 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
     """
     from .lessons import learn, pending, dismiss
     root = experience_root(runtime)
+    thread = (getattr(runtime,'config',None) or {}).get('configurable',{}).get('thread_id') if current_project_only else None
     if dismiss_reason:
         if lesson_json:
             raise ValueError('Salva o scarta la singola lezione, non entrambe')
         dismiss(root, json.loads(source_ids_json), dismiss_reason)
-        return lesson_reply(runtime, {'decision': 'not_generalized', 'pending_sources': pending(root)})
+        return lesson_reply(runtime, {'decision': 'not_generalized', 'pending_sources': pending(root,source_thread=thread)})
     if bool(source_ids_json) != bool(lesson_json):
         raise ValueError('Indica sia le fonti sia la lezione generale')
     identifier = learn(root, json.loads(source_ids_json), json.loads(lesson_json), json.loads(impact_json) if impact_json else None) if lesson_json else None
-    return lesson_reply(runtime, {'saved_lesson': identifier, 'pending_sources': pending(root),
+    return lesson_reply(runtime, {'saved_lesson': identifier, 'pending_sources': pending(root,source_thread=thread),
                        'instruction': 'Conserva solo la lezione generale e condizionale; le fonti restano separate e non dimostrano più di quanto verificato.'})
 
 
@@ -151,7 +155,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
     the work evolves; existing attempts and files are preserved. Activities may
     be reordered, added, reassigned or skipped. depends_on is an input hint, not
     a blocking pipeline. Compile project-specific professional roles from the actual brief; installed tools are capabilities, not a list of professions.
-    Prefer a complete early preview, then improve it with focused specialist work.
+    Prefer a representative preview at the intended finish; shorten its scope before lowering fidelity. Improve the observed bottleneck with focused specialist work.
     Avoid long plans and technical recaps: summary and next_action appear beside
     the chat input. Use purpose=delivery on the final integration to check media.
 
@@ -284,6 +288,8 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     record = result.get('delivery_record') or {}
     compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status')}
     compact['quality_review'] = result.get('quality_review')
+    compact['correction_focus'] = (read_project(workspace) or {}).get('correction_focus', [])
+    compact['learning_review'] = result.get('learning_review')
     from .acceptance import capabilities
     compact['experience'] = experience
     compact['verification_capabilities'] = capabilities(profile['engine'])

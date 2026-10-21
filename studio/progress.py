@@ -341,6 +341,8 @@ def public_status(value):
     result['cancel_error'] = value.get('cancel_error') is True
     result['can_stop'] = value.get('can_stop') is True
     result['cancel_requested'] = value.get('cancel_requested') is True
+    position = value.get('queue_position', 0)
+    result['queue_position'] = position if type(position) is int and 0 <= position <= 100000 else 0
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}

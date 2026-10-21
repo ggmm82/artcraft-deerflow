@@ -1,12 +1,16 @@
 ---
 name: artcraft-cadcraft
-description: "Disegno tecnico, geometrie, quote e scambio DXF. Usa questa skill per lavorare con cadcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Disegno tecnico, quote, blocchi, geometrie CAD e tavole di progetto. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Disegno CAD
 
 Specialista: `cadcraft` per `studio_delegate`; nome della skill: `artcraft-cadcraft`.
 CLI: `cadcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Disegno tecnico, quote, blocchi, geometrie CAD e tavole di progetto. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities cadcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

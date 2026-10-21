@@ -10,6 +10,7 @@ from pathlib import Path
 from .state import STATE, effective_agent, credential_dir, connection_status, custom_connection_path
 from .progress import clean_summary, create_job, read_status, update, utcnow, workspace_key
 from .work_results import failure_info, partial_files
+from .execution_queue import QUEUE, recover_waiters
 
 IMAGE = os.getenv('STUDIO_SANDBOX_IMAGE', 'artcraft-deerflow-sandbox:0.1.0')
 EXECUTION_LOCK = threading.Lock()
@@ -81,6 +82,7 @@ def cleanup_orphans():
     ids = docker('ps', '-aq', '--filter', f'label=org.artcraft.studio.installation={installation}')
     for container in ids.splitlines():
         remove(container)
+    recover_waiters(STATE)
 
 
 def generate_gemini(payload, timeout=1800):
@@ -198,15 +200,8 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
     def cancelled_before_start():
         update(progress, 'failed', 'Interruzione della fase richiesta dall’utente', cancel_requested=True)
         return json.dumps({'ok': False, 'error': 'Interruzione della fase richiesta dall’utente; nessun nuovo container avviato.'})
-    until = time.monotonic() + 120
-    while True:
-        if requested():
-            return cancelled_before_start()
-        if EXECUTION_LOCK.acquire(timeout=min(.2, max(0, until - time.monotonic()))):
-            break
-        if time.monotonic() >= until:
-            update(progress, 'failed', 'Squadra occupata: tempo massimo di attesa raggiunto')
-            raise RuntimeError('Studio occupato; riprova quando il lavoro attivo termina')
+    if not QUEUE.acquire(EXECUTION_LOCK, progress, STATE, requested):
+        return cancelled_before_start()
     try:
         if requested():
             return cancelled_before_start()
@@ -321,6 +316,8 @@ def request_stop(workspace, job_id):
     status = read_status(path)
     if status.get('workspace_key') != workspace_key(workspace) or status['phase'] in TERMINAL:
         raise ValueError('Questa fase non è più in esecuzione nella conversazione')
+    if QUEUE.cancel(path):
+        return {'requested': True, 'job_id': job_id, 'queued': True}
     info = json.loads(docker('inspect', '--format', '{{json .}}', job_id, timeout=10))
     labels = info.get('Config', {}).get('Labels') or {}
     if (labels.get('org.artcraft.studio.installation') != (STATE / 'installation-id').read_text().strip()

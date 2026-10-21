@@ -8,7 +8,7 @@ import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from
 import { ExperiencePanel } from "./experience-panel";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
-type Delivery = { category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
+type Delivery = { source_coverage?: { status: string; components: { name: string; tool: string; status: string; sources: {path: string; member?: string}[] }[] }; timing?: {status:string; cues:{name:string;status:string;delta_seconds:number}[]}; category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
 type RevisionAction = { requirement_id: string; action: string; reason?: string; priority: number; strategy: string };
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
@@ -17,7 +17,7 @@ type Outcome = { title: string; result: string; format: string; use: string; qua
 type ProjectRole = { experience?: { count: number; ids: string[] }; id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
 type UserDirection = { visual_approach: string; instructions: string; revision: number };
-type Project = { user_control?: { paused: boolean }; user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Project = { correction_focus?: { requirement_id: string; criterion: string; reassess_role: boolean; action: string }[]; user_control?: { paused: boolean }; user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -97,8 +97,9 @@ function JobCard({ job, now, threadId }: { job: JobProgress; now: number; thread
     </details>
     {job.work_summary && job.work_summary !== job.summary && <p className="text-sm">{job.work_summary}</p>}
     <p className="text-sm" data-testid="delegate-summary">{job.summary}</p>
+    {job.phase === "queued" && <p className="text-sm" data-testid="queue-position">{job.queue_position ? `Posizione in coda: ${job.queue_position}. ` : "In coda. "}L’incarico parte automaticamente quando la sandbox si libera; puoi chiudere la pagina.</p>}
     {job.cancel_error && !job.resources_reclaimed && <p role="alert" className="text-sm">Arresto del worker non confermato. Verifica il collegamento Docker; non è sufficiente fermare il coordinatore.</p>}
-    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">Container rimosso: risorse della fase liberate; file salvati conservati.</p>}
+    {job.resources_reclaimed && <p className="text-muted-foreground text-xs" data-testid="worker-reclaimed">Risorse della fase liberate; file salvati conservati.</p>}
     {job.cleanup_started_at && !job.resources_reclaimed && <p className="text-xs" role="status">{job.cleanup_error ? "Rimozione del container non confermata: la squadra richiede un controllo." : "Chiusura del container e rilascio delle risorse in corso."}</p>}
     {!terminal && <details className="text-muted-foreground space-y-1 text-xs"><summary className="cursor-pointer">Tempi e segnali osservati</summary>
       <p>Ultimo avanzamento osservato: {duration(secondsSince(job.last_activity_at, now))} fa</p>
@@ -110,8 +111,8 @@ function JobCard({ job, now, threadId }: { job: JobProgress; now: number; thread
       {heartbeat !== null && heartbeat <= 15 && <p>Monitor della sandbox presente · non conferma l’avanzamento del modello</p>}
     </details>}
     {!terminal && job.can_stop && <div className="space-y-1 text-xs">
-      <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={stopping || job.cancel_requested} onClick={() => void stop()}>{stopping || job.cancel_requested ? "Arresto richiesto…" : "Interrompi questa fase"}</button>
-      <p>Termina la fase corrente e restituisce il controllo al coordinatore. I file già salvati restano disponibili; il lavoro non salvato può andare perso.</p>
+      <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={stopping || job.cancel_requested} onClick={() => void stop()}>{stopping || job.cancel_requested ? "Arresto richiesto…" : (job.phase === "queued" ? "Annulla attesa" : "Interrompi questa fase")}</button>
+      <p>{job.phase === "queued" ? "Rimuove solo questo incarico dalla coda. Il lavoro già in esecuzione continua." : "Termina la fase corrente e restituisce il controllo al coordinatore. I file già salvati restano disponibili; il lavoro non salvato può andare perso."}</p>
       {stopError && <p role="alert">{stopError}</p>}
     </div>}
     {health && <p className="rounded-md border border-amber-500/50 p-2 text-sm" role="status">{health}</p>}
@@ -174,7 +175,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     .sort((a, b) => Number(b.execution_status === "running") - Number(a.execution_status === "running") || Number(b.current) - Number(a.current) || (b.version ?? 0) - (a.version ?? 0));
   const supporting = deliveries.filter(d => !versions.includes(d));
   const editing = versions.find(d => d.execution_status === "running");
-  const versionName = (delivery: Delivery) => delivery.version ? `Versione ${delivery.version}` : delivery.current ? "Versione selezionata" : "Tentativo di consegna";
+  const versionName = (delivery: Delivery) => delivery.category === "sample" || delivery.purpose === "preview" ? "Campione" : delivery.version ? `Versione ${delivery.version}` : delivery.current ? "Versione selezionata" : "Tentativo di consegna";
   const currentResults = selectedDelivery ? results.filter((r) => r.delivery_id === selectedDelivery.id) : results;
   const media = [...currentResults].filter(r => r.role !== "dependency" && r.role !== "report").sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
   const selected: Result | undefined = project?.product_path
@@ -189,7 +190,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
   const paused = project?.user_control?.paused === true;
-  const title = paused ? (working || active ? "Pausa richiesta" : "Progetto in pausa") : working && jobHealth(current, now) ? "Avanzamento da verificare" : working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
+  const title = paused ? (working || active ? "Pausa richiesta" : "Progetto in pausa") : working && current.phase === "queued" ? "In attesa del proprio turno" : working && jobHealth(current, now) ? "Avanzamento da verificare" : working ? `${current.role_title || person(current.agent)} sta lavorando` : clarifying ? "Definiamo il risultato insieme" : active ? "La squadra sta preparando il prossimo risultato"
     : coordinatorError || attention || project?.status === "blocked" ? "Il lavoro è in pausa" : ready ? "Il risultato è pronto" : results.length ? "Una versione è disponibile" : "La squadra è pronta";
   const specificAction = current && ["running_tool", "exporting", "checking", "finalizing"].includes(current.phase)
     && current.summary !== "Esecuzione di uno strumento";
@@ -350,6 +351,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {!working && !clarifying && project.next_action && <p><strong>Prossima azione:</strong> {project.next_action}</p>}
           <p className="text-muted-foreground text-xs">Gli incarichi possono cambiare. Il conteggio non è una percentuale di completamento o una stima dei tempi.</p>
         </section>
+        {project.correction_focus?.some(f => f.reassess_role) && <details className="rounded-xl border p-3" data-testid="recurring-defects"><summary className="cursor-pointer font-medium">Correzione da ripensare</summary><p className="my-2 text-xs">La squadra deve rivalutare metodo o competenza prima di estendere il lavoro.</p>{project.correction_focus.filter(f => f.reassess_role).map(f => <p className="my-2" key={f.requirement_id}>{f.criterion}: {f.action}</p>)}</details>}
         <section className="bg-muted/30 space-y-3 rounded-xl border p-4">
           <h4 className="text-muted-foreground text-xs font-semibold uppercase tracking-wide">Risultato da ottenere</h4>
           <p className="text-base font-medium leading-relaxed">{project.outcome?.result || project.brief}</p>
@@ -406,7 +408,9 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <p className="font-semibold">{versionName(selectedDelivery)} · {ready ? "Consegna finale" : "Da valutare"}</p>
           <p>{selectedDelivery.title}</p>
           {editing && editing.id !== selectedDelivery.id && <p className="text-muted-foreground">{versionName(editing)} in lavorazione. Qui vedi ancora {versionName(selectedDelivery).toLowerCase()}.</p>}
-          <p className="text-muted-foreground text-xs">Anteprima, download e sorgenti sotto appartengono a questa versione.</p>
+          <p className="text-muted-foreground text-xs">Anteprima, download e sorgenti sotto appartengono a questa lavorazione.</p>
+          {selectedDelivery.source_coverage && <details className="rounded border p-3" data-testid="component-sources"><summary className="cursor-pointer">Sorgenti delle componenti · {selectedDelivery.source_coverage.status === "documented" ? "documentati" : "da completare"}</summary>{selectedDelivery.source_coverage.components.map((c,i) => <div className="my-2" key={i}><p><strong>{c.name}</strong> · {c.tool} · {c.status === "documented" ? "sorgenti associati" : "sorgenti incompleti"}</p>{c.sources.map((r,n) => <p className="break-all text-xs" key={n}>{r.member || r.path.split("/").pop()}</p>)}</div>)}<p className="text-xs">Il progetto principale non dimostra la modificabilità di tutte le risorse. Apertura e ricostruzione hanno verifiche distinte.</p></details>}
+          {selectedDelivery.timing && <details className="rounded border p-3" data-testid="delivery-timing"><summary className="cursor-pointer">Sincronismo · {selectedDelivery.timing.status === "passed" ? "cue misurati" : "da verificare"}</summary>{selectedDelivery.timing.cues.map((c,i) => <p className="my-1 text-xs" key={i}>{c.name}: {c.status === "not_run" ? "non verificato" : `${c.delta_seconds} s di scarto`}</p>)}<p className="text-xs">Il controllo dei picchi audio non sostituisce l’ascolto e la verifica visiva.</p></details>}
         </section>}
         {preview && <div className="bg-muted/20 space-y-3 rounded-xl border p-3" data-testid="primary-result">
           {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
@@ -501,7 +505,10 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
-      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} />}
+      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} onCurate={!active && !working && onContinue ? async () => {
+        await onContinue(`Valuta al massimo tre osservazioni significative di questa conversazione (${threadId}) usando studio_lessons(current_project_only=true). Proponi solo singole lezioni generali con condizioni, procedura, verifiche e limiti, distinguendo benefici osservati da ipotesi. Valuta senza generalizzare le fonti che non contengono una lezione utile. Non produrre altri artefatti e non accettare lezioni al mio posto. Presenta poche proposte in ordine di impatto.`);
+        if (resumeOwner.current === threadId) setPanel(null);
+      } : undefined} />}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} threadId={threadId} />)}</div>}
       </div>
       <footer className="shrink-0 space-y-2 border-t bg-background p-3">

@@ -34,6 +34,23 @@ class HandoffTests(HandoffFixture):
         self.value['checks'][0]['status'] = 'failed'
         self.assertEqual(self.validate()['checks'][0]['status'], 'failed')
 
+    def test_bookkeeping_reports_are_retained_outside_the_downloads_without_weakening_source_checks(self):
+        work=self.output/'work';work.mkdir();technical=work/'method.json';technical.write_text('{}')
+        def metadata(path,role):
+            return {'path':str(path),'role':role,'format':'JSON','open_with':'Text editor','editability':'Text',
+                    'reopen':{'status':'passed','evidence':'Parsed JSON'},'limitations':[]}
+        self.value['output_files'].append(str(technical))
+        self.value['delivery']={'source_status':'not_applicable','source_note':'Review report',
+                               'files':[metadata(self.file,'report'),metadata(technical,'report')]}
+        self.value['checks'][0]['status']='failed'
+        result=self.validate()
+        self.assertEqual(result['output_files'],[str(self.file)])
+        self.assertEqual(result['checks'][0]['status'],'failed')
+        self.assertTrue(technical.exists())
+        self.assertIn(str(technical),json.loads((self.output/'handoff.json').read_text())['output_files'])
+        self.value['delivery']['files'][1]['role']='editable_source'
+        with self.assertRaisesRegex(ValueError,'file tecnici'):self.validate()
+
     def test_missing_or_empty_output_is_rejected(self):
         self.file.unlink()
         with self.assertRaisesRegex(ValueError, 'mancante o vuoto'):
@@ -81,6 +98,29 @@ class DeliveryTests(HandoffFixture):
     def delivery(self, files=None, status='included'):
         self.value['delivery'] = {'source_status': status, 'source_note': 'Sorgente del risultato',
                                   'files': files if files is not None else [self.metadata()]}
+
+    def test_report_only_final_does_not_require_artificial_editable_components(self):
+        from studio.deliveries import build_delivery
+        self.delivery([self.metadata(role='report')], status='not_applicable')
+        result=build_delivery(self.validate(),self.output,purpose='delivery',require_components=True)
+        self.assertEqual(result['technical_status'],'passed')
+        self.assertEqual(result['source_coverage']['issues'],[])
+
+    def test_unverified_sound_is_not_a_false_failure_or_a_passed_timing_check(self):
+        from studio.deliveries import build_delivery
+        from unittest.mock import patch
+        self.delivery()
+        with patch('studio.timing.check_timing',return_value={'status':'not_run','cues':[],
+                'issues':['Continuous audio needs a relevant review']}):
+            result=build_delivery(self.validate(),self.output,require_timing=True)
+        self.assertEqual(result['technical_status'],'passed')
+        self.assertEqual(result['timing']['status'],'not_run')
+        self.assertEqual(result['quality_status'],'not_reviewed')
+        with patch('studio.timing.check_timing',return_value={'status':'failed','cues':[],
+                'issues':['Observed transient is delayed']}):
+            result=build_delivery(self.validate(),self.output,require_timing=True)
+        self.assertEqual(result['technical_status'],'needs_revision')
+        self.assertIn('Observed transient is delayed',result['issues'])
 
     def test_new_worker_requires_metadata_but_legacy_reading_still_works(self):
         self.validate()

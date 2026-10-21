@@ -1,12 +1,16 @@
 ---
 name: artcraft-pdfcraft
-description: "Ispezione, estrazione, unione, moduli e trasformazioni PDF. Usa questa skill per lavorare con pdfcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Ispezione e modifica PDF, pagine, testo, moduli, OCR e prestampa. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Documenti PDF
 
 Specialista: `pdfcraft` per `studio_delegate`; nome della skill: `artcraft-pdfcraft`.
 CLI: `pdfcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Ispezione e modifica PDF, pagine, testo, moduli, OCR e prestampa. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities pdfcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

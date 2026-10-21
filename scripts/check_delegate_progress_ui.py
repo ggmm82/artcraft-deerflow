@@ -83,7 +83,7 @@ import {createRoot} from 'react-dom/client';
 import {DelegateProgress} from ''' + json.dumps(str(repo / 'frontend/delegate-progress.tsx')) + ''';
 const root=createRoot(document.getElementById('root')!);
 window.continued=0; window.failContinue=false;
-window.showThread=(threadId='fixture',active=true,pending=true,error=false)=>root.render(<DelegateProgress threadId={threadId} active={active} pending={pending} coordinatorError={error} onPause={()=>{window.paused=(window.paused||0)+1}} onContinue={()=>{window.continued++;if(window.failContinue)return Promise.reject(new Error("fixture submit unavailable"))}}/>);
+window.showThread=(threadId='fixture',active=true,pending=true,error=false)=>root.render(<DelegateProgress threadId={threadId} active={active} pending={pending} coordinatorError={error} onPause={()=>{window.paused=(window.paused||0)+1}} onContinue={(message)=>{window.lastContinueMessage=message;window.continued++;if(window.failContinue)return Promise.reject(new Error("fixture submit unavailable"))}}/>);
 window.showThread();
 ''')
         subprocess.run([str(modules / '.bin/esbuild'), str(folder / 'entry.tsx'), '--bundle', '--jsx=automatic',
@@ -146,7 +146,7 @@ window.showThread();
             def do_GET(self):
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':0, 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
+                    library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':state.get('pending_observations',0), 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
                         'id':'a'*64,'at':'2026-10-20T00:00:00Z','excluded':state.get('experience_excluded',False),
                         'observation':{'criterion':state.get('preferred_note','Risorse portabili'),'status':'preferred_by_user' if state.get('preferred_note') else 'failed','method':'functional','evidence':'Risorsa collegata mancante',
                         'corrections':['Includere tutte le risorse'],'tools':{'filmcraft':'fixture'},'product_sha256':'b'*64,'report_sha256':'c'*64}}]}
@@ -342,7 +342,7 @@ window.showThread();
                 expect(page.get_by_test_id('brief-questions')).to_contain_text('Una proposta di lavoro o un prodotto pronto da distribuire?')
                 expect(page.get_by_test_id('project-overview')).to_contain_text('Da definire con te')
                 section('Attività')
-                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Container rimosso')
+                expect(page.get_by_test_id('worker-reclaimed')).to_contain_text('Risorse della fase liberate')
                 state['job'] = job
                 page.evaluate("window.showThread('fixture',true,true,false)")
                 # A report-only inventory must never replace the selected artifact.
@@ -465,6 +465,51 @@ window.showThread();
                 page.get_by_role('button', name='Ho verificato: accetta questa versione').click()
                 expect(page.get_by_test_id('studio-status')).to_have_text('Il risultato è pronto')
                 expect(page.get_by_text('Questa versione è stata accettata da te.')).to_be_visible()
+                # A waiting conversation is not an inactive model; cancelling
+                # its ticket must remain distinct from stopping a running worker.
+                state['job']={**job,'phase':'queued','started_at':'','deadline_at':'','queue_position':2,
+                              'summary':'In attesa della squadra','operations':[],'can_stop':True}
+                state['project']={**project,'status':'working'}
+                page.reload();page.evaluate("window.showThread('fixture',true,false,true)")
+                expect(page.get_by_test_id('studio-status')).to_have_text('In attesa del proprio turno')
+                section('Attività')
+                expect(page.get_by_test_id('queue-position')).to_contain_text('Posizione in coda: 2')
+                expect(page.get_by_text('Avanzamento da verificare',exact=True)).to_have_count(0)
+                page.get_by_role('button',name='Annulla attesa',exact=True).click()
+                expect(page.get_by_role('button',name='Arresto richiesto…',exact=True)).to_be_disabled()
+                # Selecting a two-page proof does not turn it into a full version.
+                state['job']={**job,'phase':'completed'}
+                state['project']={**project,'status':'review','deliveries':[
+                    {**project['deliveries'][0],'purpose':'preview','category':'sample','version':None}]}
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Risultato')
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Campione')
+                expect(page.get_by_test_id('selected-version')).not_to_contain_text('Versione 2')
+                # Old observations are curated only on explicit request, scoped
+                # to this chat; proposing never implies accepting the lessons.
+                state['pending_observations']=3
+                page.reload();page.evaluate("window.showThread('fixture',true,false,false)")
+                section('Lezioni')
+                expect(page.get_by_role('button',name='Valuta le osservazioni',exact=True)).to_be_disabled()
+                page.evaluate("window.showThread('fixture',false,false,false)")
+                expect(page.get_by_role('button',name='Valuta le osservazioni',exact=True)).to_be_enabled()
+                page.get_by_role('button',name='Valuta le osservazioni',exact=True).click()
+                page.wait_for_function("window.lastContinueMessage?.includes('current_project_only=true')")
+                message=page.evaluate('window.lastContinueMessage')
+                assert '(fixture)' in message and 'non accettare' in message
+                assert state.get('lesson_accepted',False) is False
+                # The component source map and measured offset belong beside the
+                # selected delivery, rather than in a wall of execution messages.
+                state['project']={**project,'deliveries':[{**project['deliveries'][0],
+                    'source_coverage':{'status':'incomplete','components':[{'name':'Musica','tool':'soundcraft','status':'incomplete','sources':[]}]},
+                    'timing':{'status':'failed','cues':[{'name':'Impatto','status':'failed','delta_seconds':1.5}]}}]}
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Risultato')
+                page.get_by_test_id('component-sources').locator('summary').click()
+                expect(page.get_by_test_id('component-sources')).to_contain_text('soundcraft')
+                expect(page.get_by_test_id('component-sources')).to_contain_text('sorgenti incompleti')
+                page.get_by_test_id('delivery-timing').locator('summary').click()
+                expect(page.get_by_test_id('delivery-timing')).to_contain_text('1.5 s di scarto')
                 assert not errors, errors
                 browser.close()
             print('Browser OK: real Tailwind dock visible beside composer on desktop/mobile during chat scrolling; playable preview; adaptive team; 18-minute clock; quota pause; continue action; network recovery; reload and conversation isolation.')

@@ -36,6 +36,7 @@ def project_view(project):
     value = {k: project.get(k) for k in ('id', 'status', 'summary', 'next_action', 'product_path',
              'quality_status', 'attention', 'outcome', 'user_direction', 'user_control', 'memory', 'requirements', 'project_type')}
     value['brief'] = clean_summary(project.get('brief'), 500)
+    value['correction_focus'] = project.get('correction_focus', [])
     acceptance = project.get('acceptance') or {}
     value['acceptance'] = {k: acceptance.get(k) for k in ('hash', 'request_count', 'request_manifest')}
     value['acceptance']['criteria'] = [{k: c.get(k) for k in ('id', 'method', 'critical', 'origin')} |
@@ -80,6 +81,11 @@ def delegate_view(result):
     if review.get('criteria'):
         value['review_scope_instruction'] = 'Il verdetto aggregato comprende tutti i controlli dello stesso requisito: un passed locale non annulla failed o not_run. Un campione prova solo il risultato osservato; prima di estendere verifica i rischi e i difetti ancora aperti, senza abbassare il brief.'
     value['next_action'] = (review.get('revision_actions') or [{}])[0].get('action', '')
+    if result.get('correction_focus'):
+        value['correction_focus'] = result['correction_focus']
+        value['team_instruction'] = ('Se reassess_role è true, rivaluta la competenza e il metodo: aggiorna il ruolo dinamico '
+            'o assegna una correzione mirata a un ruolo pertinente. Non concentrare automaticamente tutti i difetti nello stesso autore. '
+            'Conserva i file validi e verifica il difetto prima di estendere; nessun elenco fisso di professioni o strumenti obbligatori.')
     if review.get('status') == 'needs_revision':
         value['revision_instruction'] = ('Trasforma le correzioni in un incarico mirato sui file esistenti e verifica il prima/dopo. '
             'Non chiedere un altro procedi per una correzione già nello scopo autorizzato. Se il metodo non migliora, '

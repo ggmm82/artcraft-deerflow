@@ -283,3 +283,27 @@ class ExperienceTests(unittest.TestCase):
         lessons.accept(self.library,proposal)
         spec={**self.spec,'tools':['pdfcraft']}
         self.assertEqual(experience.select(self.library,[spec],projects.applications()),[]) # Version mismatch is not silently promoted.
+
+    def test_documented_worker_lesson_becomes_inactive_proposal_without_an_extra_model_call(self):
+        path,note=self.sandbox_note()
+        experience.collect(self.workspace,self.library,'thread-a')
+        self.assertEqual(lessons.propose_findings(self.library,'another-thread'),[])
+        proposed=lessons.propose_findings(self.library,'thread-a')
+        self.assertEqual(len(proposed),1)
+        self.assertEqual(lessons.accepted(self.library),set())
+        self.assertEqual(experience.select(self.library,[self.spec],projects.applications()),[])
+        self.assertEqual(lessons.propose_findings(self.library,'thread-a'),[])
+        note['evidence']='Il controllo è ripetuto su una seconda variante con dipendenze trasferite'
+        path.write_text(json.dumps({'lessons':[note]}))
+        self.assertEqual(experience.collect(self.workspace,self.library,'thread-a'),1)
+        self.assertEqual(lessons.propose_findings(self.library,'thread-a'),[])
+        lessons.accept(self.library,proposed[0])
+        self.assertEqual(len(experience.select(self.library,[self.spec],projects.applications())),1)
+
+    def test_raw_project_facts_and_hypothetical_benefits_are_not_automatically_generalized(self):
+        experience.collect(self.workspace,self.library,'thread-a')
+        self.assertEqual(lessons.propose_findings(self.library,'thread-a'),[])
+        self.sandbox_note({'level':'major','basis':'hypothesis','reason':'Potrebbe forse accelerare la lavorazione'})
+        experience.collect(self.workspace,self.library,'thread-a')
+        self.assertEqual(lessons.propose_findings(self.library,'thread-a'),[])
+        self.assertEqual(lessons.entries(self.library),[])

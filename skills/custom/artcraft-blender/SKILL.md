@@ -1,11 +1,15 @@
 ---
 name: artcraft-blender
-description: "Specialista Blender: modellazione 3D, materiali PBR, rigging, animazione, luci, render e .blend modificabili. Usa la CLI headless e bpy per scene realmente tridimensionali."
+description: "Modellazione 3D, rig, materiali, simulazioni, animazione e rendering. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Blender: produzione 3D
 
 Specialista `blender` per `studio_delegate`. Blender 4.5.14 LTS, checksum ufficiale fissato nel catalogo. Linux amd64, render CPU; non presupporre GPU, add-on, rete o asset esterni installati. Eredita il modello condiviso della squadra.
+
+## Scelta dello strumento e capacità
+
+Modellazione 3D, rig, materiali, simulazioni, animazione e rendering. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities blender` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Capacità e scelta degli strumenti
 

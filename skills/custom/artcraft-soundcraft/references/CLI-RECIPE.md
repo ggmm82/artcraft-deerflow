@@ -21,3 +21,18 @@ La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `soundcraft`. È u
 
 Consegna la sessione `.scraft` con tracce, clip e impostazioni, tutti i file audio collegati (inclusa la cartella `Audio Files` se usata) e il mix/stem richiesto. Prepara un archivio autosufficiente, estrailo e riapri la sessione in SoundCraft da una cartella nuova, verificando media online, tracce, routing e durata. Spiega di estrarre prima di aprire la sessione. Il WAV/MP3 finale non conserva il montaggio multitraccia; segnala plugin, automazioni o risorse non ripristinabili.
 Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.
+
+## Composizione MIDI e sintetizzatore nativo: prova aggiuntiva
+
+Provati nella 0.7.0: `subtractive_synth`, clip MIDI con tre note, bounce non silenzioso, salvataggio `.scraft`, copia del solo sorgente in altra cartella e nuovo bounce. Non richiede importare un WAV. Sono inoltre elencati `drum_synth` e `sampler`: verificarne preset, parametri e resa per l’incarico, senza attribuire loro il collaudo del sintetizzatore sottrattivo.
+
+```bash
+soundcraft-cli plugins
+soundcraft-cli run --cmd 'session.new={"name":"Prova nativa","sample_rate":48000}' --cmd 'track.new={"kind":"instrument","instrument":"subtractive_synth","name":"Lead"}' --save "$ARTCRAFT_OUTPUT_DIR/sessione.scraft"
+```
+
+Leggi l’ID effettivo in `tracks[0].id` del file salvato, quindi esegui `midi.new_clip={"track":ID_REALE,"start":0,"end":96000}` in un `run --in` e salva una nuova versione. Recupera il nuovo ID della clip da `tracks[0].playlists[0].clips[0].id`. Aggiungi note con `midi.note_add={"clip":ID_REALE,"pitch":60,"start_ticks":0,"length_ticks":480,"velocity":90}` e salva `.scraft` prima del bounce. Non incollare `ID_REALE` come stringa né assumere gli ID dell’esempio.
+
+**Unità distinte:** clip start/end in campioni; MIDI start_ticks/length_ticks in tick; `soundcraft-cli run --bounce ... --start 0 --end 2` in secondi; MCP `bounce_mix.end` in campioni. Leggi tempo, risoluzione MIDI e sample rate della sessione prima della conversione. Nella prova 96.000 campioni a 48 kHz sono due secondi; `--end 96000` nel CLI bounce non significa due secondi.
+
+Prova automatizzata completa: `/opt/artcraft/check_tool_capabilities.py --soundcraft-authoring`. Controlla tre note persistenti, plugin nativo, assenza di sorgente audio importato, durata/sample rate/canali e bounce non nullo anche dopo trasferimento. Non è un ascolto né un esempio di composizione professionale. Per il brief reale servono orchestrazione/sound design, livelli, accenti e revisione pertinenti; preserva parametri, sessione e stem.

@@ -1,5 +1,5 @@
 export type JobProgress = {
-  can_stop?: boolean; cancel_requested?: boolean;
+  can_stop?: boolean; cancel_requested?: boolean; queue_position?: number;
   worker_exit_at?: string; cleanup_started_at?: string; cleanup_finished_at?: string;
   resources_reclaimed?: boolean; cleanup_error?: boolean; cancel_error?: boolean;
   resources?: { memory_bytes?: number; memory_limit_bytes?: number; oom_kills?: number };
@@ -29,8 +29,8 @@ export function duration(seconds: number | null): string {
 
 export function jobHealth(job: JobProgress, now: number): string | null {
   if (terminalJob(job)) return null;
-  if (job.phase === "queued") return "In coda: attesa massima della squadra 2 minuti";
-  if (job.phase === "starting" && (secondsSince(job.created_at, now) ?? 0) < 30) return null;
+  if (job.phase === "queued") return null;
+  if (job.phase === "starting" && (secondsSince(job.started_at || job.created_at, now) ?? 0) < 30) return null;
   if (job.deadline_at && Date.parse(job.deadline_at) <= now)
     return "Tempo limite superato: l’esito non è ancora stato ricevuto";
   const heartbeat = secondsSince(job.heartbeat_at, now);

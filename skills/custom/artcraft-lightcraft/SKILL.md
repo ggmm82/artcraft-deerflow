@@ -1,12 +1,16 @@
 ---
 name: artcraft-lightcraft
-description: "Cataloghi fotografici, sviluppo RAW e lavorazioni in serie. Usa questa skill per lavorare con lightcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Sviluppo fotografico/RAW, catalogazione, correzioni locali e serie coerenti. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Fotografia e RAW
 
 Specialista: `lightcraft` per `studio_delegate`; nome della skill: `artcraft-lightcraft`.
 CLI: `lightcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Sviluppo fotografico/RAW, catalogazione, correzioni locali e serie coerenti. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities lightcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

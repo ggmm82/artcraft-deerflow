@@ -1,6 +1,6 @@
 ---
 name: artcraft-calibre
-description: "Capacità Calibre CLI: conversione documenti, metadati, copertine, EPUB/AZW3, sorgenti XHTML/CSS e librerie locali, con controlli nativi. Disponibile ai ruoli dinamici di qualsiasi progetto."
+description: "Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Calibre: documenti e pubblicazioni digitali
@@ -8,6 +8,10 @@ description: "Capacità Calibre CLI: conversione documenti, metadati, copertine,
 Calibre **9.16.0**, release ufficiale e SHA-256 fissati nel catalogo. Questa skill descrive uno strumento: non definisce professioni, una squadra editoriale obbligatoria o una sequenza di progetto. Un ruolo compilato dinamicamente può selezionarla quando serve una sua capacità. Eredita provider e modello condivisi.
 
 Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md) e [QUALITY.md](references/QUALITY.md). Scopri `craft help calibre`, `craft commands calibre`, `craft tools calibre`. `calibre-cli` è l’adattatore ArtCraft; `ebook-convert`, `ebook-meta`, `ebook-polish`, `calibre-debug`, `calibredb`, `ebook-edit` sono le CLI ufficiali. Non inventare comandi e non confondere i nomi MCP con quelli nativi.
+
+## Scelta dello strumento e capacità
+
+Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities calibre` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Scelta e limiti
 

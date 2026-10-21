@@ -34,3 +34,12 @@ class RevisionTests(unittest.TestCase):
         number_attempts(project)
         self.assertEqual(second['version_number'],2)
         self.assertEqual(third['version_number'],3)
+
+    def test_selected_preview_is_a_sample_even_with_a_legacy_version_number(self):
+        attempt={'context':{'purpose':'preview'},'version_number':1,'output_files':['/data/two-pages.pdf'],
+                 'delivery_record':{'id':'sample'},'status':'completed'}
+        project={'product_path':'/data/two-pages.pdf','steps':[{'id':'sample','attempts':[attempt]}]}
+        number_attempts(project)
+        result=annotate([{'id':'sample','title':'Two-page proof','current':True}],project,None,lambda _,p:Path(p) if p else None)[0]
+        self.assertEqual(result['category'],'sample')
+        self.assertIsNone(result['version'])

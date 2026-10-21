@@ -1,6 +1,6 @@
 ---
 name: artcraft-wordcraft
-description: "Documenti strutturati, stili, tabelle, DOCX e PDF. Usa questa skill per lavorare con wordcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Scrittura strutturata, documenti lunghi, revisioni e apparati editoriali. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Testi e documenti
@@ -9,6 +9,10 @@ Specialista: `wordcraft` per `studio_delegate`; nome della skill: `artcraft-word
 CLI: `wordcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
 
 La [ricetta CLI collaudata](references/CLI-RECIPE.md) viene inclusa automaticamente nel contesto dello specialista, insieme al percorso rapido seguente.
+
+## Scelta dello strumento e capacità
+
+Scrittura strutturata, documenti lunghi, revisioni e apparati editoriali. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities wordcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

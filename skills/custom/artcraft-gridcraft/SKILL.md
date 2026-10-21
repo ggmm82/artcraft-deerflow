@@ -1,12 +1,16 @@
 ---
 name: artcraft-gridcraft
-description: "Dati, formule, tabelle, grafici e file XLSX. Usa questa skill per lavorare con gridcraft-cli, ispezionare il documento, modificarlo, esportarlo e controllare il risultato."
+description: "Fogli di calcolo, formule, tabelle, grafici, analisi e reporting. Scelta dei comandi, limiti, sorgenti modificabili e verifiche native."
 ---
 
 # Fogli di calcolo
 
 Specialista: `gridcraft` per `studio_delegate`; nome della skill: `artcraft-gridcraft`.
 CLI: `gridcraft-cli`. La release è fissata in `/opt/artcraft/versions.lock.json`.
+
+## Scelta dello strumento e capacità
+
+Fogli di calcolo, formule, tabelle, grafici, analisi e reporting. Consulta [la mappa operativa completa](references/CAPABILITIES.md) o `craft capabilities gridcraft` per scegliere i comandi dal risultato, con limiti e sorgenti. Le ricette minime sotto sono collaudi delle API, non il livello qualitativo da consegnare.
 
 ## Quando usarla
 

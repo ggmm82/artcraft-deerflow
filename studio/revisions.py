@@ -6,7 +6,8 @@ def number_attempts(project):
     """Persist monotonically increasing numbers, including failed/in-progress work."""
     attempts = [a for step in project['steps'] for a in step['attempts']
                 if (a.get('context') or {}).get('purpose') == 'delivery'
-                or project.get('product_path') and project['product_path'] in a.get('output_files', [])]
+                or (a.get('context') or {}).get('purpose', 'work') not in ('preview', 'review')
+                and project.get('product_path') and project['product_path'] in a.get('output_files', [])]
     attempts.sort(key=lambda a: (a.get('started_at', ''), a.get('finished_at', '')))
     counter = max([project.get('version_counter', 0), *[a.get('version_number', 0) for a in attempts]])
     changed = False
@@ -29,7 +30,8 @@ def annotate(deliveries, project, workspace, artifact):
         identifier = (attempt.get('delivery_record') or {}).get('id') or Path(attempt.get('output_dir', '')).name or step['id']
         purpose = (attempt.get('context') or {}).get('purpose', 'work')
         current = bool(project.get('product_path') and project['product_path'] in attempt.get('output_files', []))
-        category = 'version' if purpose == 'delivery' or current else 'review' if purpose == 'review' or attempt.get('quality_review') else 'sample' if purpose == 'preview' else 'contribution'
+        category = ('review' if purpose == 'review' or attempt.get('quality_review') else 'sample' if purpose == 'preview'
+                    else 'version' if purpose == 'delivery' or current else 'contribution')
         delivery = by_id.get(identifier)
         if delivery is None:
             continue

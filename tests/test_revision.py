@@ -89,3 +89,29 @@ class RevisionTests(unittest.TestCase):
             self.review({'revision_actions': [{'requirement_id': 'invented', 'action': 'Fix', 'priority': 1}]})
         with self.assertRaisesRegex(ValueError, 'baseline_path'):
             self.review({'comparison': [{'requirement_id': 'total', 'status': 'improved', 'evidence': 'Claim'}]})
+
+    def test_empty_comparison_preserves_review_and_failure_without_inventing_progress(self):
+        review=self.review({'baseline_path':str(self.before),'comparison':[]})
+        self.assertEqual(review['status'],'needs_revision')
+        self.assertIsNone(review['comparison'])
+        self.assertIn('non verificato',review['comparison_warning'])
+        self.assertTrue(review['revision_actions'])
+        self.assertEqual(json.loads(self.report.read_text())['baseline_path'],str(self.before))
+        review=self.review({'baseline_path':str(self.before),'criteria':[{'requirement_id':'total','criterion':'Total',
+            'method':'functional','status':'passed','evidence':'Computed total'}]})
+        self.assertEqual(review['status'],'needs_review')
+
+    def test_recurring_defect_requires_distinct_products_and_resets_after_success_or_new_brief(self):
+        from studio.revision import correction_focus
+        first=self.review();first.update(sha256='first',contract_hash='brief')
+        second={**first,'sha256':'second','comparison':{'baseline_sha256':'first'}}
+        project={'acceptance':{'hash':'brief'},'steps':[{'attempts':[
+            {'validated':True,'finished_at':'1','quality_review':first},
+            {'validated':True,'finished_at':'2','quality_review':first}]}]}
+        self.assertFalse(correction_focus(project)[0]['reassess_role'])
+        project['steps'][0]['attempts'].append({'validated':True,'finished_at':'3','quality_review':second})
+        self.assertTrue(correction_focus(project)[0]['reassess_role'])
+        second['criteria']=[{**c,'status':'passed'} for c in first['criteria']]
+        self.assertEqual(correction_focus(project),[])
+        project['acceptance']['hash']='changed'
+        self.assertEqual(correction_focus(project),[])
