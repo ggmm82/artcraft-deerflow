@@ -16,6 +16,7 @@ def main():
         config.write_text(Path('/app/backend/studio/deerflow.yaml').read_text())
         os.environ['DEER_FLOW_CONFIG_PATH'] = str(config)
         os.environ['DEER_FLOW_EXTENSIONS_CONFIG_PATH'] = str(root / 'extensions.json')
+        (root / 'extensions.json').write_text('{}')
         from deerflow.config import get_app_config
         from deerflow.config.paths import get_paths
         from deerflow.skills.storage import get_or_new_user_skill_storage
