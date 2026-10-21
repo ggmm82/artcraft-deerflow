@@ -156,7 +156,10 @@ def worker_arguments(policy, blocker_host_path, *, projected_skills=False):
             for path in paths:
                 result += ['--mount', 'type=bind,src=' + str(blocker_host_path) + ',dst=' + path + ',readonly']
         if app['id'] == 'freecad':
-            for path in ('/usr/lib/freecad-python3', '/usr/share/freecad/Mod', '/usr/lib/freecad/lib'):
+            # Debian's /usr/lib/freecad/lib is an alternatives symlink to this
+            # canonical directory. Mask the directory itself, not its parent:
+            # a second alias mount inside an already-read-only parent can fail.
+            for path in ('/usr/lib/freecad-python3/lib', '/usr/share/freecad/Mod'):
                 result += ['--tmpfs', path + ':ro,size=1m']
         if app['id'] == 'playwright':
             for path in ('/opt/artcraft/toolkit', '/opt/artcraft/playwright-browsers'):

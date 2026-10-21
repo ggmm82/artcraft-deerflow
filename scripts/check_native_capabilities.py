@@ -1,7 +1,10 @@
 """Gateway acceptance against the pinned, real DeerFlow storage and Agent loader."""
 import os
 from pathlib import Path
+import sys
 import tempfile
+
+sys.path.insert(0, '/app/backend')
 
 
 def main():

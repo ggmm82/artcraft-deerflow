@@ -13,11 +13,16 @@ def inside():
     disabled = {'blender', 'cadcraft', 'ffmpeg', 'freecad'}
     for identifier in disabled:
         command = installed[identifier]['binary']
+        if identifier in ('blender', 'cadcraft'):
+            assert not Path(command).exists(), identifier + ' bundle remains exposed'
         try:
-            result = subprocess.run([command, '--version'], capture_output=True, timeout=15)
+            result = subprocess.run([command, '-version' if identifier == 'ffmpeg' else '--version'], capture_output=True, timeout=15)
         except (FileNotFoundError, PermissionError):
+            assert identifier in ('blender', 'cadcraft')
             continue
-        assert result.returncode != 0, identifier + ' bypassed native policy through absolute path'
+        assert result.returncode == 126 and b'Disabled native capability' in result.stderr, identifier + ' was not blocked by the policy'
+    probe = subprocess.run(['/usr/bin/ffprobe', '-version'], capture_output=True)
+    assert probe.returncode == 126 and b'Disabled native capability' in probe.stderr
     for command in (['craft', 'list'], ['craft', 'capabilities']):
         records = json.loads(subprocess.check_output(command, text=True))
         assert not disabled & {r['id'] for r in records}
@@ -26,8 +31,8 @@ def inside():
         result = subprocess.run(['craft', 'commands', identifier], capture_output=True, timeout=15)
         assert result.returncode != 0, identifier + ' bypassed craft policy'
     # FreeCAD is also callable as a Python module, not only as an executable.
-    code = "import sys;sys.path[:0]=['/usr/lib/freecad-python3/lib','/usr/lib/freecad/lib'];import FreeCAD"
-    assert subprocess.run(['/usr/bin/python3', '-c', code], capture_output=True).returncode != 0
+    code = "import sys,importlib.util;sys.path[:0]=['/usr/lib/freecad-python3/lib','/usr/lib/freecad/lib'];assert importlib.util.find_spec('FreeCAD') is None"
+    assert subprocess.run(['/usr/bin/python3', '-c', code], capture_output=True).returncode == 0
     assert not Path('/mnt/skills/custom/artcraft-blender/SKILL.md').exists()
     assert subprocess.run(['typst', '--version'], capture_output=True).returncode == 0
     print('Worker policy OK: empty-tools workspace, absolute binaries, FreeCAD Python API, CLI catalogs and active tool isolation')

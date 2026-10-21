@@ -97,3 +97,8 @@ class NativePolicyTests(unittest.TestCase):
         self.assertFalse(any('/mnt/skills/custom/' in a for a in args))
         self.assertFalse(any('dst=/usr/lib/freecad/bin' in a for a in args))
         with self.assertRaises(ValueError): policy.require_tools(scoped, ['blender'])
+        blocked_cad = policy.policy_from_names({'artcraft-blender'})
+        args = policy.worker_arguments(blocked_cad, '/host/tool-disabled')
+        self.assertIn('/usr/lib/freecad-python3/lib:ro,size=1m', args)
+        self.assertNotIn('/usr/lib/freecad-python3:ro,size=1m', args)
+        self.assertNotIn('/usr/lib/freecad/lib:ro,size=1m', args)
