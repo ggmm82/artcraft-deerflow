@@ -230,7 +230,8 @@ def accept(root, identifier, enabled=True):
     if not isinstance(identifier, str) or not ID.fullmatch(identifier) or type(enabled) is not bool:
         raise ValueError('Accettazione non valida')
     with locked(root) as folder:
-        if identifier not in {r['id'] for r in entries(folder)}:
+        record = next((r for r in entries(folder) if r['id'] == identifier), None)
+        if record is None:
             raise ValueError('Lezione proposta non trovata')
         manual_path = folder / 'accepted-lessons.json'
         if manual_path.is_symlink():
@@ -239,7 +240,11 @@ def accept(root, identifier, enabled=True):
         ids.add(identifier) if enabled else ids.discard(identifier)
         atomic_json(folder / 'accepted-lessons.json', sorted(ids))
         # Disabling automatic knowledge is persistent and survives recollection.
-        from .experience import disabled
+        from .experience import disabled, entries as observations
         exclusions = disabled(folder)
-        exclusions.discard(identifier) if enabled else exclusions.add(identifier)
+        sources = {r['id']: r['observation'] for r in observations(folder)}
+        if enabled or category(record, sources) != 'tool_operation':
+            exclusions.discard(identifier)
+        else:
+            exclusions.add(identifier)
         atomic_json(folder / 'excluded.json', sorted(exclusions))

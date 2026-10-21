@@ -266,6 +266,12 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(item['category'], 'production_method')
         lessons.accept(self.library, proposal)
         self.assertIn(proposal, lessons.accepted(self.library))
+        lessons.accept(self.library, proposal, False)
+        item, = experience.summary(self.library)['lessons']
+        self.assertFalse(item['accepted'])
+        self.assertFalse(item['excluded'])  # Remains available for re-acceptance.
+        lessons.accept(self.library, proposal)
+        self.assertIn(proposal, lessons.accepted(self.library))
 
     def test_failed_unscoped_and_missing_proofs_do_not_activate_technical_notes(self):
         for fault in ('failed', 'wrong_value', 'wrong_type', 'outside', 'missing'):
