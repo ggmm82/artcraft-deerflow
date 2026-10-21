@@ -22,6 +22,15 @@ def main():
     assert (ROOT/'studio/deerflow.yaml').read_bytes()==(ROOT/'config/deerflow.yaml').read_bytes()
     assert (ROOT/'studio/versions.lock.json').read_bytes()==(ROOT/'versions.lock.json').read_bytes()
     for a in lock['applications']:
+        for resource in a.get('resources', []):
+            assert re.fullmatch('[a-f0-9]{64}', resource['sha256']) and resource['size_bytes'] > 0
+            assert resource.get('license') and resource.get('source')
+            assert resource['url'].startswith(('https://deb.debian.org/debian/pool/', 'https://huggingface.co/ggerganov/whisper.cpp/resolve/'))
+            if resource.get('kind') == 'file':
+                assert re.fullmatch('[a-f0-9]{40}', resource['revision']) and resource['revision'] in resource['url']
+                assert '..' not in Path(resource['install_path']).parts and not Path(resource['install_path']).is_absolute()
+        if a.get('install', {}).get('kind') == 'debian':
+            assert all(v.get('package') and v.get('package_version') for v in a['assets'].values())
         for asset in a['assets'].values():
             assert re.fullmatch('[a-f0-9]{64}',asset['sha256'])
             assert asset['url'].startswith(a.get('download_base', a['repository']+'/releases/download/'+a['version']+'/'))

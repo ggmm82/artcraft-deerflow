@@ -87,3 +87,7 @@ Per una prima bozza produci presto un loop completo breve con ritmo, basso e acc
 ## Qualità del prodotto
 
 Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+
+## Strumenti complementari
+
+Per sintetizzare partiture MIDI con una banca SF2 esterna valuta `artcraft-fluidsynth`: conserva MIDI, banca e ricetta insieme alla sessione SoundCraft e agli stem. Per stimare attacchi, battiti e pitch usa `artcraft-aubio`; per conversioni e misure tecniche `artcraft-ffmpeg`. Questi controlli non sostituiscono ascolto, composizione, timbri adatti o mix professionale. Non importare un WAV dichiarandolo sorgente modificabile delle note.

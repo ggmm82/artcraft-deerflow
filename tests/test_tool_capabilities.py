@@ -12,6 +12,7 @@ from scripts.check_tool_capabilities import validate, check_bounce
 from scripts.render_capability_docs import render
 
 ROOT=Path(__file__).resolve().parents[1]
+APP_COUNT=len(json.loads((ROOT/'versions.lock.json').read_text())['applications'])
 
 
 class ToolCapabilitiesTests(unittest.TestCase):
@@ -47,7 +48,7 @@ class ToolCapabilitiesTests(unittest.TestCase):
     def test_catalog_drift_and_fabricated_capability_are_rejected(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);data=self.fixture(root)
-            self.assertEqual(len(validate(root)),15)
+            self.assertEqual(len(validate(root)),APP_COUNT)
             for mutate in (
                 lambda a:a.update(version='unverified-upgrade'),
                 lambda a:a['groups'][0]['commands'].append('invented.generate_perfect_product'),
@@ -63,7 +64,7 @@ class ToolCapabilitiesTests(unittest.TestCase):
             def run(*args):
                 return subprocess.run([sys.executable,str(ROOT/'scripts/craft.py'),'capabilities',*args],
                     env={**os.environ,'ARTCRAFT_INSTALL_ROOT':str(root)},capture_output=True,text=True,check=False)
-            index=run();self.assertEqual(index.returncode,0);self.assertEqual(len(json.loads(index.stdout)),15)
+            index=run();self.assertEqual(index.returncode,0);self.assertEqual(len(json.loads(index.stdout)),APP_COUNT)
             self.assertNotIn('catalog_ids',index.stdout)
             sound=run('soundcraft');self.assertNotIn('catalog_ids',json.loads(sound.stdout))
             self.assertIn('midi.note_add',sound.stdout)
@@ -74,6 +75,6 @@ class ToolCapabilitiesTests(unittest.TestCase):
 
     def test_generated_guidance_covers_installed_apps_without_drift(self):
         pages=render(ROOT)
-        self.assertEqual(len(pages),16)
+        self.assertEqual(len(pages),APP_COUNT+1)
         for path,text in pages.items():
             self.assertEqual(path.read_text(),text,str(path))

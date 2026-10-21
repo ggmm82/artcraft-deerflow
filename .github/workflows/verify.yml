@@ -113,6 +113,9 @@ jobs:
       - name: Check Codex credentials rotation with the pinned DeerFlow provider
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_codex_provider.py -v
+      - name: Check native DeerFlow skill discovery and custom Agent references
+        if: matrix.component == 'gateway'
+        run: docker run --rm --network=none --entrypoint python --mount "type=bind,src=$PWD/scripts,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 /review/check_skill_wiring.py
       - name: Check custom OpenAI endpoint, SDK streaming and model target isolation
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_custom_providers.py -v

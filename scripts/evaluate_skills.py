@@ -20,6 +20,15 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
+    'ffmpeg': 'Verifica e converti media con codec e timeline espliciti, conservando i progetti di authoring e provando il sync sul prodotto finale.',
+    'playwright': 'Collauda un percorso web reale a desktop/mobile: interazioni, stato salvato, errori, screenshot e test modificabili.',
+    'aubio': 'Analizza attacchi e pitch di un audio fornito con unità esplicite, limiti e confronto con eventi osservabili.',
+    'fluidsynth': 'Rendi un MIDI con SoundFont coerente, conserva MIDI e banca autorizzata, ricostruisci dopo trasferimento e verifica il WAV.',
+    'epubcheck': 'Verifica indipendentemente un EPUB finale e correggi le risorse assenti nel sorgente senza confondere conformità e qualità.',
+    'pandoc': 'Converti un documento strutturato mantenendo contenuto, citazioni e risorse; consegna sorgenti e ricetta collaudata.',
+    'typst': 'Impagina un documento PDF da .typ con stili, immagini e font, controlla pagine e ricompila dopo trasferimento.',
+    'freecad': 'Crea CAD parametrico .FCStd, verifica quote e solidi, modifica un parametro dopo riapertura ed esporta STEP.',
+    'whisper': 'Trascrivi parlato fornito in TXT e SRT con modello CPU offline, controlla testo e origine dei timecode senza pretendere giudizi musicali.',
     'calibre': 'Converti un documento fornito in EPUB e PDF, conserva sorgenti modificabili e risorse, verifica metadati, ordine di lettura, struttura e trasferimento.',
     'blender': 'Crea una scena 3D con materiale, animazione a keyframe e render; consegna .blend riaperto con texture incorporate e GLB verificato.',
     'photocraft': 'Ritocca un’immagine con maschera mantenendo livelli modificabili; esporta PNG trasparente.',

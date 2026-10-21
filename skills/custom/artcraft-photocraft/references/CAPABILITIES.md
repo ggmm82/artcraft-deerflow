@@ -1,6 +1,6 @@
 # Capacità operative: photocraft
 
-Versione esaminata: **v0.8.2**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.8.2**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Ritocco, compositing raster e texture con livelli e maschere.
 **Sorgenti:** PSD o .pcraft con livelli; originali e ricetta delle texture.
@@ -29,5 +29,5 @@ Editor raster, non generatore di immagini per definizione. La generazione nativa
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 892 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `01668d7a38cf33bb75f28fe6e4985d471e1075022bee14f4812b60c73cbcd69f`.
+Catalogo esaminato: 892 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `01668d7a38cf33bb75f28fe6e4985d471e1075022bee14f4812b60c73cbcd69f`.
 Fonte: https://github.com/storytold/photocraft/tree/v0.8.2. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

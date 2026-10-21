@@ -10,7 +10,7 @@ import zipfile
 
 FLAT = {'.wav','.mp3','.m4a','.ogg','.flac','.aac','.mp4','.mov','.webm','.mkv','.png','.jpg','.jpeg','.webp'}
 ASSETS = FLAT | {'.svg','.obj','.glb','.gltf'}
-NATIVE_TOOL = {'.scraft':'soundcraft','.ecproj':'effectcraft','.fcproj':'filmcraft','.blend':'blender'}
+NATIVE_TOOL = {'.scraft':'soundcraft','.ecproj':'effectcraft','.fcproj':'filmcraft','.blend':'blender','.fcstd':'freecad'}
 
 
 def inspect_components(handoff, files, *, required=False, workspace=None):

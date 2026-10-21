@@ -1,6 +1,6 @@
 # Capacità operative: figcraft
 
-Versione esaminata: **v0.6.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.6.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Design di interfacce, componenti, layout adattivi e prototipi.
 **Sorgenti:** .figcraft e asset; esportazioni .fig/SVG/PDF verificate separatamente.
@@ -29,5 +29,5 @@ Un prototipo non è software applicativo funzionante. Collaborazione, plugin o s
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 552 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `7b4f193437e7c436aa810f283aac3df7f443ba8a6a23e76593e8e08a3702887d`.
+Catalogo esaminato: 552 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `7b4f193437e7c436aa810f283aac3df7f443ba8a6a23e76593e8e08a3702887d`.
 Fonte: https://github.com/storytold/figcraft/tree/v0.6.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

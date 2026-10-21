@@ -1,6 +1,6 @@
 # Capacità operative: deckcraft
 
-Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Presentazioni editabili, sistemi di slide, diagrammi, media e animazioni.
 **Sorgenti:** .deckcraft e PPTX, con media e limiti di interoperabilità.
@@ -29,5 +29,5 @@ Un deck di immagini non equivale a slide con elementi editabili. Verificare sepa
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 232 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `83b1c57598b9488282733c10f13a78b082269617b2376aaed34f3e4caba0b301`.
+Catalogo esaminato: 232 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `83b1c57598b9488282733c10f13a78b082269617b2376aaed34f3e4caba0b301`.
 Fonte: https://github.com/storytold/deckcraft/tree/v0.7.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

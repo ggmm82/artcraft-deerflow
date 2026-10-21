@@ -1,6 +1,6 @@
 # Capacità operative: lightcraft
 
-Versione esaminata: **v0.8.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.8.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Sviluppo fotografico/RAW, catalogazione, correzioni locali e serie coerenti.
 **Sorgenti:** Originali, parametri e ricetta riproducibile; sidecar solo se realmente supportato.
@@ -29,5 +29,5 @@ Funzioni AI/denoise dipendono dai modelli effettivamente installati. Una voce de
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 313 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `ecb152c886ffb4e7fae8e710fb25b821f0e899b6fc071e352250c76cce33a1bf`.
+Catalogo esaminato: 313 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `ecb152c886ffb4e7fae8e710fb25b821f0e899b6fc071e352250c76cce33a1bf`.
 Fonte: https://github.com/storytold/lightcraft/tree/v0.8.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

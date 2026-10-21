@@ -1,6 +1,6 @@
 # Capacità operative: wordcraft
 
-Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-20.
+Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-21.
 
 **Sceglilo per:** Scrittura strutturata, documenti lunghi, revisioni e apparati editoriali.
 **Sorgenti:** DOCX/progetto supportato con struttura, stili e revisioni.
@@ -29,5 +29,5 @@ Funzioni Zotero richiedono Zotero attivo; non presumere servizi presenti. Per pr
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 617 ID unici (per Blender/Calibre: adattatore, non l’intera API ufficiale). SHA256 della rilevazione: `8ee0028e890621379a6d401653e8f9e28537c2946c0e1616e9fda4d77c536e2f`.
+Catalogo esaminato: 617 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `8ee0028e890621379a6d401653e8f9e28537c2946c0e1616e9fda4d77c536e2f`.
 Fonte: https://github.com/storytold/wordcraft/tree/v0.7.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.
