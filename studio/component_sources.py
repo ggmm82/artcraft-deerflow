@@ -109,8 +109,34 @@ def inspect_components(handoff, files, *, required=False, workspace=None):
     expected={(p,'') for p,f in downloaded.items() if f.get('role')=='export'
               or f.get('role')=='dependency' and Path(p).suffix.lower() in ASSETS}
     expected.update((p,n) for p,names in indexes.items() for n in names if PurePosixPath(n).suffix.lower() in ASSETS)
+    # A portable package often repeats an already documented download. Carry
+    # coverage only across byte-identical copies, never across names alone.
+    hashes = {}
+    def identity(location):
+        if location not in hashes:
+            path,member = location
+            with ExitStack() as opened:
+                if member:
+                    archive=opened.enter_context(zipfile.ZipFile(path))
+                    locator=indexes[path][member]
+                    for part in locator[:-1]:
+                        stream=opened.enter_context(archive.open(part))
+                        archive=opened.enter_context(zipfile.ZipFile(stream))
+                    stream=opened.enter_context(archive.open(locator[-1]))
+                else:
+                    stream=opened.enter_context(Path(path).open('rb'))
+                hashes[location]=hashlib.file_digest(stream,'sha256').hexdigest()
+        return hashes[location]
+    named = {}
+    for location in covered:
+        named.setdefault(PurePosixPath(location[1] or location[0]).name, []).append(location)
+    for location in expected-covered:
+        candidates = named.get(PurePosixPath(location[1] or location[0]).name, [])
+        if candidates and any(identity(location) == identity(other) for other in candidates):
+            covered.add(location)
     missing=expected-covered
     if missing:
-        issues.append('Componenti prive di sorgenti associati: '+', '.join(PurePosixPath(n or p).name for p,n in sorted(missing)[:6]))
+        issues.append('Componenti prive di sorgenti associati: '+', '.join(
+            PurePosixPath(p).name + ':' + n if n else PurePosixPath(p).name for p,n in sorted(missing)[:6]))
     return {'status':'incomplete' if issues else 'documented','components':result,'issues':issues[:12],
             'notice':'Inventario dei sorgenti; non prova da solo che una ricetta rigeneri gli stessi risultati o che una GUI li apra.'}

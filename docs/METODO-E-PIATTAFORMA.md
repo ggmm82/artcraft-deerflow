@@ -45,3 +45,13 @@ Valutazione della documentazione ufficiale, non un collaudo comparativo delle pi
 I test coprono raccolta dopo interruzione, isolamento dei file, percorsi virtuali, limiti di lettura, deduplicazione, nessuna approvazione implicita, trasferimento delle osservazioni al ruolo successivo e accessibilità dei protocolli. I test esistenti verificano anche policy, sorgenti e integrazioni.
 
 La misura successiva è un confronto end-to-end su brief e riferimenti identici: qualità osservata del risultato, riapertura dei sorgenti, numero di revisioni, tempo e costo. Non basta contare agenti, file o comandi riusciti. Le modifiche del prompt sono un’ipotesi di miglioramento da misurare; i test deterministici non garantiscono il risultato creativo di ogni modello.
+
+## Correzione dei contratti di completamento
+
+Un successivo caso reale ha evidenziato tre difetti distinti dal metodo creativo:
+
+- Il `read_file` nativo consente i percorsi della conversazione in `workspace`, `uploads` e `outputs`, ma rifiuta `.studio-project`. Le risposte di controllo indirizzavano il coordinatore proprio lì. `studio_read_context` legge soltanto i riferimenti immutabili di quel progetto, verificando hash, confine della conversazione, dimensione e paginazione. Non amplia l’accesso del lettore nativo al filesystem host; viene aggiunto anche alle configurazioni persistenti esistenti.
+- I pacchetti portabili possono contenere copie degli export scaricabili. La copertura dei sorgenti non riconosceva l’equivalenza e chiedeva di documentare nuovamente gli stessi file dentro lo ZIP. Ora la copertura si trasferisce soltanto fra copie con stesso nome e SHA-256 identico; un file diverso resta da documentare. Gli errori indicano anche archivio e membro, per distinguere le copie.
+- Una revisione salvata in `quality-review.json` veniva persa se il worker non scriveva anche `handoff.json`. Per i soli job di revisione, il runtime può compilare l’involucro mancante dopo aver validato il rapporto esistente e i suoi input. Mantiene i giudizi del revisore, non modifica il prodotto e rifiuta un hash dichiarato che non corrisponde al prodotto. Una revisione consegna un rapporto: non richiede un altro export audiovisivo per soddisfare i requisiti del prodotto esaminato.
+
+Riproduzione offline sui file reali: l’associazione dei sorgenti passa senza rigenerare o modificare i file; la revisione viene acquisita e conserva `needs_review`, con ascolto e confronto rimasti non verificati. Il recupero del rapporto non approva automaticamente la qualità e non esegue la rigenerazione dei sorgenti dichiarata dal produttore.

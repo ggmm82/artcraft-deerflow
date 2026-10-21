@@ -28,6 +28,9 @@ tools:
 - name: studio_delegate
   group: studio
   use: studio.tools:studio_delegate
+- name: studio_read_context
+  group: studio
+  use: studio.tools:studio_read_context
 - name: studio_plan
   group: studio
   use: studio.tools:studio_plan
