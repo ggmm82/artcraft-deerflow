@@ -47,6 +47,7 @@ pathlib.Path(sys.argv[1]).write_text('Completed')
                     cwd=output, env={**os.environ, 'ARTCRAFT_OUTPUT_DIR': str(output)}, check=True)
                 return 'Completed'
             with patch.object(run_agent, 'Path', side_effect=worker_path), \
+                 patch.dict(os.environ), \
                  patch.object(sys, 'argv', ['run_agent.py', str(jobfile)]), \
                  patch('studio.codex_native.run', side_effect=native_fixture):
                 jobfile.write_text(json.dumps(job))
