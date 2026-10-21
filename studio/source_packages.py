@@ -21,6 +21,7 @@ MAX_FILES = 12000
 # They are never executed here: prepare() below is the trusted runtime code.
 # Keep these identities when extending format checks, so existing sources reopen.
 RELEASED_PREPARERS = {
+    'ca41c6293e01c00de24a64c0451fb31392e2f2e8ec9c8abd1e0d1a4e5dce2586',  # PR23 / 2de17e3
     'dc64bb7d149025adba6c380ab676d0d19bbb74ea0779f70e0e514dd1a8b4c73a',  # 6e19bcabb8
     '5cc17a70890beeb481d9782cb85ecf184b64b137e1eee02f440a16eb2ddf9ede',  # 0f7da4742f
 }

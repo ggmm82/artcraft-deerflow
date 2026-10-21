@@ -10,6 +10,8 @@ Gli **Agents** sono profili riutilizzabili dell’utente: configurazione, istruz
 
 La **squadra di progetto** ArtCraft compila invece ruoli temporanei, attività, criteri e competenze pertinenti. Non deve salvare ogni incarico come un nuovo Agent permanente. I worker ricevono le skills selezionate e la procedura compilata; Codex/Antigravity le scoprono anche nei rispettivi percorsi nativi, limitati al run. Provider e modello continuano a provenire dalla configurazione condivisa.
 
+Il catalogo delle skills eseguibili dagli specialisti ArtCraft è attualmente quello distribuito e collaudato con l’immagine. Una skill esterna aggiunta dalla UI DeerFlow o selezionata in un profilo Agents non viene automaticamente installata con tutte le dipendenze nei worker ArtCraft. Il loader del coordinatore e l’installazione del runtime sono passaggi distinti: non presentarli come propagazione già implementata. Integrare una nuova procedura richiede verificarne anche risorse e comandi nel worker.
+
 `scripts/check_skill_wiring.py` verifica nella vera immagine Gateway il loader DeerFlow, il parsing di tutte le skills e i riferimenti `AgentConfig`, senza chiamate a modelli. Questo controllo di cablaggio non certifica l’intero editor Agents o una migrazione di tutti i suoi profili.
 
 ## Skills già pronte considerate
