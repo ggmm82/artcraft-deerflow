@@ -143,12 +143,12 @@ def freecad(c):
     output = c.root / 'Sources';call(c, 'execute', input=str(script), output=str(output))
     model = output / 'model.FCStd';inspection = call(c, 'inspect', input=str(model), output=str(c.root / 'inspect.json'))['inspection']
     box = next(x for x in inspection['objects'] if x['name'] == 'Box')
-    c.check('Native parametric dimensions and solid volume preserved', box['type'] == 'Part::Box' and box['valid'] and box['volume'] == 1000 and box['dimensions_mm']['Length'] == 20, box)
+    c.check('Native parametric dimensions and solid volume preserved', box['type'] == 'Part::Box' and box['valid'] and abs(box['volume'] - 1000) < .01 and box['dimensions_mm']['Length'] == 20, box)
     relocated = c.root / 'relocated.FCStd';shutil.copy2(model, relocated)
     edit = c.root / 'edit.py';edit.write_text("import FreeCAD as App\nimport os\nfrom pathlib import Path\ndoc=App.openDocument(" + repr(str(relocated)) + ")\ndoc.Box.Length=30\ndoc.recompute()\nassert abs(doc.Box.Shape.Volume-1500)<0.01\ndoc.saveAs(str(Path(os.environ['ARTCRAFT_JOB_OUTPUT'])/'modified.FCStd'))\nApp.closeDocument(doc.Name)\n")
     edited = c.root / 'Edited';call(c, 'execute', input=str(edit), output=str(edited))
     again = call(c, 'inspect', input=str(edited / 'modified.FCStd'), output=str(c.root / 'modified.json'))['inspection']
-    c.check('Transferred source is editable and recomputed natively', next(x for x in again['objects'] if x['name'] == 'Box')['volume'] == 1500, again)
+    c.check('Transferred source is editable and recomputed natively', abs(next(x for x in again['objects'] if x['name'] == 'Box')['volume'] - 1500) < .01, again)
     step = c.root / 'model.step';call(c, 'export_step', input=str(model), output=str(step))
     verify = c.root / 'verify.py';verify.write_text("import Part\ns=Part.read(" + repr(str(step)) + ")\nassert s.isValid() and abs(s.Volume-1000)<0.01\n")
     call(c, 'execute', input=str(verify), output=str(c.root / 'step-check'))

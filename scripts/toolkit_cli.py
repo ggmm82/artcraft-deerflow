@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import uuid
 from urllib.parse import urlparse, unquote
 
 try:
@@ -96,6 +97,11 @@ def native_version(app):
     print(result.stdout + result.stderr)
 
 
+def capture(app, argv, target, root):
+    """Do not parse the supervisor's intentionally truncated log as a full result."""
+    return run(app, [sys.executable, HERE / 'toolkit_capture.py', target, json.dumps(list(map(str, argv)))], root)
+
+
 def epub_jar():
     jars = list((INSTALL / 'apps/epubcheck').rglob('epubcheck.jar'))
     if len(jars) != 1:
@@ -146,10 +152,15 @@ def invoke(app, action, args):
     if app == 'ffmpeg':
         if action == 'probe':
             if output.suffix.lower() != '.json': raise ValueError('Probe output must be JSON')
-            completed = run(app, ['ffprobe', '-v', 'error', '-show_format', '-show_streams', '-of', 'json', source], root)
-            info = json.loads(completed.stdout)
+            completed = capture(app, ['ffprobe', '-v', 'error', '-show_format', '-show_streams', '-of', 'json', source], output, root)
+            info = json.loads(output.read_text())
             if not info.get('streams'): raise ValueError('No media streams found')
-            output.write_text(json.dumps(info, indent=2));result['media'] = info
+            # Full metadata remains in the JSON artifact; avoid flooding model
+            # context with large tags or extradata from complex input containers.
+            fields = {'index', 'codec_type', 'codec_name', 'width', 'height', 'pix_fmt', 'channels', 'sample_rate',
+                      'r_frame_rate', 'avg_frame_rate', 'time_base', 'start_time', 'duration', 'nb_frames', 'bit_rate'}
+            result['media'] = {'streams': [{k: v for k, v in row.items() if k in fields} for row in info['streams']],
+                               'format': {k: v for k, v in info.get('format', {}).items() if k != 'tags'}}
         else:
             argv = ['ffmpeg', '-v', 'error', '-nostdin', '-n']
             if 'start' in args: argv += ['-ss', str(args['start'])]
@@ -195,14 +206,15 @@ def invoke(app, action, args):
         run(app, ['ffmpeg', '-v', 'error', '-y', '-i', source, '-vn', '-ac', '1', '-ar', '44100', '-c:a', 'pcm_s16le', decoded], root)
         argv = ['aubio', args['feature'], '-i', decoded, '-T', 'seconds']
         if args['feature'] == 'pitch': argv += ['-u', 'Hz']
-        completed = run(app, argv, root)
+        captured = work / ('native-' + uuid.uuid4().hex + '.txt')
+        completed = capture(app, argv, captured, root)
         columns = {'onset': ['time_seconds'], 'beat': ['time_seconds'], 'tempo': ['tempo_bpm', 'native_qualifier'],
                    'pitch': ['time_seconds', 'pitch_hz'], 'notes': ['midi_note', 'onset_seconds', 'offset_seconds']}
         output.write_text(json.dumps({'feature': args['feature'], 'time_unit': None if args['feature'] == 'tempo' else 'seconds',
             'tempo_unit': 'bpm' if args['feature'] == 'tempo' else None, 'columns': columns[args['feature']],
             'pitch_unit': 'Hz' if args['feature'] == 'pitch' else None,
             'input_sha256': original, 'analysis_sample_rate': 44100,
-            'rows': [line.split() for line in completed.stdout.splitlines() if line.strip()],
+            'rows': [line.split() for line in captured.read_text().splitlines() if line.strip()],
             'status': 'estimated', 'perceptual_review': 'not_run'}, indent=2))
     elif app == 'fluidsynth':
         bank = extra.get('soundfont', Path('/usr/share/sounds/sf2/TimGM6mb.sf2'))

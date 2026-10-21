@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,20 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 class ToolkitTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Real media tools required')
+    def test_large_native_probe_survives_bounded_log_tail_without_flooding_model_context(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp);source = root / 'long-metadata.wav';output = root / 'probe.json'
+            comment = 'FULL-METADATA-' + 'x' * 24000 + '-END'
+            encoded = subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440', '-t', '0.1',
+                            '-metadata', 'comment=' + comment, str(source)], capture_output=True)
+            self.assertEqual(encoded.returncode, 0, encoded.stderr[-1500:])
+            with patch.object(cli, 'ROOT', root), patch.dict(os.environ, {'ARTCRAFT_OUTPUT_DIR': str(root)}):
+                result = cli.invoke('ffmpeg', 'probe', {'input': str(source), 'output': str(output)})
+            self.assertEqual(json.loads(output.read_text())['format']['tags']['comment'], comment)
+            self.assertEqual(result['media']['streams'][0]['codec_name'], 'pcm_s16le')
+            self.assertLess(len(json.dumps(result)), 4000)
+
     def test_every_new_adapter_can_negotiate_mcp_without_native_processes(self):
         # Discovery must work before opening any project or importing heavy apps.
         for app in TOOLS:
