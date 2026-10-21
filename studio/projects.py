@@ -699,7 +699,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             raise RuntimeError('Progetto cambiato durante l’incarico')
         step = next(s for s in value['steps'] if s['id'] == sid)
         attempt = step['attempts'][-1]
-        step['status'] = 'completed' if result.get('ok') else 'paused'
+        failed_checks = [clean_summary(c.get('name')) for c in handoff.get('checks', []) if c.get('status') == 'failed']
+        step['status'] = ('needs_revision' if failed_checks else 'completed') if result.get('ok') else 'paused'
         attempt.update(status=step['status'], finished_at=utcnow(), validated=bool(result.get('ok')),
             delivery_record=delivery_summary(result.get('delivery_record')), quality_review=result.get('quality_review'),
             product_verified=bool(result.get('product_verified')),
@@ -708,6 +709,7 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             output_files=(handoff.get('output_files') or result.get('available_files') or [])[:40],
             input_files=handoff.get('source_files', [])[:40],
             previews=handoff.get('previews', [])[:8], error=clean_summary(result.get('error', '')))
+        attempt['failed_checks'] = failed_checks
         step['note'] = clean_summary('Controlli da valutare: ' + ', '.join(notes)) if notes else ''
         attention = failure_info(attempt['error']) if attempt['error'] else None
         value.update(status='review' if result.get('ok') else 'blocked', attention=attention,
@@ -730,6 +732,13 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             corrections = review.get('revision_actions', [])
             if review['status'] != 'passed' and corrections:
                 value['next_action'] = clean_summary(corrections[0]['action'])
+        if failed_checks and result.get('ok'):
+            value.update(status='review', summary='File conservati; la lavorazione richiede correzioni.',
+                         next_action='Rivaluta il metodo e correggi le verifiche fallite: ' + ', '.join(failed_checks))
+            recovery = method_recovery(workspace, value)
+            if recovery:
+                value['method_recovery'] = recovery
+                result['method_recovery'] = recovery
         atomic_json(folder / 'project.json', value)
     result.update(activity={'id': sid, 'status': step['status']}, review_notes=notes)
     if attention:

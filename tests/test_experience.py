@@ -232,6 +232,70 @@ class ExperienceTests(unittest.TestCase):
         self.assertNotIn('evidence_files',selected)
         self.assertNotIn('impact',selected) # Project measurements are not procedural knowledge.
 
+    def verified_note(self, category='tool_operation'):
+        path, note = self.sandbox_note()
+        note['lesson']['category'] = category
+        operation = self.product.parent / 'work/operations' / ('d' * 24) / 'status.json'
+        operation.parent.mkdir(parents=True, exist_ok=True)
+        operation.write_text(json.dumps({'state': 'completed', 'returncode': 0, 'oom_kills': 0}))
+        result = self.product.parent / 'work/reopen-result.json'
+        result.write_text(json.dumps({'resources': [{'reopened': True}]}))
+        note['validation'] = {'operation_path': str(operation), 'result_path': str(result),
+                              'assertions': [{'pointer': '/resources/0/reopened', 'equals': True}]}
+        path.write_text(json.dumps({'lessons': [note]}))
+        return path, note, operation, result
+
+    def test_technical_knowledge_activates_without_user_approval_and_can_be_revoked(self):
+        self.verified_note()
+        experience.collect(self.workspace, self.library, 'thread-a')
+        proposal, = lessons.propose_findings(self.library, 'thread-a')
+        item, = experience.summary(self.library)['lessons']
+        self.assertEqual((item['category'], item['approval'], item['accepted']), ('tool_operation', 'automatic', True))
+        self.assertEqual(len(experience.select(self.library, [self.spec], projects.applications())), 1)
+        self.assertFalse((self.library / 'accepted-lessons.json').exists())
+        lessons.accept(self.library, proposal, False)
+        self.assertEqual(experience.select(self.library, [self.spec], projects.applications()), [])
+        self.assertNotIn(proposal, lessons.automatic(self.library))
+
+    def test_production_method_never_auto_activates_even_with_a_technical_test(self):
+        self.verified_note('production_method')
+        experience.collect(self.workspace, self.library, 'thread-a')
+        proposal, = lessons.propose_findings(self.library, 'thread-a')
+        self.assertEqual(lessons.accepted(self.library), set())
+        item, = experience.summary(self.library)['lessons']
+        self.assertEqual(item['category'], 'production_method')
+        lessons.accept(self.library, proposal)
+        self.assertIn(proposal, lessons.accepted(self.library))
+
+    def test_failed_unscoped_and_missing_proofs_do_not_activate_technical_notes(self):
+        for fault in ('failed', 'wrong_value', 'wrong_type', 'outside', 'missing'):
+            with self.subTest(fault=fault):
+                path, note, operation, result = self.verified_note()
+                if fault == 'failed':
+                    operation.write_text('{"state":"failed","returncode":1}')
+                elif fault == 'wrong_value':
+                    note['validation']['assertions'][0]['equals'] = False
+                elif fault == 'wrong_type':
+                    note['validation']['assertions'][0]['equals'] = 1
+                elif fault == 'outside':
+                    outside = self.root / 'outside.json'; outside.write_text('{"reopened":true}')
+                    note['validation']['result_path'] = str(outside)
+                else:
+                    note.pop('validation')
+                path.write_text(json.dumps({'lessons': [note]}))
+                library = self.root / ('library-' + fault)
+                experience.collect(self.workspace, library, 'thread-a')
+                lessons.propose_findings(library, 'thread-a')
+                self.assertEqual(lessons.accepted(library), set())
+                self.assertEqual(experience.summary(library)['lessons'][0]['category'], 'tool_operation')
+
+    def test_legacy_notes_are_classified_without_fabricating_validation(self):
+        self.sandbox_note()
+        experience.collect(self.workspace, self.library, 'thread-a')
+        lessons.propose_findings(self.library, 'thread-a')
+        item, = experience.summary(self.library)['lessons']
+        self.assertEqual((item['category'], item['accepted']), ('tool_operation', False))
+
     def test_measured_impact_requires_real_distinct_supervisor_records(self):
         before=self.product.parent/'work/operations'/('a'*24)/'status.json'
         after=self.product.parent/'work/operations'/('b'*24)/'status.json'

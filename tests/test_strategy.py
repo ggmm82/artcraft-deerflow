@@ -37,6 +37,19 @@ class StrategyTests(unittest.TestCase):
         self.assertIn('method_recovery', compact)
         self.assertTrue(self.proof.exists())
 
+    def test_successful_execution_with_failed_sample_checks_keeps_files_and_requires_revision(self):
+        response = json.loads(projects.execute_step(self.root, 'workspace', 'Try alternate method', 'sample',
+            lambda task, started: json.dumps({'ok': True, 'handoff': {
+                'output_files': [str(self.proof)], 'checks': [
+                    {'name': 'Representative result quality', 'status': 'failed'},
+                    {'name': 'Native reopen', 'status': 'passed'}]}})))
+        self.assertTrue(response['ok'])  # Execution succeeded; product did not.
+        self.assertEqual(response['activity']['status'], 'needs_revision')
+        self.assertEqual(response['method_recovery']['code'], 'method_selection_required')
+        project = projects.read_project(self.root)
+        self.assertIn('correzioni', project['summary'])
+        self.assertTrue(self.proof.exists())
+
     def test_untried_alternative_prevents_capability_block_but_budget_choice_is_allowed(self):
         s = self.strategy(state='needs_user', stop_reason='capability_limit', user_action='Supply assets')
         p = projects.create_plan(self.root, '', [], strategy=s, status='blocked')

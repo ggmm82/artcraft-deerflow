@@ -210,8 +210,9 @@ def collect(workspace, root, source_thread=None):
 
 def select(root, specs, apps):
     """Select only generalized lessons; raw project facts never enter future skills."""
-    from .lessons import entries as lessons, accepted, rank
+    from .lessons import entries as lessons, accepted, automatic, rank
     approved = accepted(root)
+    auto = automatic(root)
     excluded = disabled(root)
     versions = {a['id']: a['version'] for a in apps}
     selected, covered = [], set()
@@ -241,7 +242,7 @@ def select(root, specs, apps):
             continue
         portable = {'id': record['id'], 'lesson': lesson, 'tool_versions': tools,
                     'source_ids': basis['source_ids'], 'source_statuses': basis.get('source_statuses', []),
-                    'notice': 'Lezione accettata singolarmente dall’utente: verifica condizioni, limiti e pertinenza; le misure del vecchio caso non sono una promessa per questo progetto.'}
+                    'notice': ('Conoscenza tecnica attivata dopo test automatico; non prova la qualità del prodotto.' if record['id'] in auto else 'Metodo accettato dall’utente.') + ' Verifica condizioni, limiti e pertinenza; le misure del vecchio caso non sono una promessa per questo progetto.'}
         if sum(len(json.dumps(r)) for r in selected) + len(json.dumps(portable)) > 14000:
             continue
         selected.append(portable)
@@ -252,7 +253,7 @@ def select(root, specs, apps):
 
 def snapshot(workspace, root, specs, apps):
     selected = select(root, specs, apps)
-    text = json.dumps({'notice': 'Solo lezioni generali accettate singolarmente dall’utente, non fatti dei vecchi progetti. Verifica pertinenza, condizioni, strumenti e richiesta attuale. '
+    text = json.dumps({'notice': 'Solo metodi accettati dall’utente e conoscenze tecniche con test automatico superato, non fatti dei vecchi progetti. Verifica pertinenza, condizioni, strumenti e richiesta attuale. '
                        'Le evidenze specifiche restano nell’archivio di origine; non trasferire personaggi, eventi, scelte o file del vecchio progetto.',
                        'lessons': selected}, ensure_ascii=False, sort_keys=True)
     document = scoped_file(workspace, 'experience/' + fingerprint(text) + '.json', text)
@@ -260,12 +261,16 @@ def snapshot(workspace, root, specs, apps):
 
 
 def summary(root, export=False):
-    from .lessons import entries as lessons, pending, accepted, rank
+    from .lessons import entries as lessons, pending, accepted, automatic, category, rank
     excluded = disabled(root)
     records, generalized = entries(root), lessons(root)
     approved = accepted(root)
+    auto = automatic(root)
+    sources = {r['id']: r['observation'] for r in records}
     return {'total': len(records), 'excluded': len(excluded), 'pending': len(pending(root, limit=1000000)),
-            'lessons': [{**r, 'accepted': r['id'] in approved, 'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in sorted(generalized, key=rank)],
+            'lessons': [{**r, 'accepted': r['id'] in approved, 'category': category(r, sources),
+                         'approval': 'automatic' if r['id'] in auto else 'manual' if r['id'] in approved else 'pending',
+                         'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in sorted(generalized, key=rank)],
             'observations': [{**r, 'excluded': r['id'] in excluded} for r in (records if export else records[:200])]}
 
 

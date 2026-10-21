@@ -78,7 +78,7 @@ def recovery(workspace, project):
     This gate only handles a coordinator declaring a quality failure blocked.
     It does not launch jobs, relax acceptance or claim a candidate will succeed.
     """
-    failed = any((a.get('quality_review') or {}).get('status') == 'needs_revision'
+    failed = any(a.get('failed_checks') or (a.get('quality_review') or {}).get('status') == 'needs_revision'
                  for s in project.get('steps', []) for a in s.get('attempts', []))
     if not failed or project.get('attention'):
         return None
@@ -101,6 +101,8 @@ def recovery(workspace, project):
             'message': 'Il campione è insufficiente; il metodo va rivalutato prima di dichiarare una dipendenza esterna.',
             'instruction': 'Rileggi le richieste originali: outcome.assumptions sono scelte provvisorie, non vincoli imposti dall’utente. '
                 'Valuta un metodo sostanzialmente diverso con capacità disponibili; aggiorna strategy_json e i ruoli pertinenti. '
+                'Distingui creazione degli asset, integrazione e resa finale: uno strumento che importa un asset non ne garantisce l’authoring. '
+                'Sul requisito fallito prova il percorso completo fino al risultato osservabile, conservando il campione migliore. '
                 'Prova un campione piccolo entro lo scopo autorizzato, senza abbassare qualità o cambiare il prodotto richiesto. '
                 'Se occorrono davvero input, capacità, budget o una scelta dell’utente, registra state=needs_user, stop_reason, '
                 'alternative valutate e user_action concreta. Non ripetere tentativi identici né dichiarare impossibilità generale.'}

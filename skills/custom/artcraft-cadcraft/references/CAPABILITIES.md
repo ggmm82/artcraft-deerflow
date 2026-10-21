@@ -19,7 +19,7 @@ Gli ID sopra sono registrati dalla CLI, non una certificazione di ogni funzione.
 
 ## Limiti e scelta del metodo
 
-GLB non è automaticamente un documento CAD apribile nell’app. Geometria valida non dimostra correttezza strutturale, normativa o dimensionale.
+GLB non è automaticamente un documento CAD apribile nell’app. Geometria valida non dimostra correttezza strutturale, normativa o dimensionale. Per un modello 3D parametrico valuta FreeCAD o altro modellatore pertinente: un disegno DXF 2D non sostituisce automaticamente un asset 3D animabile.
 
 ## Scoperta mirata
 

@@ -3171,7 +3171,7 @@
       "version": "v0.10.0",
       "choose_for": "Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti",
       "sources": ".ecproj e asset; parti, proprietà e keyframe conservati",
-      "limits": "Advanced 3D può comporre mesh/materiali/camera, oltre alle primitive. Non è un modellatore completo. Modelli complessi possono essere creati in Blender. Render CLI e apertura GUI sono prove distinte.",
+      "limits": "Advanced 3D può comporre mesh/materiali/camera, oltre alle primitive. Non è un modellatore completo. Modelli complessi possono essere creati in Blender. Render CLI e apertura GUI sono prove distinte. Per asset 3D articolati separa la modellazione dal compositing: importare una mesh e aggiungere primitive non dimostra una modellazione curata. Valuta uno strumento di authoring compatibile con i vincoli e verifica geometria, materiali e parti animabili dopo importazione nel render effettivo.",
       "groups": [
         {
           "goal": "Composizioni e livelli",
@@ -5894,7 +5894,7 @@
       "version": "v0.7.0",
       "choose_for": "Disegno tecnico, quote, blocchi, geometrie CAD e tavole di progetto",
       "sources": "DXF/DWG o formato nativo realmente supportato, con unità e quote",
-      "limits": "GLB non è automaticamente un documento CAD apribile nell’app. Geometria valida non dimostra correttezza strutturale, normativa o dimensionale.",
+      "limits": "GLB non è automaticamente un documento CAD apribile nell’app. Geometria valida non dimostra correttezza strutturale, normativa o dimensionale. Per un modello 3D parametrico valuta FreeCAD o altro modellatore pertinente: un disegno DXF 2D non sostituisce automaticamente un asset 3D animabile.",
       "groups": [
         {
           "goal": "Geometrie e modifica",
@@ -7824,9 +7824,9 @@
     {
       "id": "freecad",
       "version": "0.20.2",
-      "choose_for": "Authoring parametrico .FCStd, misure geometriche e scambio STEP tramite motore headless nativo",
+      "choose_for": "Modellazione CAD 3D parametrica di oggetti, componenti e costruzioni; sorgenti modificabili e scambio STEP",
       "sources": "Documento nativo .FCStd con albero parametrico, script .py realmente usato, dati e riferimenti; STEP come export di scambio",
-      "limits": "Motore FreeCAD headless Debian 0.20.2, non la release upstream 1.x. Le API vanno verificate contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita.",
+      "limits": "Motore FreeCAD headless Debian 0.20.2, non la release upstream 1.x. Le API vanno verificate contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita. Può costruire asset rigidi destinati ad altre app: il passaggio al renderer richiede un formato importabile, tassellazione, orientamento, unità e materiali verificati. L’adattatore espone STEP e script execute, non un’esportazione OBJ/GLB già certificata. Eventuali esportazioni mesh tramite API native vanno provate; STEP non è automaticamente importabile in un compositore. Non è un sostituto universale di rig, modellazione organica o animazione.",
       "groups": [
         {
           "goal": "Run an explicit Python authoring script in native headless FreeCAD; save .FCStd and geometry evidence in the output folder.",

@@ -19,7 +19,7 @@ Gli ID sopra sono registrati dalla CLI, non una certificazione di ogni funzione.
 
 ## Limiti e scelta del metodo
 
-Advanced 3D può comporre mesh/materiali/camera, oltre alle primitive. Non è un modellatore completo. Modelli complessi possono essere creati in Blender. Render CLI e apertura GUI sono prove distinte.
+Advanced 3D può comporre mesh/materiali/camera, oltre alle primitive. Non è un modellatore completo. Modelli complessi possono essere creati in Blender. Render CLI e apertura GUI sono prove distinte. Per asset 3D articolati separa la modellazione dal compositing: importare una mesh e aggiungere primitive non dimostra una modellazione curata. Valuta uno strumento di authoring compatibile con i vincoli e verifica geometria, materiali e parti animabili dopo importazione nel render effettivo.
 
 ## Scoperta mirata
 

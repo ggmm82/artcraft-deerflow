@@ -161,6 +161,14 @@ window.showThread();
                                 ('Beneficio da confermare','major','hypothesis'),
                                 ('Riduzione tempi registrata','major','measured'),
                                 ('Impatto non valutato','unknown','hypothesis')])]
+                    if state.get('technical_lessons'):
+                        template = library['lessons'][0]
+                        library['lessons'] += [{**template, 'id': str(i) * 64,
+                            'category': 'tool_operation', 'approval': 'automatic' if active else 'pending',
+                            'accepted': active, 'basis': {**template['basis'],
+                                'lesson': {**template['basis']['lesson'], 'title': title}}}
+                            for i, (title, active) in enumerate([
+                                ('Keyframe persistenti verificati', True), ('Parametro senza prova', False)], start=7)]
                     self.wfile.write(json.dumps(library).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
@@ -276,6 +284,19 @@ window.showThread();
                 expect(page.locator('[data-testid=general-lesson]:visible')).to_have_count(5)
                 if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/'lezioni-impatto.png'))
                 state['many_lessons'] = False
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
+                state['technical_lessons'] = True
+                section('Lezioni')
+                experience_panel = page.get_by_test_id('experience-panel')
+                expect(experience_panel).to_contain_text('1 metodi da valutare · 0 metodi accettati · 1 conoscenze tecniche attive')
+                expect(page.locator('[data-testid=general-lesson]:visible')).to_have_count(1)
+                page.get_by_test_id('technical-lessons').locator('summary').first.click()
+                technical = page.get_by_test_id('technical-lessons')
+                expect(technical).to_contain_text('Tecnica attivata automaticamente dopo il test')
+                expect(technical).to_contain_text('In attesa di verifica tecnica automatica')
+                expect(technical.get_by_role('button', name='Accetta questa lezione')).to_have_count(0)
+                expect(technical.get_by_role('button', name='Rimuovi dalle skills')).to_have_count(1)
+                state['technical_lessons'] = False
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 section('Attività')
                 expect(page.get_by_test_id('operation-progress')).to_contain_text('12/48 campioni osservati')

@@ -12,7 +12,7 @@ SPECIFIC = re.compile(r'/(?:mnt|root|tmp|workspace|home)/|\b[a-f0-9]{64}\b|\b[a-
 
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) - {'title', 'applies_when', 'procedure', 'verification', 'limits', 'tools'}:
+    if not isinstance(value, dict) or set(value) - {'title', 'applies_when', 'procedure', 'verification', 'limits', 'tools', 'category'}:
         raise ValueError('La lezione contiene solo titolo, condizioni, procedura, verifiche, limiti e strumenti pertinenti')
     clean = {}
     for key, cap in (('title', 140), ('applies_when', 1000), ('limits', 1000)):
@@ -29,6 +29,12 @@ def validate(value):
     if not isinstance(tools, list) or len(tools) > 4 or any(not isinstance(t, str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,47}', t) for t in tools):
         raise ValueError('Strumenti della lezione non validi; lista vuota per un principio indipendente dalle CLI')
     clean['tools'] = sorted(set(tools))
+    if 'category' in value:
+        if value['category'] not in ('tool_operation', 'production_method'):
+            raise ValueError('Categoria: tool_operation oppure production_method')
+        if value['category'] == 'tool_operation' and not tools:
+            raise ValueError('Una lezione tecnica deve indicare gli strumenti pertinenti')
+        clean['category'] = value['category']
     if SPECIFIC.search(json.dumps(clean, ensure_ascii=False)):
         raise ValueError('La lezione non deve contenere percorsi, hash o identificatori del progetto; restano nelle evidenze')
     if redact_memory(clean) != clean:
@@ -184,7 +190,38 @@ def accepted(root):
     path = Path(root) / 'accepted-lessons.json'
     if path.is_symlink():
         raise ValueError('Indice accettazioni non valido')
-    return set(json.loads(path.read_text())) if path.exists() else set()
+    manual = set(json.loads(path.read_text())) if path.exists() else set()
+    return manual | automatic(root)
+
+
+def category(record, sources):
+    lesson = record['basis']['lesson']
+    if 'category' in lesson:
+        return lesson['category']
+    # Legacy worker findings were explicitly captured as tool-use notes. Never
+    # classify arbitrary coordinator lessons from keywords or the chosen app.
+    evidence = [sources.get(s, {}) for s in record['basis']['source_ids']]
+    if lesson.get('tools') and evidence and all(
+            s.get('kind') == 'sandbox_tool_use' and s.get('suggested_lesson') == lesson for s in evidence):
+        return 'tool_operation'
+    return 'production_method'
+
+
+def automatic(root):
+    from .experience import entries as observations, disabled
+    sources = {r['id']: r['observation'] for r in observations(root)}
+    excluded = disabled(root)
+    result = set()
+    for record in entries(root):
+        basis = record['basis']
+        if (category(record, sources) != 'tool_operation' or record['id'] in excluded
+                or set(basis['source_ids']) & excluded or not basis.get('tool_versions')
+                or any(v in ('unknown', '', None) for v in basis['tool_versions'].values())):
+            continue
+        if all(sources.get(s, {}).get('technical_validation', {}).get('status') == 'passed'
+               and sources[s].get('suggested_lesson') == basis['lesson'] for s in basis['source_ids']):
+            result.add(record['id'])
+    return result
 
 
 def accept(root, identifier, enabled=True):
@@ -195,6 +232,14 @@ def accept(root, identifier, enabled=True):
     with locked(root) as folder:
         if identifier not in {r['id'] for r in entries(folder)}:
             raise ValueError('Lezione proposta non trovata')
-        ids = accepted(folder)
+        manual_path = folder / 'accepted-lessons.json'
+        if manual_path.is_symlink():
+            raise ValueError('Indice accettazioni non valido')
+        ids = set(json.loads(manual_path.read_text())) if manual_path.exists() else set()
         ids.add(identifier) if enabled else ids.discard(identifier)
         atomic_json(folder / 'accepted-lessons.json', sorted(ids))
+        # Disabling automatic knowledge is persistent and survives recollection.
+        from .experience import disabled
+        exclusions = disabled(folder)
+        exclusions.discard(identifier) if enabled else exclusions.add(identifier)
+        atomic_json(folder / 'excluded.json', sorted(exclusions))
