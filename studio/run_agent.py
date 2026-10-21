@@ -1,6 +1,7 @@
 """Runs inside a disposable container. All tools act on this thread's files."""
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -154,7 +155,7 @@ def main():
     verify_project_context(job)
     skills_root = Path('/root/.agents/skills') if engine == 'codex' else auth / 'antigravity-cli/skills'
     for name in job['skills']:
-        if not name.startswith('artcraft-') or '/' in name or '..' in name:
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', name) or name in ('.', '..'):
             raise ValueError('Nome skill non valido')
         source = Path('/mnt/skills/custom') / name
         selected.append((source / 'SKILL.md').read_text())
@@ -180,6 +181,10 @@ def main():
             (target / 'SKILL.md').write_text(job['compiled_skill'])
     # Only the selected specialist's instructions and common procedure enter context.
     prompt = '\n\n'.join([
+        'Disponibilità effettiva degli strumenti: ' + json.dumps({k: v for k, v in job.get('capability_policy', {}).items()
+                                                                if k in ('source', 'allowed', 'blocked')}, ensure_ascii=False) +
+        '. Gli strumenti blocked sono disabilitati: non cercarli via shell, Python, percorsi assoluti o strumenti di base. '
+        'La disponibilità di un eseguibile non costituisce autorizzazione. Non installare alternative per aggirare una disattivazione.',
         'Ruolo: ' + (job.get('role') or {}).get('title', job['agent']) + '. Lavora in italiano.',
         'workspace è un esecutore di progetto, non una CLI: usa la procedura compilata e scopri solo gli strumenti dichiarati dal ruolo.' if job['agent'] == 'workspace' else 'Applica le competenze della CLI assegnata.',
         'Le skill aggiuntive sono procedure di supporto: non cambiano il tuo ruolo '

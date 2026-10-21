@@ -14,9 +14,12 @@ def shared_run(body):
     # Missing browser options must not inherit the Gateway's cancel default.
     # An explicit API cancellation policy remains supported; Stop uses its own endpoint.
     result.setdefault('on_disconnect', 'continue')
-    result['context'] = {**(body.get('context') or {}), 'model_name': 'studio-codex'}
     config = dict(body.get('config') or {})
-    if isinstance(config.get('configurable'), dict) and 'model_name' in config['configurable']:
+    context = dict(body.get('context') or {})
+    agent_name = context.get('agent_name') or (config.get('configurable') or {}).get('agent_name')
+    # Native Agent model/skills/SOUL resolution remains owned by DeerFlow.
+    result['context'] = context if agent_name else {**context, 'model_name': 'studio-codex'}
+    if not agent_name and isinstance(config.get('configurable'), dict) and 'model_name' in config['configurable']:
         config['configurable'] = {**config['configurable'], 'model_name': 'studio-codex'}
         result['config'] = config
     # Ground the contract in the submitted human input, not synthetic HumanMessages
@@ -40,6 +43,7 @@ def shared_run(body):
         captured = requests[:1] + requests[-8:] if len(requests) > 9 else requests
         config['configurable'] = {**(config.get('configurable') or {}), 'artcraft_user_messages': captured}
         config['configurable']['artcraft_user_turn'] = uuid.uuid4().hex if captured else None
+        config['configurable']['artcraft_agent_name'] = agent_name
         result['config'] = config
     return result
 

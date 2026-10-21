@@ -131,6 +131,12 @@ def initialize():
             if definitions[identifier].get('model') != inherited_model:
                 definitions[identifier]['model'] = inherited_model
                 changed = True
+        if content.get('agents_api') != {'enabled': True}:
+            content['agents_api'] = {'enabled': True}
+            changed = True
+        if content.get('skills', {}).get('path') == '/app/skills':
+            content['skills']['path'] = '/app/skill-catalog'
+            changed = True
         overlay = content.get('lead_prompt_overlay', {})
         if overlay.get('append', '').startswith(('Per ogni lavoro ArtCraft usa studio_delegate', 'Sei la Squadra ArtCraft.')):
             if overlay['append'] != template['lead_prompt_overlay']['append']:
@@ -181,6 +187,9 @@ def initialize():
 
 def main():
     initialize()
+    from .capability_policy import install_managed_skills, migrate_existing_users
+    install_managed_skills()
+    migrate_existing_users()
     from .docker_runtime import cleanup_orphans
     cleanup_orphans()
     # exec preserves signal delivery, while the env secrets stay in this process tree.

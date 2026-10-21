@@ -28,10 +28,15 @@ def page():
 
 @router.get('/api/catalog')
 def get_catalog():
+    from .capability_policy import current_policy, public
+    policy = current_policy()
     from .state import custom_connection_path
     import json
     custom = json.loads(custom_connection_path().read_text()) if connection_status('openai') else {}
-    return {'team': team(), 'profiles': {'coordinator': team(), 'squad': team('squad')}, 'effective_agents': {a['id']: effective_agent(a['id']) for a in applications()}, 'agents': catalog(), 'skills': available_skills(), 'applications': [
+    agents = catalog()
+    agents = {name: {**config, 'enabled': name in policy['allowed']} for name, config in agents.items()}
+    effective = {a['id']: {**effective_agent(a['id']), 'enabled': a['id'] in policy['allowed']} for a in applications()}
+    return {'team': team(), 'capability_policy': public(policy), 'profiles': {'coordinator': team(), 'squad': team('squad')}, 'effective_agents': effective, 'agents': agents, 'skills': available_skills(), 'applications': [
         {k: a[k] for k in ('id', 'name', 'role', 'description', 'version')}
         for a in applications()], 'connections': {
             engine: {'credentials_present': connection_status(engine), **(
@@ -43,15 +48,31 @@ class AgentConfig(BaseModel):
     engine: str = Field(default='inherit', pattern='^(inherit|codex|gemini|deepseek|openai)$')
     model: str = Field(default='', max_length=200)
     instructions: str = Field(default='', max_length=20000)
-    enabled: bool = True
+    enabled: bool | None = None
     skills: list[str] = Field(default_factory=list)
 
 
 @router.put('/api/agents/{identifier}')
-def save_agent(identifier: str, value: AgentConfig, request: Request):
+async def save_agent(identifier: str, value: AgentConfig, request: Request):
     same_origin(request)
     try:
-        return update_agent(identifier, value.model_dump())
+        from .capability_policy import current_policy
+        policy = current_policy()
+        if policy['source'] == 'deerflow' and value.enabled is not None:
+            # Compatibility endpoint delegates the write and authorization to
+            # DeerFlow itself. There is no separate ArtCraft enablement state.
+            from app.gateway.routers.skills import update_skill, SkillUpdateRequest
+            from deerflow.config import get_app_config
+            await update_skill('artcraft-' + identifier, SkillUpdateRequest(enabled=value.enabled), request, get_app_config())
+        payload = value.model_dump()
+        # Preserve the original global legacy import baseline. A user's native
+        # toggle must not change another user's future migration defaults.
+        payload['enabled'] = catalog().get(identifier, {}).get('enabled', True) if policy['source'] == 'deerflow' else (
+            value.enabled if value.enabled is not None else identifier in policy['allowed'])
+        saved = update_agent(identifier, payload)
+        if policy['source'] == 'deerflow':
+            saved = {**saved, 'enabled': identifier in current_policy()['allowed']}
+        return saved
     except ValueError as error:
         raise HTTPException(400, str(error)) from None
 

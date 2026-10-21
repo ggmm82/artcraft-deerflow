@@ -16,7 +16,7 @@ with sync_playwright() as p:
     def route(r):
         url=r.request.url
         if '/studio/api/catalog' in url:
-            value={'team':profiles['coordinator'],'profiles':profiles,'connections':connections,'agents':{},'applications':[],'skills':[]}
+            value={'team':profiles['coordinator'],'profiles':profiles,'connections':connections,'agents':{'blender':{'enabled':False},'freecad':{'enabled':True}},'applications':[{'id':'blender','name':'Blender','role':'3D'},{'id':'freecad','name':'FreeCAD','role':'CAD'}],'skills':[]}
         elif '/studio/api/team/models' in url:
             value={'models':['Acme/Model-X','Acme/Model-Y'] if r.request.method=='POST' else ['gpt-6.1-sol','deepseek-chat']}
         elif url.endswith('/studio/api/team'):
@@ -35,6 +35,12 @@ with sync_playwright() as p:
     page.goto('http://providers.test/studio')
     expect(page.locator('#team-summary')).to_contain_text('Coordinatore: OpenAI Codex')
     expect(page.locator('#team-summary')).to_contain_text('Squadra: DeepSeek')
+    expect(page.get_by_role('link',name='Apri Capability Center')).to_have_attribute('href','/workspace/capabilities')
+    expect(page.get_by_role('link',name='Apri Agents',exact=True)).to_have_attribute('href','/workspace/agents')
+    expect(page.locator('#specialists input[type=checkbox]')).to_have_count(0)
+    expect(page.locator('#specialists select')).to_have_count(0)
+    expect(page.locator('#agents')).to_contain_text('Disabilitato nel Capability Center')
+
     page.locator('#team-scope').select_option('squad')
     expect(page.locator('#team-engine')).to_have_value('deepseek')
     page.locator('#team-engine').select_option('openai')

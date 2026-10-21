@@ -1,3 +1,5 @@
+agents_api:
+  enabled: true
 config_version: 6
 models:
 - name: studio-codex
@@ -36,7 +38,7 @@ sandbox:
   use: deerflow.sandbox.local:LocalSandboxProvider
   allow_host_bash: false
 skills:
-  path: /app/skills
+  path: /app/skill-catalog
   container_path: /mnt/skills
 subagents:
   max_total_per_run: 27

@@ -21,6 +21,24 @@ class AdaptiveToolTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         fixture = patch('studio.tools.experience_root', return_value=Path(directory.name) / 'library')
         fixture.start(); self.addCleanup(fixture.stop)
+        # These tests isolate the tool/project boundary. Native storage and its
+        # Agent/user semantics are exercised by check_native_capabilities.py.
+        from studio.capability_policy import policy_from_names
+        from studio.state import applications
+        self.capabilities = policy_from_names({'artcraft-' + a['id'] for a in applications()}, source='fixture')
+        fixture = patch('studio.capability_policy.runtime_policy', return_value=self.capabilities)
+        fixture.start(); self.addCleanup(fixture.stop)
+
+    def test_planner_cannot_assign_a_native_disabled_tool_to_a_new_role(self):
+        from test_project_skills import role
+        spec = role(); spec['tools'] = ['blender']
+        scoped = {**self.capabilities, 'allowed': ['freecad'], 'blocked': ['blender']}
+        runtime = SimpleNamespace(state={'messages': []})
+        with tempfile.TemporaryDirectory() as folder, \
+             patch('studio.tools.workspace_for', return_value=Path(folder)), \
+             patch('studio.capability_policy.runtime_policy', return_value=scoped):
+            with self.assertRaisesRegex(ValueError, 'disabilitato'):
+                studio_plan.func(runtime=runtime, brief='Only native enabled tools', roles_json=json.dumps([spec]))
 
     def test_failed_sample_replans_and_new_method_reaches_worker(self):
         from studio.projects import read_project
