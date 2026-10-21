@@ -9,7 +9,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import wave
 try:
     from .capability_catalog import command_ids
 except ImportError:
@@ -52,6 +51,20 @@ def validate(root, *, native=False, catalog_dir=None):
     return report
 
 
+def check_bounce(path):
+    """Decode genuine audio, including WAV extensible on Debian's Python 3.11."""
+    probe=subprocess.run(['ffprobe','-v','error','-select_streams','a:0',
+        '-show_entries','stream=sample_rate,channels','-of','json',str(path)],
+        capture_output=True,text=True,check=True,timeout=30)
+    streams=json.loads(probe.stdout).get('streams',[])
+    assert len(streams)==1 and streams[0]['sample_rate']=='48000' and streams[0]['channels']==2, 'Unexpected native bounce format.'
+    # Do not resample or remix: validate the frames actually present in the file.
+    decoded=subprocess.run(['ffmpeg','-v','error','-i',str(path),'-map','0:a:0',
+        '-f','s16le','-acodec','pcm_s16le','pipe:1'],capture_output=True,check=True,timeout=30).stdout
+    assert len(decoded)==96000*2*2, 'Native bounce must contain exactly two seconds.'
+    assert any(decoded), 'Native synthesis is silent.'
+
+
 def native_soundcraft(output):
     output=Path(output);output.mkdir(parents=True,exist_ok=True)
     def run(*args):
@@ -77,9 +90,7 @@ def native_soundcraft(output):
     relocated=output/'relocated';relocated.mkdir(exist_ok=True);shutil.copy2(final,relocated/final.name)
     run('run','--in',relocated/final.name,'--inspect','--bounce',relocated/'reopened.wav','--end','2')
     for path in (mix,relocated/'reopened.wav'):
-        with wave.open(str(path),'rb') as source:
-            assert source.getframerate()==48000 and source.getnchannels()==2 and source.getnframes()==96000
-            assert any(source.readframes(source.getnframes())), 'Native synthesis is silent.'
+        check_bounce(path)
     return {'instrument':'subtractive_synth','midi_notes':3,'duration_seconds':2,'sample_rate':48000,
             'relocated_native_reopen':True,'listening':'not_run','note':'Functional native authoring fixture, not a musical-quality benchmark.'}
 

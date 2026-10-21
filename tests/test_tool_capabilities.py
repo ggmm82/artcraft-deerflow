@@ -8,13 +8,30 @@ import sys
 import tempfile
 import unittest
 from scripts.capability_catalog import command_ids
-from scripts.check_tool_capabilities import validate
+from scripts.check_tool_capabilities import validate, check_bounce
 from scripts.render_capability_docs import render
 
 ROOT=Path(__file__).resolve().parents[1]
 
 
 class ToolCapabilitiesTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'),'Real audio decoder required')
+    def test_extensible_pcm24_is_decoded_but_silence_and_wrong_duration_are_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            def encode(name,source='sine=frequency=440:sample_rate=48000',duration='2',channels='2'):
+                path=root/name
+                subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i',source,'-t',duration,
+                    '-ac',channels,'-c:a','pcm_s24le',str(path)],capture_output=True,check=True,timeout=30)
+                return path
+            native=encode('extensible.wav')
+            header=native.read_bytes();fmt=header.index(b'fmt ')
+            self.assertEqual(int.from_bytes(header[fmt+8:fmt+10],'little'),65534)
+            check_bounce(native)
+            for path in (encode('silent.wav',source='anullsrc=r=48000:cl=stereo'),
+                         encode('short.wav',duration='1'),encode('mono.wav',channels='1')):
+                with self.assertRaises(AssertionError):check_bounce(path)
+
     def test_catalog_formats_keep_real_ids_and_strip_undo_marker(self):
         self.assertEqual(command_ids('[{"id":"midi.note_add"},{"id":"midi.note_add"}]'),['midi.note_add'])
         self.assertEqual(command_ids('{"tools":[{"name":"calibre.check"}]}'),['calibre.check'])
