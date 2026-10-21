@@ -7714,7 +7714,7 @@
       "limits": "Stime del segnale, non riconoscimento della melodia, trascrizione affidabile di strumenti polifonici o giudizio musicale. Un battito stimato non prova da solo la sincronizzazione audiovisiva.",
       "groups": [
         {
-          "goal": "Estimate onset/beat times in seconds, pitch in Hz or notes. Estimates do not recognize a song or certify quality.",
+          "goal": "Estimate onset/beat times in seconds, overall tempo in BPM, pitch in Hz or MIDI-like notes. Estimates do not recognize a song or certify quality.",
           "commands": [
             "aubio.analyze"
           ],
@@ -7725,7 +7725,7 @@
         "aubio.analyze"
       ],
       "catalog_count": 1,
-      "catalog_sha256": "9a217080687a9c162e9758d5f16194d2e68b8678fefcf12156c09bd0094140f1",
+      "catalog_sha256": "dbd77e7cb5592ba672ce9ae3dcbd670cdecc32e5d30e56cbdd1a7720374ff2a7",
       "ids_sha256": "c0dd0154e48855d8adcd01c8b10b529fbbb100749e00914ca9d6c69ae4f05a61",
       "reference": "https://aubio.org/manual/latest/cli.html"
     },

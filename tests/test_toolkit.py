@@ -51,6 +51,8 @@ class ToolkitTests(unittest.TestCase):
                 for width in (True, 1, 100000):
                     with self.assertRaises(ValueError):
                         cli.invoke('playwright', 'screenshot', {'url': 'https://example.com', 'output': str(root / 'x.png'), 'width': width})
+                with self.assertRaises(ValueError):
+                    cli.checked_args('fluidsynth', 'render', {'input': str(source), 'output': str(root / 'render'), 'gain': float('nan')})
                 run.assert_not_called()
                 self.assertEqual(existing.read_bytes(), b'original')
 

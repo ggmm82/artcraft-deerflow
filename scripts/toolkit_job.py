@@ -42,8 +42,9 @@ def main():
                 if kind in ('App::PropertyFile', 'App::PropertyFileIncluded'):
                     value = str(getattr(obj, key))
                     if value: dependencies.append(value)
-            if hasattr(obj, 'LinkedObject') and obj.LinkedObject and obj.LinkedObject.Document != document:
-                dependencies.append(obj.LinkedObject.Document.FileName)
+            linked = obj.getLinkedObject() if hasattr(obj, 'getLinkedObject') else None
+            if linked and linked.Document != document:
+                dependencies.append(linked.Document.FileName)
         target.write_text(json.dumps({'document': document.Name, 'objects': objects,
                                      'dependencies': sorted(set(dependencies))}, indent=2))
     finally:

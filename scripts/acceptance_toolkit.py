@@ -68,10 +68,11 @@ def aubio(c):
     with wave.open(str(clicks), 'wb') as w:
         w.setnchannels(1);w.setsampwidth(2);w.setframerate(44100)
         w.writeframes(b''.join(struct.pack('<h', int(20000 * math.sin(i * .8)) if i % 22050 < 500 else 0) for i in range(44100 * 5)))
-    for feature in ('onset', 'tempo', 'notes'):
+    for feature in ('onset', 'beat', 'tempo', 'notes'):
         path = c.root / (feature + '.json');call(c, 'analyze', input=str(clicks), output=str(path), feature=feature)
         result = json.loads(path.read_text())
-        c.check('Native ' + feature + ' analysis has explicit units', result['time_unit'] == 'seconds' and result['status'] == 'estimated', result['rows'][:10])
+        units = result['tempo_unit'] == 'bpm' and result['time_unit'] is None if feature == 'tempo' else result['time_unit'] == 'seconds'
+        c.check('Native ' + feature + ' analysis has explicit units', units and result['status'] == 'estimated', result['rows'][:10])
         if feature == 'onset': c.check('Click attacks detected', len(result['rows']) >= 5, result['rows'])
     rejected(c, 'analyze', input=str(wav), output=str(report), feature='pitch')
 

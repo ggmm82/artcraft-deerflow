@@ -3,8 +3,10 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -51,6 +53,8 @@ def checked_args(app, action, args):
         types = {'string': (str,), 'integer': (int,), 'number': (float, int), 'boolean': (bool,)}
         if type(value) not in types[field['type']]:
             raise ValueError('Wrong argument type: ' + name)
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ValueError('A finite numeric value is required: ' + name)
         if isinstance(value, str) and (not value.strip() or len(value) > 4000 or '\0' in value):
             raise ValueError('Empty or excessive argument: ' + name)
         if ('enum' in field and value not in field['enum'] or 'minimum' in field and value < field['minimum']
@@ -176,11 +180,12 @@ def invoke(app, action, args):
             # The generated config imports only the requested test, never every test
             # from another task. Trace/report data go to the explicit result folder.
             config = work / 'playwright.config.cjs'
-            config.write_text('module.exports=' + json.dumps({'testDir': str(source.parent), 'testMatch': source.name,
+            config.write_text('module.exports=' + json.dumps({'testDir': str(source.parent),
                 'workers': 1, 'timeout': 60000, 'outputDir': str(output / 'test-results'),
                 'reporter': [['json', {'outputFile': str(output / 'report.json')}]],
                 'use': {'browserName': 'chromium', 'headless': True, 'trace': 'retain-on-failure',
-                        'launchOptions': {'args': ['--no-sandbox', '--disable-dev-shm-usage']}}}) + ';\n')
+                        'launchOptions': {'args': ['--no-sandbox', '--disable-dev-shm-usage']}}}) +
+                ';\nmodule.exports.testMatch = new RegExp(' + json.dumps(r'(^|[/\\])' + re.escape(source.name) + '$') + ');\n')
             argv = ['node', INSTALL / 'toolkit/node_modules/playwright/cli.js', 'test', '--config', config]
         completed = run(app, argv, root, env=env)
     elif app == 'aubio':
@@ -191,7 +196,10 @@ def invoke(app, action, args):
         argv = ['aubio', args['feature'], '-i', decoded, '-T', 'seconds']
         if args['feature'] == 'pitch': argv += ['-u', 'Hz']
         completed = run(app, argv, root)
-        output.write_text(json.dumps({'feature': args['feature'], 'time_unit': 'seconds',
+        columns = {'onset': ['time_seconds'], 'beat': ['time_seconds'], 'tempo': ['tempo_bpm', 'native_qualifier'],
+                   'pitch': ['time_seconds', 'pitch_hz'], 'notes': ['midi_note', 'onset_seconds', 'offset_seconds']}
+        output.write_text(json.dumps({'feature': args['feature'], 'time_unit': None if args['feature'] == 'tempo' else 'seconds',
+            'tempo_unit': 'bpm' if args['feature'] == 'tempo' else None, 'columns': columns[args['feature']],
             'pitch_unit': 'Hz' if args['feature'] == 'pitch' else None,
             'input_sha256': original, 'analysis_sample_rate': 44100,
             'rows': [line.split() for line in completed.stdout.splitlines() if line.strip()],
@@ -237,7 +245,10 @@ def invoke(app, action, args):
     elif app == 'freecad':
         completed = run(app, ['/usr/bin/python3', HERE / 'toolkit_job.py', action, source, output], root,
                         env={'OMP_NUM_THREADS': '2'})
-        if action == 'inspect': result['inspection'] = json.loads(output.read_text())
+        if action == 'inspect':
+            info = json.loads(output.read_text())
+            result['inspection'] = {**info, 'objects': info['objects'][:200],
+                                    'object_count': len(info['objects']), 'truncated': len(info['objects']) > 200}
     else:
         model = INSTALL / 'resources/whisper/ggml-tiny.bin'
         if not model.is_file(): raise RuntimeError('Pinned offline whisper model missing; rebuild the sandbox')
@@ -248,7 +259,9 @@ def invoke(app, action, args):
         completed = run(app, argv, root, env={'OMP_NUM_THREADS': '2'})
         if not all((output / ('transcript.' + ext)).is_file() for ext in ('txt', 'srt', 'json')):
             raise RuntimeError('Whisper did not create all requested transcription formats')
-        result.update(transcript=(output / 'transcript.txt').read_text(), perceptual_review='not_run')
+        transcript = (output / 'transcript.txt').read_text()
+        result.update(transcript=transcript[:6000], transcript_truncated=len(transcript) > 6000,
+                      files=[str(output / ('transcript.' + ext)) for ext in ('txt', 'srt', 'json')], perceptual_review='not_run')
     if not output.exists() or output.is_file() and not output.stat().st_size:
         raise RuntimeError('Native operation did not produce the requested file')
     if original and digest(source) != original:

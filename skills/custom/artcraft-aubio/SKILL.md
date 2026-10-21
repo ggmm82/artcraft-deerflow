@@ -11,7 +11,7 @@ Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md), [CAPABILI
 
 ## Scelta e metodo
 
-Scegli onset per attacchi, tempo per battiti stimati, pitch per segnali monofonici e notes per segmenti di nota stimati. Riporta tempi in secondi e pitch in Hz, algoritmo, sample rate e tolleranza; mantieni separata la timeline musicale da quella video. Su mix complessi controlla finestre rappresentative e confronta con eventi di riferimento osservati. Se il brano è fornito dall’utente, usa quel riferimento invece di sostituirlo con toni generici.
+Scegli onset per attacchi, beat per i tempi dei battiti stimati, tempo per il valore globale in BPM, pitch per segnali monofonici e notes per segmenti di nota stimati. Riporta tempi in secondi e pitch in Hz, algoritmo, sample rate e tolleranza; mantieni separata la timeline musicale da quella video. Su mix complessi controlla finestre rappresentative e confronta con eventi di riferimento osservati. Se il brano è fornito dall’utente, usa quel riferimento invece di sostituirlo con toni generici.
 
 ## Limiti verificabili
 
