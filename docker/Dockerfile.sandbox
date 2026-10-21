@@ -23,6 +23,7 @@ COPY scripts/check_provider_clis.py /opt/artcraft/
 RUN python3 /opt/artcraft/check_provider_clis.py
 # Install hashed native distributions before copying frequently revised adapters.
 RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" && fc-cache -f
+COPY scripts/runtime_policy.py /opt/artcraft/
 COPY scripts/craft.py scripts/smoke.py scripts/acceptance.py scripts/acceptance_toolkit.py /opt/artcraft/
 COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
 COPY scripts/toolkit_cli.py scripts/toolkit_specs.py scripts/toolkit_job.py scripts/toolkit_browser.cjs scripts/toolkit_capture.py /opt/artcraft/

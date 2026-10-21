@@ -142,6 +142,50 @@ class StudioTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'disabilitato'):
             self.runtime.delegate('workspace', 'Incarico', workspace, role=compiled, acceptance=project['acceptance'])
 
+    def test_workspace_without_declared_tools_receives_native_policy_and_binary_masks(self):
+        from studio import projects, capability_policy
+        from test_project_skills import role
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        workspace = Path(self.temp.name) / 'workspace'
+        projects.create_plan(workspace, 'Native capabilities', [])
+        projects.sync_acceptance(workspace, ['Use only enabled tools'])
+        spec = role(); spec['tools'] = []
+        projects.sync_project_context(workspace, [spec])
+        project = projects.read_project(workspace)
+        scoped = capability_policy.policy_from_names({'artcraft-' + a['id'] for a in self.state.applications()
+                                                       if a['id'] != 'blender'})
+        scoped.update(user_id='fixture-owner', agent_name=None, skill_names=['artcraft-workspace'], extra_skills=[],
+            skill_sources={'artcraft-workspace': str(Path(__file__).resolve().parents[1] / 'skills/custom/artcraft-workspace')})
+        calls, payloads = [], []
+        def execute(argv, **kwargs):
+            calls.append(argv)
+            if argv[:2] == ['docker', 'run']:
+                payloads.append(json.loads(next((self.state.STATE / 'jobs').glob('*.json')).read_text()))
+            return type('Result', (), {'returncode': 0, 'stdout': '{"ok":true}', 'stderr': ''})()
+        with patch('studio.capability_policy.native_policy', return_value=scoped), \
+             patch.object(self.runtime, 'host_path', return_value='/host/fixture'), \
+             patch.object(self.runtime.subprocess, 'run', side_effect=execute):
+            self.runtime.delegate('workspace', 'Work with base tools', workspace, role=project['roles'][0],
+                                  acceptance=project['acceptance'], capability_policy=scoped)
+        argv = next(c for c in calls if c[:2] == ['docker', 'run'])
+        self.assertIn('/opt/artcraft/apps/blender:ro,size=1m', argv)
+        self.assertTrue(any('dst=/mnt/skills/custom,readonly' in a for a in argv))
+        self.assertEqual(payloads[0]['capability_policy']['blocked'], ['blender'])
+        self.assertEqual(payloads[0]['role']['tools'], [])
+        self.assertFalse(list((self.state.STATE / 'jobs').glob('*-skills')))
+
+    def test_native_disable_while_queued_is_checked_again_before_a_worker_starts(self):
+        from studio import capability_policy
+        (self.state.credential_dir('codex') / 'auth.json').write_text('{}')
+        available = capability_policy.policy_from_names({'artcraft-blender'})
+        available.update(user_id='fixture-owner', agent_name=None, skill_names=['artcraft-blender'], extra_skills=[])
+        disabled = {**available, **capability_policy.policy_from_names(set())}
+        with patch('studio.capability_policy.native_policy', side_effect=[available, disabled]), \
+             patch.object(self.runtime.subprocess, 'run', return_value=type('R', (), {'returncode':0,'stdout':'{}','stderr':''})()) as run:
+            with self.assertRaisesRegex(ValueError, 'disabilitato'):
+                self.runtime.delegate('blender', 'Queued work', Path(self.temp.name) / 'workspace', capability_policy=available)
+        self.assertFalse(any(call.args[0][:2] == ['docker', 'run'] for call in run.call_args_list))
+
     def test_gemini_coordinator_has_no_workspace_and_cleans_up_before_delegation(self):
         self.connect_antigravity()
         captured = []

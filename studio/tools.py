@@ -179,6 +179,11 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
         criteria_json: JSON acceptance criteria for any product: id, requirement, method (content, visual, listening, structural, functional, reference), critical and reference_paths. Optional origin=user requires source_quote copied from actual user messages; origin=proposal identifies team choices. Proposals remain checked until explicitly revised; never weaken user requirements to pass. Preserve requested references; no invented substitutions.
     """
     workspace = workspace_for(runtime)
+    from .capability_policy import runtime_policy, public, require_tools
+    policy = runtime_policy(runtime)
+    if roles_json:
+        for spec in json.loads(roles_json):
+            require_tools(policy, spec.get('tools', []))
     learning = {}
     requests = user_requests(runtime)
     if read_project(workspace):
@@ -211,7 +216,7 @@ def studio_plan(runtime: Runtime, brief: str = '', steps_json: str = '',
     from .control_memory import reply
     from .state import team
     from .acceptance import generation_capabilities
-    return reply(workspace, {'project': value, 'learning': learning,
+    return reply(workspace, {'project': value, 'learning': learning, 'capability_policy': public(policy),
         'generation_capabilities': generation_capabilities(team('squad')['engine'], (value or {}).get('user_direction'))}, 'plan')
 
 
@@ -243,6 +248,8 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
         create_plan(workspace, requests[0] if requests else task, [])
     sync_acceptance(workspace, requests)
     project = read_project(workspace) or {}
+    from .capability_policy import runtime_policy, require_tools
+    policy = runtime_policy(runtime)
     issue = briefing_issue(project.get('outcome'))
     if issue:
         create_plan(workspace, '', [], status='clarifying', summary='Prima definiamo il risultato da ottenere.',
@@ -260,11 +267,13 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     role = next((r for r in project.get('roles', []) if r['id'] == role_id), None) if role_id else None
     if (role_id and not role) or (agent == 'workspace' and not role):
         raise ValueError('Definisci prima il ruolo concreto con studio_plan roles_json')
+    require_tools(policy, ([agent] if agent != 'workspace' else []) + (role or {}).get('tools', []))
     requirements = project.get('requirements', {}) if purpose == 'delivery' else {}
     result = json.loads(execute_step(workspace, agent, task, step_id,
         lambda instructions, started=None: delegate(agent, instructions, workspace,
             tool_call_id=getattr(runtime, 'tool_call_id', None), on_started=started,
-            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role), provider={k: profile[k] for k in ('engine', 'model', 'connection_id') if k in profile},
+            requirements=requirements, purpose=purpose, acceptance=project.get('acceptance'), role=role,
+            capability_policy=policy), provider={k: profile[k] for k in ('engine', 'model', 'connection_id') if k in profile},
         purpose=purpose, request_id=request_id, role=role))
     experience = preserve_experience(workspace, runtime)
     handoff = result.get('handoff') or {}

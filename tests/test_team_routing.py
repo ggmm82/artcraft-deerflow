@@ -5,6 +5,14 @@ from studio.team_routing import TeamRoutingMiddleware
 
 
 class TeamRoutingTests(unittest.TestCase):
+    def test_native_agent_scope_and_model_are_not_overwritten_by_shared_chat_defaults(self):
+        from studio.team_routing import shared_run
+        for context in ({'agent_name': 'my-agent'}, {'agent_name': 'my-agent', 'model_name': 'agent-profile'}):
+            body = {'context': context, 'config': {'configurable': {'model_name': 'explicit-native-profile'}}}
+            result = shared_run(body)
+            self.assertEqual(result['context'], context)
+            self.assertEqual(result['config']['configurable']['model_name'], 'explicit-native-profile')
+            self.assertEqual(result['config']['configurable']['artcraft_agent_name'], 'my-agent')
     def test_actual_user_input_overwrites_forged_contract_metadata_without_changing_messages(self):
         from studio.team_routing import shared_run
         original = [{'role': 'user', 'content': [{'type': 'text', 'text': 'Use my reference'}]},

@@ -28,6 +28,21 @@ request('/api/v1/auth/initialize', {'email': 'studio-ci@example.com',
                                    'password': 'CiOnly-Strong-Login-P4ssword!78239'})
 assert any(cookie.name == 'access_token' for cookie in cookies)
 assert b'ArtCraft Studio' in request('/studio/')
+# Native Agent management and managed capabilities must be available after login.
+json.loads(request('/api/agents'))
+skills = json.loads(request('/api/skills'))['skills']
+assert any(s['name'] == 'artcraft-blender' and s['category'] == 'integrations' for s in skills)
+assert len({s['name'] for s in skills}) == len(skills)
+request('/api/agents', {'name':'ci-native-profile','description':'Native capability scope','skills':['artcraft-freecad']})
+profile = json.loads(request('/api/agents/ci-native-profile'))
+assert profile['skills'] == ['artcraft-freecad']
+request('/api/agents/ci-native-profile', method='DELETE')
+request('/api/skills/artcraft-blender', {'enabled':False}, method='PUT')
+assert json.loads(request('/studio/api/catalog'))['agents']['blender']['enabled'] is False
+request('/api/skills/artcraft-blender', {'enabled':True}, method='PUT')
+assert json.loads(request('/studio/api/catalog'))['agents']['blender']['enabled'] is True
+
+
 catalog = json.loads(request('/studio/api/catalog'))
 assert set(catalog['agents']) == {app['id'] for app in catalog['applications']}
 saved = json.loads(request('/studio/api/agents/gridcraft',

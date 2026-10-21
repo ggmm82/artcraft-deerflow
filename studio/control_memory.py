@@ -117,6 +117,8 @@ def reply(workspace, payload, kind):
     if kind == 'plan' and full.get('generation_capabilities'):
         value['generation_capabilities'] = full['generation_capabilities']
     value.update(details_path=reference['path'], details_sha256=reference['sha256'])
+    if 'capability_policy' in full:
+        value['capability_policy'] = full['capability_policy']
     if len(json.dumps(value, ensure_ascii=False)) <= LIMIT:
         return json.dumps(value, ensure_ascii=False)
     value = fit(value)

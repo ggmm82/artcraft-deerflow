@@ -116,6 +116,9 @@ jobs:
       - name: Check native DeerFlow skill discovery and custom Agent references
         if: matrix.component == 'gateway'
         run: docker run --rm --network=none --entrypoint python --mount "type=bind,src=$PWD/scripts,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 /review/check_skill_wiring.py
+      - name: Check native skill policy, Agent scope and actual skill packages
+        if: matrix.component == 'gateway'
+        run: docker run --rm --network=none --entrypoint python --mount "type=bind,src=$PWD/scripts,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 /review/check_native_capabilities.py
       - name: Check custom OpenAI endpoint, SDK streaming and model target isolation
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python -e STUDIO_REQUIRE_GATEWAY_TESTS=1 --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_custom_providers.py -v
@@ -175,6 +178,9 @@ jobs:
         if: matrix.component == 'proxy'
         run: |
           docker run --rm --entrypoint caddy -e STUDIO_SITE=:2026 -e STUDIO_USER=admin -e STUDIO_PASSWORD_HASH='$2a$14$7TqSh37TK/yl18PM9eaMOu/fA7YKMsBFUMDsHRUZTiZoFoRL66Eu6' artcraft-deerflow-proxy:0.1.0 validate --config /etc/caddy/Caddyfile --adapter caddyfile
+      - name: Prove disabled tools cannot bypass policy through workspace or native binaries
+        if: matrix.component == 'sandbox'
+        run: python scripts/check_worker_capabilities.py
       - name: Publish candidate by immutable digest after component checks
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:

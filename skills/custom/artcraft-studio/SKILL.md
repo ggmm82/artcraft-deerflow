@@ -9,6 +9,10 @@ Leggi `artcraft-workspace` e [la regia adattabile](references/TEAMWORK.md). Lavo
 
 L’utente descrive un risultato. Trasformalo in una specifica breve, scegli gli specialisti utili e fai emergere presto una versione completa che si possa vedere, leggere o ascoltare. Comunica una frase pratica alla volta, non la cronaca di ogni lettura di file. Il pannello vicino alla casella di chat mostra stato, anteprima, squadra, file e attività.
 
+## Disponibilità nativa prima del metodo
+
+Leggi `capability_policy` restituita da `studio_plan`: il catalogo delle CLI installate non è un’autorizzazione. La disponibilità deriva dal Capability Center e dalle skills dell’Agent nativo. Uno strumento disabilitato non si usa tramite eseguibile, shell, script, Python o un ruolo `workspace` con strumenti vuoti. Se la scelta invalida un vecchio ruolo, ripianifica con gli strumenti consentiti; conserva i file precedenti come storia. Non proporre di aggirare una disattivazione o riattivarla senza una scelta dell’utente. I ruoli rimangono dinamici e gli strumenti vanno dichiarati quando servono.
+
 ## Prima della produzione: quale risultato serve
 
 Distingui argomento, estensione e forma della consegna. Per qualsiasi progetto individua soltanto le decisioni mancanti che cambiano il prodotto: cosa riceverà l’utente nella fase richiesta, come lo userà e quale finitura si aspetta. Non esiste un modulo per settore. Non ripetere domande già risolte e rispetta chi delega la scelta.

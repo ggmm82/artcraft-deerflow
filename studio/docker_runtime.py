@@ -169,22 +169,30 @@ def codex_models():
     return codex_account(models=True)['models']
 
 
-def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None, purpose='work', acceptance=None, role=None):
+def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requirements=None, purpose='work', acceptance=None, role=None, capability_policy=None):
+    from .capability_policy import legacy_policy, native_policy, require_tools, worker_arguments
+    policy = capability_policy or legacy_policy()
+    if policy.get('source') == 'deerflow':
+        policy = native_policy(policy['user_id'], policy.get('agent_name'))
+    require_tools(policy, [] if agent_id == 'workspace' else [agent_id])
     settings = effective_agent(agent_id)
-    if not settings or not settings['enabled']:
+    if not settings or (policy['source'] != 'deerflow' and not settings['enabled']):
         raise ValueError('Specialista sconosciuto o disattivato')
     role_text = None
     if role:
         from .project_skills import load_compiled
-        from .state import catalog
         if agent_id != 'workspace' and agent_id not in role['tools']:
             raise ValueError('La CLI assegnata deve essere inclusa negli strumenti del ruolo')
         role_text = load_compiled(workspace, role)
-        if any(not catalog().get(t, {}).get('enabled') for t in role['tools']):
-            raise ValueError('Il ruolo richiede uno strumento disabilitato: rivedi il metodo o la configurazione')
+        require_tools(policy, role['tools'])
         if role.get('request_hash') != (acceptance or {}).get('hash'):
             raise ValueError('Ricompila il ruolo per la richiesta corrente prima della delega')
         settings = {**settings, 'skills': list(dict.fromkeys([*settings['skills'], *['artcraft-' + t for t in role['tools']]]))}
+    settings['skills'] = [s for s in settings['skills'] if s == 'artcraft-workspace'
+                          or s.removeprefix('artcraft-') in policy['allowed']]
+    if policy['source'] == 'deerflow':
+        settings['skills'] = list(dict.fromkeys(s for s in [*settings['skills'], *policy.get('extra_skills', [])]
+                                               if s in policy['skill_names']))
     engine = settings['engine']
     if not connection_status(engine, settings.get('connection_id')):
         raise ValueError(f'Collega {engine} nel pannello Studio prima di usare lo specialista')
@@ -205,6 +213,18 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
     try:
         if requested():
             return cancelled_before_start()
+        # A user may disable a tool while this job waits in the execution queue.
+        if policy.get('source') == 'deerflow':
+            policy = native_policy(policy['user_id'], policy.get('agent_name'))
+        else:
+            policy = legacy_policy()
+        require_tools(policy, ([agent_id] if agent_id != 'workspace' else []) + (role or {}).get('tools', []))
+        settings['skills'] = [s for s in settings['skills'] if s == 'artcraft-workspace'
+                              or s.removeprefix('artcraft-') in policy['allowed']]
+        if policy['source'] == 'deerflow':
+            settings['skills'] = [s for s in [*settings['skills'], *policy.get('extra_skills', [])]
+                                  if s in policy['skill_names']]
+            settings['skills'] = list(dict.fromkeys(settings['skills']))
         from .projects import assert_user_allows_work, read_project
         assert_user_allows_work(read_project(workspace) or {})
         update(progress, 'starting')
@@ -222,6 +242,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
                    'acceptance': acceptance, 'role': role, 'compiled_skill': role_text}
         from .projects import read_project
         payload['user_direction'] = (read_project(workspace) or {}).get('user_direction')
+        payload['capability_policy'] = policy
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
@@ -229,8 +250,23 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         update(progress, model=clean_summary(payload['model']))
         from .state import atomic_json
         atomic_json(job, payload)
+        projection = None
+        if policy['source'] == 'deerflow':
+            from .capability_policy import stage_skills
+            projection = jobs / (name + '-skills')
+            stage_skills(policy, settings['skills'], projection)
         installation = (STATE / 'installation-id').read_text().strip()
-        args = base_arguments(name, resources) + ['--label', f'org.artcraft.studio.installation={installation}',
+        restrictions = []
+        if policy['blocked']:
+            blocker = STATE / 'tool-disabled'
+            if blocker.is_symlink():
+                raise ValueError('Blocco strumenti non valido')
+            blocker.write_text('#!/bin/sh\necho "Strumento disabilitato nel Capability Center o escluso dall Agent" >&2\nexit 126\n')
+            blocker.chmod(0o755)
+            restrictions = worker_arguments(policy, host_path(blocker), projected_skills=projection is not None)
+        if projection is not None:
+            restrictions += ['--mount', mount(projection, '/mnt/skills/custom', True)]
+        args = base_arguments(name, resources) + restrictions + ['--label', f'org.artcraft.studio.installation={installation}',
             '--label', f'org.artcraft.studio.workspace={workspace_key(workspace)}',
             '--mount', mount(workspace, '/mnt/user-data'),
             '--mount', (mount(custom_connection_path(settings.get('connection_id')), '/credentials/api.json', True)
@@ -305,6 +341,9 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         try:
             if 'job' in locals():
                 job.unlink(missing_ok=True)
+            if 'projection' in locals() and projection is not None:
+                import shutil
+                shutil.rmtree(projection, ignore_errors=True)
         finally:
             EXECUTION_LOCK.release()
 

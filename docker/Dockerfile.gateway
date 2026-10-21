@@ -132,9 +132,10 @@ CMD ["sh", "-c", "cd backend && PYTHONPATH=. exec uv run --no-sync uvicorn app.g
 # ArtCraft integration: all CLI execution stays in disposable workers.
 COPY studio ./backend/studio
 COPY skills /app/skills
+RUN mkdir -p /app/skill-catalog/public /app/skill-catalog/custom
 ENV DEER_FLOW_CONFIG_PATH=/studio-state/config.yaml \
     DEER_FLOW_EXTENSIONS_CONFIG_PATH=/studio-state/extensions_config.json \
-    DEER_FLOW_SKILLS_PATH=/app/skills \
+    DEER_FLOW_SKILLS_PATH=/app/skill-catalog \
     DEER_FLOW_HOME=/app/backend/.deer-flow \
     DEER_FLOW_PROJECT_ROOT=/app \
     CODEX_AUTH_PATH=/studio-state/credentials/.codex/auth.json
