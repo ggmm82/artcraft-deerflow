@@ -11,11 +11,19 @@ def main():
     sys.path.insert(0, '/usr/lib/freecad-python3/lib')
     sys.path.insert(0, '/usr/lib/freecad/lib')
     import FreeCAD as App
+    # Embedded Python does not run FreeCADCmd's standard workbench discovery.
+    # Include the packaged Mod roots (packages such as PartDesign) and each
+    # workbench directory (modules such as Draft). No GUI/add-on init is run.
+    module_roots = {Path(App.getHomePath()) / 'Mod', Path(App.getResourceDir()) / 'Mod',
+                    Path('/usr/share/freecad/Mod'), Path('/usr/lib/freecad/Mod')}
+    for base in sorted(module_roots):
+        if base.is_dir():
+            sys.path.append(str(base))
+            sys.path.extend(str(child) for child in sorted(base.iterdir()) if child.is_dir())
     import Part
-    # In embedded headless Python, creating PartDesign::Body does not load the
-    # native _PartDesign module automatically. Register Body/Pad/Pocket types
-    # before authoring or restoring a parametric document (no GUI dependency).
-    import _PartDesign
+    # Load the official public package, which registers its native _PartDesign
+    # extension, before constructing or restoring Body/Pad/Pocket documents.
+    import PartDesign
     action, source, target = sys.argv[1:]
     target = Path(target)
     if action == 'version':
