@@ -30,7 +30,7 @@ FluidSynth completa SoundCraft: note e timbri si modificano nel MIDI e nella ban
 
 aubio misura e Whisper trascrive: non aggiungono automaticamente ascolto musicale al modello. Il giudizio percettivo resta `not_run` quando il trasporto del modello non riceve audio. Conformità EPUB, compilazione PDF e validità geometrica sono controlli tecnici, distinti da finitura, contenuto e conformità professionale.
 
-I nuovi tool non rendono automaticamente professionale un risultato: servono brief, riferimenti, prova rappresentativa, criterio di accettazione e revisione del prodotto reale. Le lezioni sull’uso degli strumenti possono essere proposte con prove e beneficio osservato; restano inattive finché l’utente non accetta ogni singola lezione.
+I nuovi tool non rendono automaticamente professionale un risultato: servono brief, riferimenti, prova rappresentativa, criterio di accettazione e revisione del prodotto reale. Le lezioni sull’uso degli strumenti possono essere proposte con prove e beneficio osservato; i metodi di realizzazione richiedono accettazione; le conoscenze tecniche si attivano con test automatici verificati, restando consultabili e revocabili.
 
 ## Collaudo del rilascio
 

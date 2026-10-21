@@ -178,6 +178,23 @@ Rispetta `user_direction` nell’incarico e nella memoria compilata: le preferen
 
 ## Singole lezioni sull’uso degli strumenti
 
+Indica `lesson.category`: `tool_operation` per uso di API/CLI, parametri, errori,
+risorse e riapertura; `production_method` per scelte di progettazione, stile,
+costruzione, collaborazione e organizzazione della produzione. Usare un’app non
+rende una scelta creativa una lezione tecnica. Non chiedere all’utente di valutare
+flag o dettagli di implementazione.
+
+Per attivare automaticamente una lezione tecnica aggiungi al candidato
+`validation:{"operation_path":".../work/operations/<id>/status.json",
+"result_path":".../work/verifica.json","assertions":[{"pointer":"/reopened","equals":true}]}`.
+Esegui realmente il test con il supervisore e conserva il risultato JSON prodotto
+dalla verifica, non un JSON di successo scritto senza controllare il prodotto.
+Il runtime richiede operazione conclusa senza errori e confronta i valori puntuali
+dei JSON Pointer (anche array) con il rapporto della stessa sandbox. Non usare
+questa prova per autoapprovare estetica, strategie creative o qualità complessiva.
+Senza test verificabile la nota tecnica resta archiviata e inattiva. I vecchi
+appunti tecnici non vengono trasformati retroattivamente in test riusciti.
+
 Se scopri un miglioramento significativo nell’uso di una CLI, non conservarne tutta
 la sessione: salva appena possibile `work/tool-lessons.json` con al massimo tre
 singole proposte. Vale anche per un incarico interrotto o non ancora consegnato.
@@ -196,12 +213,29 @@ distinti del supervisore, entrambi completed con returncode zero. Il registro le
 i tempi effettivi, senza inventare percentuali; confrontabilità e qualità restano da
 verificare. Senza queste misure usa observed o hypothesis.
 
-Le scoperte vengono conservate come fonti dichiarate dalla sandbox, con hash e
-versioni. Il coordinatore valuta e generalizza le singole lezioni utili; soltanto
-l’utente può accettarle per le skills future. Un comando riuscito non certifica la
+Le scoperte sono conservate con hash e versioni. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. Un comando riuscito non certifica la
 qualità del prodotto e una preferenza non è una verifica tecnica indipendente.
 
 ## Capacità, componenti e sincronismo della consegna
+
+### Prova tecnica e prova di realizzazione
+
+Verifica separatamente authoring degli asset, importazione e resa nel prodotto
+finale. Una CLI che importa un modello non è necessariamente il metodo migliore
+per modellarlo; gli strumenti pertinenti possono collaborare senza sequenze fisse.
+Prima di rifinire un asset difettoso, individua la causa osservabile: costruzione,
+scala/orientamento, parti e materiali, collegamenti, illuminazione o composizione,
+secondo la disciplina. Verifica il requisito nel risultato effettivo, non soltanto
+nello script o nel numero di oggetti. Un esempio minimo documenta un’API, non lo
+stile o il livello di finitura richiesti.
+
+Il campione riduce estensione o durata, conservando il livello di finitura e la
+parte più rischiosa. Confrontalo col migliore precedente sullo stesso requisito.
+Una regressione non sostituisce la base valida. Segna in `handoff.checks` i requisiti
+effettivamente falliti con `status:failed`, anche se salvataggio e riapertura sono
+riusciti. Non limitarti a warning o formule come «campione tecnico»: il runtime
+deve poter richiedere la revisione della lavorazione. Distingui nelle lezioni
+«come far funzionare la CLI» da «come ottenere un risultato migliore».
 
 Prima di uno script usa-e-getta, consulta `craft capabilities APP` e `references/CAPABILITIES.md` della skill pertinente. La mappa orienta per obiettivo; non certifica ogni comando registrato. Le fixture delle ricette verificano le API, non definiscono una finitura accettabile. Un campione corto deve usare costruzione, dettaglio e resa del prodotto previsto.
 
@@ -209,4 +243,4 @@ Per `purpose=delivery` aggiungi `delivery.components`, da una a dodici component
 
 Per media sincronizzati usa un riferimento temporale comune: secondi, fps, sample rate, origine, BPM e tick quando pertinenti. Conserva cue, stem, sessioni e collegamenti. Per eventi audiovisivi distinti aggiungi `delivery.timing` con `master` uguale al video scaricabile e `cues:[{"name":"evento osservato","visual_seconds":1.0,"tolerance_seconds":0.12}]`. Sono dati del master effettivo, non tempi dedotti solo dallo script. Il runtime confronta i transienti numerici del master con gli istanti visivi dichiarati: un errore rilevato richiede correzione. Audio continuo o ambiguo rimane `not_run`, da valutare con un metodo pertinente; non inventare cue per superare il controllo. Un picco coincidente non identifica il suono né prova che l’evento visivo sia corretto. La stessa durata di audio e video non dimostra sincronismo e una misura non equivale ad ascolto.
 
-Prima di chiudere valuta anche se è emersa una lezione nuova e trasferibile. Se non emerge, registra `{"lessons":[],"reason":"Motivo concreto"}` in `work/tool-lessons.json`. Il registro non è un download finale. Le lezioni generalizzate e documentate possono diventare proposte automatiche inattive; solo l’utente le accetta, singolarmente. I fatti particolari rimangono nelle prove.
+Prima di chiudere valuta anche se è emersa una lezione nuova e trasferibile. Se non emerge, registra `{"lessons":[],"reason":"Motivo concreto"}` in `work/tool-lessons.json`. Il registro non è un download finale. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. I fatti particolari rimangono nelle prove.

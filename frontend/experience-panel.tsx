@@ -8,7 +8,7 @@ type Observation = { id: string; at: string; excluded: boolean; observation: {
   tools: Record<string, string>; product_sha256: string; report_sha256: string; source_thread?: string; producer_method?: { status: string; notice: string; declared_method?: { approach: string; steps: string[]; limits: string[] } }; limitations?: string[];
 } };
 type Impact = { level: "major" | "minor" | "unknown"; basis: "measured" | "observed" | "hypothesis"; reason: string };
-type Lesson = { id: string; accepted: boolean; excluded: boolean; basis: { tool_versions?: Record<string,string>; impact?: Impact; source_ids: string[]; source_statuses?: string[]; lesson: { title: string; applies_when: string; procedure: string[]; verification: string[]; limits: string; tools: string[] } } };
+type Lesson = { category?: "tool_operation" | "production_method"; approval?: "automatic" | "manual" | "pending"; id: string; accepted: boolean; excluded: boolean; basis: { tool_versions?: Record<string,string>; impact?: Impact; source_ids: string[]; source_statuses?: string[]; lesson: { title: string; applies_when: string; procedure: string[]; verification: string[]; limits: string; tools: string[] } } };
 type Library = { total: number; excluded: number; pending?: number; lessons?: Lesson[]; observations: Observation[] };
 export function ExperiencePanel({ threadId, deliveries = [], onCurate }: { onCurate?: () => Promise<void>; threadId: string; deliveries?: { id: string; title: string; purpose: string }[] }) {
   const [library, setLibrary] = useState<Library | null>(null);
@@ -54,12 +54,13 @@ export function ExperiencePanel({ threadId, deliveries = [], onCurate }: { onCur
     return ({"major:measured":0,"major:observed":1,"minor:measured":2,"minor:observed":3,"major:hypothesis":4,"minor:hypothesis":5} as Record<string,number>)[key] ?? 6;
   };
   const ordered = [...(library?.lessons ?? [])].sort((a,b) => impactRank(a) - impactRank(b));
-  const proposals = ordered.filter(record => !record.accepted);
-  const approved = ordered.filter(record => record.accepted);
+  const technical = ordered.filter(record => record.category === "tool_operation");
+  const proposals = ordered.filter(record => record.category !== "tool_operation" && !record.accepted && !record.excluded);
+  const approved = ordered.filter(record => record.category !== "tool_operation" && record.accepted);
   const lessonCard = (record: Lesson) => <article key={record.id} className="space-y-3 rounded-xl border p-4" data-testid="general-lesson">
       <h4 className="font-semibold">{record.basis.lesson.title}</h4>
       <p className="text-xs font-medium">{record.basis.impact?.level === "major" ? "Miglioramento rilevante" : record.basis.impact?.level === "minor" ? "Perfezionamento minore" : "Impatto da valutare"} · {record.basis.impact?.basis === "measured" ? "con misure registrate" : record.basis.impact?.basis === "observed" ? "osservato" : "da confermare"}</p>
-      <p className="text-xs">{record.accepted ? "Accettata per il riutilizzo" : "Proposta: non ancora usata nelle skills"}</p>
+      <p className="text-xs">{record.approval === "automatic" ? "Tecnica attivata automaticamente dopo il test" : record.category === "tool_operation" && !record.accepted ? "In attesa di verifica tecnica automatica" : record.accepted ? "Accettata per il riutilizzo" : "Proposta: non ancora usata nelle skills"}</p>
       {record.basis.impact && <p className="line-clamp-2 text-sm">{record.basis.impact.reason}</p>}
       <details><summary className="cursor-pointer">Valuta la lezione</summary>
         <p className="my-2"><strong>Quando usarla:</strong> {record.basis.lesson.applies_when}</p>
@@ -70,18 +71,19 @@ export function ExperiencePanel({ threadId, deliveries = [], onCurate }: { onCur
       <p className="my-2 text-xs text-muted-foreground">Strumenti: {Object.entries(record.basis.tool_versions ?? {}).map(([tool, version]) => `${tool} ${version}`).join(", ") || "Principio generale"}</p>
       {library?.observations.filter(source => record.basis.source_ids.includes(source.id)).map(source => <details className="my-2 text-xs" key={source.id}><summary className="cursor-pointer">Prova di origine</summary><p className="my-2">{source.observation.evidence}</p>{source.observation.source_thread && <a className="underline" href={`/workspace/chats/${encodeURIComponent(source.observation.source_thread)}`}>Apri progetto di origine</a>}</details>)}
       </details>
-      <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("/lesson", { id: record.id, accepted: !record.accepted })}>{record.accepted ? "Rimuovi dalle skills" : "Accetta questa lezione"}</button>
+      {(record.category !== "tool_operation" || record.accepted) && <button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy} onClick={() => void change("/lesson", { id: record.id, accepted: !record.accepted })}>{record.accepted ? "Rimuovi dalle skills" : "Accetta questa lezione"}</button>}
     </article>;
 
   return <div className="space-y-3 text-sm" data-testid="experience-panel">
-    <p>Prima i miglioramenti più significativi, anche sull’uso delle CLI nelle sandbox. Solo le lezioni accettate entrano nelle skills; prove e limiti sono nei dettagli.</p>
+    <p>Approvi i metodi di realizzazione, prima quelli con maggior beneficio. Le conoscenze tecniche si attivano dopo una verifica automatica; prove e limiti restano consultabili.</p>
     {error && <p role="alert">{error}</p>}
     {!library && !error && <p role="status">Carico proposte e lezioni accettate…</p>}
-    {library && <p>{library.lessons?.filter(lesson => !lesson.accepted).length ?? 0} proposte da valutare · {library.lessons?.filter(lesson => lesson.accepted).length ?? 0} lezioni accettate</p>}
+    {library && <p>{proposals.length} metodi da valutare · {approved.length} metodi accettati · {technical.filter(record => record.accepted).length} conoscenze tecniche attive</p>}
     {!!library?.pending && <div className="space-y-2"><p className="text-xs">{library.pending} osservazioni archiviate ancora da valutare. Non sono lezioni apprese.</p><button className="rounded border px-3 py-2 disabled:opacity-50" disabled={busy || !onCurate} onClick={() => { setBusy(true); setError(""); void onCurate?.().catch(() => { if (alive.current) setError("Valutazione non avviata: le fonti restano conservate."); }).finally(() => { if (alive.current) setBusy(false); }); }}>Valuta le osservazioni</button>{!onCurate && <p className="text-xs text-muted-foreground">Disponibile quando termina la lavorazione in corso.</p>}</div>}
     {proposals.slice(0, 3).map(lessonCard)}
     {proposals.length > 3 && <details className="rounded-xl border p-3"><summary className="cursor-pointer font-medium">Altre proposte ({proposals.length - 3})</summary><div className="mt-3 space-y-3">{proposals.slice(3).map(lessonCard)}</div></details>}
     {approved.length > 0 && <details className="rounded-xl border p-3" data-testid="accepted-lessons"><summary className="cursor-pointer font-medium">Lezioni accettate ({approved.length})</summary><div className="mt-3 space-y-3">{approved.map(lessonCard)}</div></details>}
+    {technical.length > 0 && <details className="rounded-xl border p-3" data-testid="technical-lessons"><summary className="cursor-pointer font-medium">Conoscenze tecniche ({technical.length})</summary><p className="my-2 text-xs">Non richiedono la tua approvazione. Senza un test verificabile restano inattive; puoi rimuovere quelle attive.</p><div className="space-y-3">{technical.map(lessonCard)}</div></details>}
     {library && !library.lessons?.length && <p>Nessuna lezione generale ancora compilata. Le fonti già conservate non vengono copiate nelle nuove skills.</p>}
     <details className="space-y-3 rounded-xl border p-3"><summary className="cursor-pointer font-medium">Fonti, preferenze e archivio ({library?.total ?? 0})</summary>
     <div className="flex flex-wrap gap-2">

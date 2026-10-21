@@ -11,6 +11,49 @@ from .project_skills import redact_memory, read_document
 from .source_packages import digest
 
 
+def technical_validation(workspace, directory, candidate, artifact):
+    """Check bounded JSON assertions against a completed supervised operation.
+
+    This proves a recorded technical test, never visual quality or a production
+    method. All inputs must be fresh files in this job, not another user's job.
+    """
+    check = candidate.get('validation')
+    if not isinstance(check, dict):
+        return {'status': 'not_run', 'reason': 'Manca una prova tecnica verificabile automaticamente.'}
+    try:
+        operation = artifact(workspace, check['operation_path'])
+        result = artifact(workspace, check['result_path'])
+        if (not operation or operation.name != 'status.json'
+                or operation.parent.parent != directory / 'work/operations'
+                or not re.fullmatch(r'[a-f0-9]{24}', operation.parent.name)
+                or operation.stat().st_size > 16000 or not result
+                or not result.is_relative_to(directory) or result == operation
+                or result.name == 'tool-lessons.json' or result.stat().st_size > 1048576):
+            raise ValueError('Prova fuori dall’incarico o non valida')
+        status = json.loads(operation.read_text())
+        if status.get('state') != 'completed' or status.get('returncode') != 0 or status.get('oom_kills'):
+            raise ValueError('Operazione non conclusa correttamente')
+        data = json.loads(result.read_text())
+        assertions = check['assertions']
+        if not isinstance(assertions, list) or not 1 <= len(assertions) <= 8:
+            raise ValueError('Servono da una a otto verifiche puntuali')
+        for assertion in assertions:
+            pointer = assertion['pointer']
+            if not isinstance(pointer, str) or not pointer.startswith('/') or len(pointer) > 300:
+                raise ValueError('Percorso JSON non valido')
+            actual = data
+            for part in pointer[1:].split('/'):
+                part = part.replace('~1', '/').replace('~0', '~')
+                actual = actual[int(part)] if isinstance(actual, list) else actual[part]
+            expected = assertion['equals']
+            if type(actual) is not type(expected) or actual != expected:
+                raise ValueError('Asserzione tecnica fallita')
+        return {'status': 'passed', 'operation_sha256': digest(operation), 'result_sha256': digest(result),
+                'assertions': assertions, 'notice': 'Test tecnico registrato dalla sandbox; non è una valutazione estetica né una riproduzione indipendente.'}
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        return {'status': 'not_run', 'reason': 'Prova tecnica assente, non valida o non superata.'}
+
+
 def measurement(workspace, directory, candidate, artifact):
     value = candidate.get('measurement') or {}
     result = {}
@@ -88,6 +131,7 @@ def observations(workspace, attempt, role, source_thread, captured=()):
                 'criterion': lesson['title'], 'status': 'sandbox_observation', 'method': 'worker_report',
                 'evidence': evidence.strip(), 'corrections': [], 'suggested_lesson': lesson,
                 'impact': impact, 'measurement': measured,
+                'technical_validation': technical_validation(workspace, directory, candidate, artifact_path),
                 'tools': {t: installed.get(t, 'unknown') for t in lesson['tools']},
                 'evidence_files': proofs, 'source_report': str(manifest), 'report_sha256': manifest_hash,
                 'product_sha256': fingerprint(proofs), 'scope_known': bool(installed),

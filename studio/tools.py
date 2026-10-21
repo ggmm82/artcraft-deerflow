@@ -116,8 +116,8 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
     observation. Prioritize substantial improvements, not trivial tips. Distinguish
     measured gains from observations and hypotheses; never invent percentages.
     Dismiss unhelpful sources with a reason; keep their evidence.
-    New lessons are proposals: only the owner can accept each one in the Lessons
-    panel. Never approve them yourself or claim a proposal is already reused.
+    Production methods require individual owner acceptance in the Lessons panel.
+    Tool-operation knowledge is activated by runtime-checked tests, never by model self-approval.
     Accepted lessons guide future roles only when relevant and compatible with tool versions.
     Do not block useful production on the learning backlog.
 
@@ -127,7 +127,7 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
         source_ids_json: JSON list of one to six real saved evidence IDs.
         impact_json: Optional JSON level major/minor/unknown, basis measured/observed/hypothesis and reason grounded in the selected evidence. No fabricated measurements. This ranks proposals, not a product quality certificate.
         dismiss_reason: Instead of saving a lesson, explain why the selected source IDs do not warrant one. Do not combine with lesson_json.
-        lesson_json: JSON title, applies_when, procedure (list), verification (list), limits and tools (installed IDs or empty for a general principle). Conditions and limits are required; no facts of the source project.
+        lesson_json: JSON category (production_method for realization strategy, tool_operation for CLI usage), title, applies_when, procedure (list), verification (list), limits and tools (installed IDs or empty for a general principle). Conditions and limits are required; no facts of the source project.
     """
     from .lessons import learn, pending, dismiss
     root = experience_root(runtime)

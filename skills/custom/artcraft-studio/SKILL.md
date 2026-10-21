@@ -85,7 +85,16 @@ Un requisito può avere più osservazioni: un `passed` locale non annulla un `fa
 
 ## Conservare l'esperienza
 
-Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Il runtime propone automaticamente poche lezioni già generalizzate e documentate dalle sandbox, lasciandole inattive. Non generalizza automaticamente i fatti delle recensioni. Il pulsante **Valuta le osservazioni** avvia una richiesta del coordinatore quando il lavoro è terminato; con `studio_lessons(current_project_only=true)` leggi poche fonti di questo progetto, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.
+Se una lavorazione termina con verifiche fallite, `needs_revision` richiede una
+decisione sul metodo: non ripetere indefinitamente lo stesso incarico e non
+presentare `ok` o `validated` come approvazione di qualità. Separa la competenza
+che realizza gli asset da quella che li integra quando il difetto nasce nella
+costruzione; compila ruoli e strumenti pertinenti al progetto. Il vincolo su uno
+strumento non autorizza una riduzione silenziosa della qualità. Conserva il
+campione migliore; valuta un’alternativa sul difetto concreto prima di estendere
+la produzione. Comunica all’utente risultato osservato e prossima decisione.
+
+Le evidenze del caso restano nella memoria del progetto e nell’archivio privato. Non trasferirle intere nelle altre skills. Il runtime conserva poche lezioni generalizzate e documentate: i metodi restano inattivi fino all’accettazione; le tecniche si attivano soltanto dopo il test automatico. Non generalizza automaticamente i fatti delle recensioni. Il pulsante **Valuta le osservazioni** avvia una richiesta del coordinatore quando il lavoro è terminato; con `studio_lessons(current_project_only=true)` leggi poche fonti di questo progetto, valuta se esiste una singola lezione necessaria, nuova e trasferibile. Non è necessario generalizzare ogni osservazione: usa `dismiss_reason` quando non emerge una lezione utile, senza cancellare le evidenze.
 
 Considera anche le scoperte sull’uso degli strumenti prodotte dalle sandbox in `work/tool-lessons.json`, non soltanto le revisioni finali. Nei pending leggi suggested_lesson, producer_method, evidence_files e limiti. Distingui fonti operative dichiarate, misure del supervisore e verifiche indipendenti. Non salvare ogni azione come lezione.
 
@@ -93,7 +102,7 @@ Ordina le singole proposte per impatto tramite `impact_json`: major / minor / un
 
 Per una proposta usa `source_ids_json` e `lesson_json` con titolo, condizioni (`applies_when`), procedura, verifiche, limiti e strumenti pertinenti. Elimina nomi, contenuti narrativi, percorsi e scelte del progetto; una preferenza personale non è un esito tecnico verificato. La generalizzazione è un giudizio del coordinatore fondato sulle fonti, non una certificazione.
 
-Ogni proposta resta inattiva finché l’utente non preme **Accetta questa lezione** nella sezione **Lezioni**. Non puoi accettarla al suo posto. Solo le lezioni accettate e pertinenti entrano nelle successive compilazioni dei ruoli; una modifica della proposta richiede una nuova accettazione. L’utente può rimuovere ogni lezione dalle skills senza cancellare le fonti. Il brief attuale prevale e gli incarichi già avviati non vengono riscritti. Non dichiarare addestramento del modello né aggiornamento automatico delle skills condivise.
+I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. Non accettare metodi al posto dell’utente; una loro modifica richiede nuova accettazione. Le conoscenze tecniche sono riutilizzate soltanto con versioni compatibili. L’utente può rimuovere ogni lezione dalle skills senza cancellare le fonti. Il brief attuale prevale e gli incarichi già avviati non vengono riscritti. Non dichiarare addestramento del modello né aggiornamento automatico delle skills condivise.
 
 ## Scegliere un metodo che possa raggiungere il risultato
 
