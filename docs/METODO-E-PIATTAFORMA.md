@@ -1,0 +1,47 @@
+# Metodo di produzione e scelta della piattaforma
+
+## Diagnosi verificata — 21 ottobre 2026
+
+La quantità di strumenti non misura la qualità del prodotto. Nei due casi analizzati le CLI hanno prodotto file e sorgenti: il problema principale osservato è il passaggio da capacità tecniche a un metodo di realizzazione coerente. Non abbiamo verificato ogni comando del catalogo, né escluso errori di configurazione in altri progetti.
+
+- Un campione vettoriale già eseguito con il modello maggiore è rimasto visivamente elementare. Un ruolo compilato non conferisce da solo competenza artistica o asset di qualità.
+- Nell’animazione, dopo due campioni EffectCraft insufficienti, è stato scritto un renderer alternativo. Il rapporto ammetteva ancora geometrie elementari, camera fissa e limiti di finitura. Cambiare strumento non aveva risolto il difetto di costruzione del contenuto.
+- I rapporti contenevano controlli falliti, mentre la memoria restituiva zero osservazioni. Il raccoglitore acquisiva lezioni esplicite e revisioni formali, perdendo i difetti dichiarati nei normali handoff, anche quando erano disponibili immagini e sorgenti.
+- La revisione prevista non era arrivata a conclusione: interrompere un job o avere un errore del provider non deve cancellare le evidenze già prodotte.
+- Il worker riceveva subito protocolli completi, ricette CLI e istruzioni di qualità. In due combinazioni rappresentative, il contesto statico misurato passava rispettivamente da 63.812 a 21.571 caratteri e da 58.999 a 18.351 dopo questa revisione. È una misura di carico delle istruzioni, non una prova di miglioramento estetico.
+
+Il vantaggio delle prime versioni con un solo strumento è compatibile con maggiore continuità di sorgenti e metodo e minore costo d’integrazione. Non abbiamo un confronto controllato che ne provi la causa. Più strumenti danno più possibilità, ma possono anche introdurre conversioni, perdita di informazioni e cambi di metodo inutili.
+
+## Correzioni
+
+1. **Un responsabile del prodotto, contributi pertinenti.** I ruoli restano dinamici; non si impone una squadra numerosa né una sequenza valida solo per un settore.
+2. **Diagnosi prima della sostituzione.** Distinguere errori di esecuzione, impostazioni, asset e capacità; conservare i sorgenti validi e confrontare la modifica sullo stesso requisito. Un campione riduce durata o estensione, non il livello di finitura atteso.
+3. **Riferimenti su richiesta.** Il brief conserva incarico, vincoli, continuità e controlli essenziali. I protocolli completi restano disponibili nelle skills, ma ricette e schemi non vengono espansi preventivamente nel prompt di ogni worker.
+4. **Feedback oltre i cambi di ruolo.** Il prossimo incarico riceve un numero limitato di difetti dichiarati, con percorsi e impronte dei file. Sono evidenze da verificare, non nuove istruzioni o lezioni approvate.
+5. **Esperienza anche dai tentativi incompleti.** Un handoff con controlli falliti e almeno un artefatto locale può diventare osservazione persistente. La raccolta considera al massimo tre piccoli file per rapporto, entro 16 MiB, privilegiando le anteprime. Non legge interi render o archivi a ogni raccolta. Il coordinatore deve valutare se esiste una lezione trasferibile, oppure motivare lo scarto. Il metodo generale richiede accettazione; la sola conoscenza tecnica può attivarsi automaticamente quando supera i controlli operativi già previsti.
+
+La riacquisizione offline dei tre tentativi reali ha conservato quattro osservazioni negative, nessuna lezione automaticamente approvata e zero duplicati alla seconda raccolta. La copia locale include rapporti e anteprime, non ogni file dell’archivio originale. Nessuna modifica alla conversazione di produzione.
+
+## Cosa manca davvero
+
+I controlli tecnici verificano esistenza, formato, riapertura e alcuni requisiti misurabili. Non certificano gusto, fedeltà a un riferimento, qualità del disegno o qualità della scrittura. L’attuale registro delle capacità non offre ascolto percettivo: volume, durata e presenza di una traccia non equivalgono ad ascoltarla.
+
+Per un lavoro specifico possono mancare asset, un modello capace di crearli o una capacità di osservazione. Va identificato quel limite e proposto all’utente; aggiungere un’altra CLI o riattivare uno strumento escluso non è una soluzione universale. Restano rispettate le disattivazioni in Agents/Skills. Questa PR non aggiunge strumenti e non promette qualità professionale automatica.
+
+## DeerFlow, Multica e alternative
+
+Valutazione della documentazione ufficiale, non un collaudo comparativo delle piattaforme installate.
+
+| Piattaforma | Utilità concreta | Limite rispetto al problema osservato |
+| --- | --- | --- |
+| [DeerFlow](https://deerflow.tech/en/docs/harness/skills) | Skills caricate quando servono, contesti separati, agenti e delega dinamica | Il sovraccarico rilevato nasceva dal worker ArtCraft personalizzato; non è imposto dalla piattaforma. Correggerlo conserva runtime e integrazioni già collaudati. |
+| [Multica](https://github.com/multica-ai/multica) | Gestione del lavoro con issue, agenti CLI, squadre, responsabilità e revisione umana; self-hosted, source-available | Le [squadre](https://multica.ai/docs/squads) instradano il lavoro verso i membri adatti, senza far lavorare tutti automaticamente. Le [skills](https://multica.ai/docs/skills) sono procedure riutilizzabili: non aggiungono asset o competenza artistica al modello. |
+| [OpenHands](https://docs.openhands.dev/overview/introduction) | SDK e ambiente per agenti software, esecuzione e controllo delle attività | Interessante per sviluppo software e gestione dell’esecuzione; non risolve da solo la produzione professionale nei diversi domini ArtCraft. |
+
+**Scelta:** correggere prima il metodo e la raccolta delle evidenze in DeerFlow. Una migrazione ora trasferirebbe buona parte dei problemi insieme a modelli, strumenti e procedure. Multica merita un prototipo separato se il limite dominante resta la gestione del lavoro e della squadra, con confronto su identici brief, modelli, strumenti e budget.
+
+## Validazione e limiti
+
+I test coprono raccolta dopo interruzione, isolamento dei file, percorsi virtuali, limiti di lettura, deduplicazione, nessuna approvazione implicita, trasferimento delle osservazioni al ruolo successivo e accessibilità dei protocolli. I test esistenti verificano anche policy, sorgenti e integrazioni.
+
+La misura successiva è un confronto end-to-end su brief e riferimenti identici: qualità osservata del risultato, riapertura dei sorgenti, numero di revisioni, tempo e costo. Non basta contare agenti, file o comandi riusciti. Le modifiche del prompt sono un’ipotesi di miglioramento da misurare; i test deterministici non garantiscono il risultato creativo di ogni modello.

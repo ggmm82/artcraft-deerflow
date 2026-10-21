@@ -18,7 +18,7 @@ Usa CADCraft per disegno tecnico, geometrie, layer, quote e DXF. Una rappresenta
 
 ## Ricetta operativa collaudata
 
-Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), da consultare per la sintassi pertinente. Mantieni i controlli e adatta la procedura agli input reali.
 
 ## Avvio e scoperta
 
@@ -81,7 +81,7 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 
 ## Qualità del prodotto
 
-Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+Applica [i criteri specifici della disciplina](references/QUALITY.md), da leggere per valutare il risultato. Le prove CLI minime non sono modelli estetici per la consegna.
 
 ## Scelta rispetto a FreeCAD
 

@@ -124,7 +124,9 @@ def recovery(workspace, project):
     return {'code': 'method_selection_required',
             'message': 'Il campione è insufficiente; il metodo va rivalutato prima di dichiarare una dipendenza esterna.',
             'instruction': 'Rileggi le richieste originali: outcome.assumptions sono scelte provvisorie, non vincoli imposti dall’utente. '
-                'Valuta un metodo sostanzialmente diverso con capacità disponibili; aggiorna strategy_json e i ruoli pertinenti. '
+                'Distingui difetto locale, asset inadeguato, impostazione errata e limite reale della capacità. '
+                'Conserva il metodo e i sorgenti validi; cambia metodo solo con evidenze del limite o di un beneficio sul campione. '
+                'Aggiorna strategy_json e i ruoli pertinenti senza ricostruire automaticamente il prodotto. '
                 'Distingui creazione degli asset, integrazione e resa finale: uno strumento che importa un asset non ne garantisce l’authoring. '
                 'Sul requisito fallito prova il percorso completo fino al risultato osservabile, conservando il campione migliore. '
                 'Prova un campione piccolo entro lo scopo autorizzato, senza abbassare qualità o cambiare il prodotto richiesto. '

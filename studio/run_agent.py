@@ -159,12 +159,8 @@ def main():
             raise ValueError('Nome skill non valido')
         source = Path('/mnt/skills/custom') / name
         selected.append((source / 'SKILL.md').read_text())
-        recipe = source / 'references/CLI-RECIPE.md'
-        if recipe.is_file():
-            selected.append(recipe.read_text())
-        quality = source / 'references/QUALITY.md'
-        if quality.is_file():
-            selected.append(quality.read_text())
+        selected.append('Riferimenti della skill disponibili su disco: ' + str(source / 'references') +
+                        '. Leggi solo le sezioni pertinenti alla fase corrente.')
         # Native skill discovery for either CLI, scoped to this disposable run.
         if engine not in ('deepseek', 'openai'):
             target = skills_root / name
@@ -179,71 +175,12 @@ def main():
             target = skills_root / ('artcraft-project-' + role['id'])
             target.mkdir(parents=True, exist_ok=True)
             (target / 'SKILL.md').write_text(job['compiled_skill'])
-    # Only the selected specialist's instructions and common procedure enter context.
-    prompt = '\n\n'.join([
-        'Disponibilità effettiva degli strumenti: ' + json.dumps({k: v for k, v in job.get('capability_policy', {}).items()
-                                                                if k in ('source', 'allowed', 'blocked')}, ensure_ascii=False) +
-        '. Gli strumenti blocked sono disabilitati: non cercarli via shell, Python, percorsi assoluti o strumenti di base. '
-        'La disponibilità di un eseguibile non costituisce autorizzazione. Non installare alternative per aggirare una disattivazione.',
-        'Ruolo: ' + (job.get('role') or {}).get('title', job['agent']) + '. Lavora in italiano.',
-        'workspace è un esecutore di progetto, non una CLI: usa la procedura compilata e scopri solo gli strumenti dichiarati dal ruolo.' if job['agent'] == 'workspace' else 'Applica le competenze della CLI assegnata.',
-        'Le skill aggiuntive sono procedure di supporto: non cambiano il tuo ruolo '
-        'né i requisiti dell’incarico.',
-        'Gli strumenti ArtCraft sono già installati. Usa craft help, craft commands e craft tools '
-        'per scoprire i comandi della release reale. Non installare software. '
-        'Python: /usr/bin/python3 (non python). CLI native e craft: /usr/local/bin; '
-        'non usare /opt/artcraft/bin, che non esiste.',
-        'Questa è una sandbox Docker. Non delegare e non pubblicare nulla. '
-        'Non leggere o modificare credenziali, /credentials, .codex, .gemini, .deepseek o .openai. '
-        'Il runtime trasferisce automaticamente i PNG restituiti dalla generazione nativa in ARTCRAFT_OUTPUT_DIR/generated_images: usa quelle copie, senza esplorare la cartella delle credenziali.',
-        'Input e risultati degli altri specialisti: /mnt/user-data. '
-        'Non sovrascrivere gli input. Salva i tuoi risultati in ' + str(output_dir) + '.',
-        'La variabile ARTCRAFT_OUTPUT_DIR indica questa cartella. Scrivi qui handoff.json '
-        'secondo lo schema artcraft-workspace, incluso delivery obbligatorio per ogni output; '
-        'il runtime verifica file e metadati. Consegna anche il sorgente modificabile '
-        'riaperto nell’app reale, con dipendenze necessarie. Un export o un viewer '
-        'non dimostra compatibilità con l’app dello specialista. Se impossibile, '
-        'dichiara source_status unavailable, motivo e limiti senza fingere un sorgente.',
-        'Prima della chiusura valuta singolarmente se hai appreso un metodo nuovo e trasferibile, anche dalla revisione o da una correzione. Usa work/tool-lessons.json con lo schema sotto: massimo tre lezioni generali documentate; tools vuoto per principi indipendenti dalle CLI. Se non emerge nulla di utile scrivi {"lessons":[],"reason":"Motivo della valutazione"}. Questo è un registro tecnico, non un output della consegna. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. Non produrre lezioni di routine per riempire il registro.',
-        'Per purpose=delivery aggiungi delivery.components: massimo 12 componenti con name, tool effettivamente usato, artifacts e sources. Ogni riferimento è {"path":"file scaricabile","member":"file interno allo ZIP, solo se necessario"}. Per sequenze numerose artifacts può riferire member:"frames/", una cartella presente nello ZIP verificato; sources richiede file effettivi. Copri anche le risorse dentro i pacchetti: un progetto di montaggio non è sorgente di audio o immagini creati. Per SoundCraft servono sessione .scraft e media; per sintesi a codice conserva script e parametri scaricabili, dichiarando il metodo reale. provided_inputs è facoltativo e contiene solo originali caricati dall’utente, identici ai file riutilizzati. Un export WAV/PNG/MP4 da solo non documenta la costruzione. Per video con audio aggiungi delivery.timing:{master:percorso video,cues:[{name:evento,visual_seconds:istante osservato nel render,tolerance_seconds:0.12}]}. Il runtime verifica i transienti sul master: suono ambiguo resta non verificato, non inventare ascolto. Progetta i cue su una timeline condivisa e conserva clip/stem e sessione, non un solo mix.',
-        'Preferisci l’authoring negli strumenti professionali disponibili per la componente pertinente; usa scripting come supporto e conserva la ricetta se crea asset. Un campione deve dimostrare la finitura e il movimento previsti: riduci prima estensione o durata della prova; abbassare risoluzione non autorizza forme rudimentali, pose statiche o un diverso prodotto. Confronta la prova con il brief e i riferimenti prima di estenderla.',
-        *selected, job['instructions'],
-        'Incarico del coordinatore:\n' + job['task'],
-        'Per i lavori di contenuto e progetto puoi usare gli strumenti di base del workspace. Le CLI servono quando pertinenti agli artefatti; non forzare un formato o una professione non richiesti. La memoria compilata non sostituisce i messaggi reali dell’utente.',
-        'Metodi di osservazione disponibili in questo collegamento: ' + json.dumps(capabilities(engine)) +
-        '. Un metodo disponibile non prova che tu lo abbia usato. Se non osservabile, usa not_run; '
-        'un confronto quantitativo con un riferimento non è un ascolto o una visione.',
-        'Vincolo di consegna: i percorsi di output proposti nell’incarico sono nomi desiderati, '
-        'non cambiano la cartella assegnata. Salva tutti i file prodotti e handoff.json in '
-        + str(output_dir) + '. Restituisci al coordinatore i percorsi effettivi in questa cartella.',
-        'Prima della consegna salva work/method.json con approach (metodo realmente usato), steps (azioni concrete concluse, senza ragionamenti interni o credenziali), scripts (percorsi assoluti degli script riutilizzabili salvati) e limits (passaggi non riproducibili o non registrati). Per asset generati registra lo strumento effettivo e il riferimento al processo salvato; non inventare prompt, servizi o provenienza. Non includere chiavi, token o comandi con segreti. Questo registro serve ai progetti futuri e non sostituisce le evidenze dei controlli.',
-        'Se hai scoperto una lezione utile sull’uso degli strumenti (parametro, sequenza CLI, soluzione a un errore, gestione di risorse o riapertura), valuta e salva appena osservata work/tool-lessons.json (anche prima di finire il prodotto): {"lessons":[{"lesson":{"title":"Lezione generale","applies_when":"Condizioni","procedure":["Passo riutilizzabile"],"verification":["Come verificarlo"],"limits":"Limiti osservati","tools":["ID reale"]},"evidence":"Cosa hai osservato realmente, anche se il prodotto non è concluso","evidence_paths":["percorso assoluto di un file reale di prova in questa sandbox"]}]}. Puoi aggiungere impact:{level:major/minor/unknown,basis:measured/observed/hypothesis,reason:motivazione fondata sulle prove}. Per basis=measured aggiungi measurement:{before:percorso status.json dell’operazione precedente,after:percorso status.json dell’operazione migliorata} del supervisore work/operations, entrambe concluse con codice zero. Senza misure usa observed o hypothesis. Distingui grandi miglioramenti da piccoli ritocchi; non inventare tempi, percentuali o misure. Massimo tre singole lezioni, solo se nuove e utili: non riassumere tutto il lavoro. Nella lezione niente fatti del progetto, nomi, percorsi o segreti; restano nelle prove. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. Non spacciare un comando riuscito per qualità del prodotto o prova indipendente.',
-        'Restituisci percorsi assoluti, verifiche effettuate e limiti. '
-        'Non dichiarare verifiche visive/audio che non hai eseguito.',
-        'Lavora per risultati visibili presto: se l’incarico è una prova, produci una piccola '
-        'versione completa, non tutta la produzione definitiva. Prima di un render lungo '
-        'verifica una breve sequenza con gli asset reali. Riusa anche file di colleghi '
-        'il cui processo si è interrotto: ispezionali e controllali, senza scartarli '
-        'per una chiusura formale mancante. Non ripetere discovery già salvate. '
-        'Distingui controlli essenziali e limiti facoltativi: non inventare ascolti '
-        'o verifiche GUI e non rifare un intero prodotto solo per marcarli passed.',
-        'Il budget di questa fase è 25 minuti, non quello dell’intero progetto. '
-        'Salva il sorgente presto e dopo ogni traguardo significativo. Aggiorna '
-        'work/checkpoint.json con completed (azioni concluse), files (percorsi salvati), '
-        'remaining (azioni mancanti) e next_action (prossimo comando o verifica). '
-        'Non aspettare la scadenza per salvare. Se riprendi file precedenti, ispezionali '
-        'e riusa quanto valido nella nuova cartella, senza sovrascrivere gli input. '
-        'Un risultato incompleto va dichiarato con checks e warnings, non presentato come definitivo.',
-        'Per render o export lunghi con DeepSeek, run_command supporta timeout_seconds '
-        'fino a 1200 secondi, sempre entro il budget residuo della fase; il default è 90. '
-        'Non ridurre la qualità solo per aggirare il default: stima il carico e salva prima il progetto.',
-        'Aggiornamenti per l’utente: registra un breve piano operativo e poi i cambi di fase '
-        '(creazione, export, verifica). Riporta azioni e decisioni pratiche, non ragionamenti interni, '
-        'prompt, credenziali o trascrizioni. Usa report_progress se disponibile; con le CLI usa '
-        '/usr/bin/python3 /opt/studio/progress.py --phase planning --summary "Breve obiettivo e prossima azione". '
-        'Fasi ammesse: planning, creating, exporting, checking, finalizing. '
-        'Non inventare percentuali o tempi di completamento.'
-    ])
+    try:
+        from .worker_context import build_prompt
+    except ImportError:
+        from worker_context import build_prompt
+    prompt = build_prompt(job, selected, output_dir)
+    prompt += '\nMetodi di osservazione disponibili: ' + json.dumps(capabilities(engine)) + '. Disponibile non significa eseguito; registra not_run se non osservato.'
     prompt += ('\nScelte esplicite dell’utente dal pannello (prevalgono su metodi preferiti e ipotesi): ' +
                json.dumps(job.get('user_direction'), ensure_ascii=False) +
                '\nUn’immagine raster inserita in un SVG non è un disegno vettoriale modificabile. '

@@ -27,6 +27,12 @@ Spiega brevemente il risultato previsto e l’utilità dei ruoli. Mantieni stato
 
 Consulta [la mappa degli strumenti](references/TOOL-SELECTION.md), poi le capacità della sola app pertinente. `craft capabilities ID` associa obiettivi, comandi reali, sorgenti e limiti; il catalogo completo resta una scoperta mirata, non migliaia di righe da caricare ad ogni turno. Le capacità sono distinte da ricette provate e qualità osservata. Usa authoring nativo quando pertinente: SoundCraft dispone di MIDI, sintetizzatori, sampler e automazioni; non ridurlo a importazione WAV né attribuirgli audio generato soltanto da Python. Per altri ambiti ragiona allo stesso modo, senza un minimo obbligatorio di app.
 
+## Responsabilità e livello di finitura
+
+Parti da un responsabile del risultato con una procedura focalizzata. Compila altri ruoli quando portano una capacità, una verifica indipendente o un contributo utile; non separare artificiosamente attività che lo stesso autore svolge meglio conservando il contesto. Gli strumenti disponibili costituiscono opzioni, non obblighi né garanzie di qualità.
+
+Prima della produzione estesa individua poche proprietà osservabili della finitura attesa e un campione rappresentativo. Riusa riferimenti forniti o concordati; se manca una scelta decisiva chiedila, senza imporre nuove approvazioni per scelte già delegate. Diagnostica gli scarti: una sagoma povera è un problema degli asset, non automaticamente del motore di render. Conserva il campione migliore e confronta la revisione sullo stesso requisito. Quando serve un metodo alternativo valuta anche i costi di integrazione, perdita di modificabilità e capacità assenti.
+
 ## Ruoli e skill dinamiche
 
 Per un progetto articolato, registra il lavoro in `studio_plan` prima di produrre: questo vale anche per contenuti e software, senza obbligare a usare una CLI grafica. Per una domanda semplice puoi rispondere direttamente. Rispetta la fase richiesta dall’utente.
@@ -91,6 +97,9 @@ Un requisito può avere più osservazioni: un `passed` locale non annulla un `fa
 
 ## Conservare l'esperienza
 
+I difetti documentati nei handoff sono raccolti anche senza revisione formale o chiusura riuscita. Sono osservazioni dichiarate, non lezioni approvate. `experience.sources_to_evaluate` indica poche fonti: usa `studio_lessons` per ricavare una causa e una procedura condizionale, oppure motivare perché il caso non si generalizza. Una lezione sul metodo non richiede un test CLI positivo; quel requisito vale soltanto per l’attivazione automatica della conoscenza tecnica. Non riempire il registro con fatti del progetto né con consigli generici.
+
+
 Se una lavorazione termina con verifiche fallite, `needs_revision` richiede una
 decisione sul metodo: non ripetere indefinitamente lo stesso incarico e non
 presentare `ok` o `validated` come approvazione di qualità. Separa la competenza
@@ -118,7 +127,7 @@ Dopo un campione insufficiente, valuta se correggere un difetto locale o cambiar
 
 Usa `studio_plan(strategy_json=...)` per conservare metodo, ragione e fino a tre alternative pertinenti, con strumenti, stato e prove. Non serve una procedura comparativa per ogni lavoro semplice; è necessaria una decisione esplicita quando il metodo fallisce e stai per fermarti. Prova la più promettente su un campione piccolo usando i ruoli opportuni, senza una pipeline fissa e senza moltiplicare produzione scadente. Conserva i risultati validi. Affida al revisore il confronto con criteri e fonti, senza suggerirgli il verdetto desiderato.
 
-Se `studio_plan` restituisce `method_recovery`, la dipendenza esterna non è dimostrata: riconsidera le tue assunzioni, compila un metodo differente e procedi entro l'autorizzazione. Non limitarti a riscrivere «bloccato» o a presentare il risultato come concluso. Per una pausa reale usa `state=needs_user`, `stop_reason` e `user_action`: specifica input/capacità mancanti o decisione su budget/scopo, spiegando le alternative valutate. Usa `ask_clarification` quando la risposta dell'utente è necessaria, offrendo scelte concrete e conseguenze. Non proseguire oltre budget o scopo autorizzati, né eseguire tentativi identici indefiniti.
+Se `studio_plan` restituisce `method_recovery`, la dipendenza esterna non è dimostrata: riconsidera le tue assunzioni, identifica la causa e scegli una correzione o un cambio di metodo giustificato dalle evidenze. Non limitarti a riscrivere «bloccato» o a presentare il risultato come concluso. Per una pausa reale usa `state=needs_user`, `stop_reason` e `user_action`: specifica input/capacità mancanti o decisione su budget/scopo, spiegando le alternative valutate. Usa `ask_clarification` quando la risposta dell'utente è necessaria, offrendo scelte concrete e conseguenze. Non proseguire oltre budget o scopo autorizzati, né eseguire tentativi identici indefiniti.
 
 Anche quando una revisione fallisce o devi mettere in pausa, presenta con `present_files` la bozza utile e i suoi sorgenti, etichettandoli esplicitamente come studio/non approvati. `studio_plan` espone `presentation.paths` quando il prodotto selezionato è disponibile. Il pannello Progetto non sostituisce la presentazione nella chat: il controllo di consegna di DeerFlow richiede file presentati. Non dichiarare finito il lavoro e non presentare rapporti e log al posto del prodotto.
 

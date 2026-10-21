@@ -103,4 +103,4 @@ Applica le regole di collaborazione e checkpoint di `artcraft-workspace`. Se una
 
 ## Qualità del prodotto
 
-Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+Applica [i criteri specifici della disciplina](references/QUALITY.md), da leggere per valutare il risultato. Le prove CLI minime non sono modelli estetici per la consegna.

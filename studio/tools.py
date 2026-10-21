@@ -30,8 +30,10 @@ def preserve_experience(workspace, runtime):
         thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
         saved = collect(workspace, experience_root(runtime), thread)
         proposals = propose_findings(experience_root(runtime), thread)
+        sources = pending(experience_root(runtime), limit=3, source_thread=thread)
         return {'saved': saved, 'proposed_lessons': len(proposals), 'pending': len(pending(experience_root(runtime))),
-                'instruction': 'Usa studio_lessons per generalizzare poche evidenze in lezioni riutilizzabili; i fatti specifici non entrano nelle skills.'}
+                'sources_to_evaluate': [{k: s.get(k) for k in ('id', 'criterion', 'status')} for s in sources],
+                'instruction': 'Usa studio_lessons per valutare queste evidenze: generalizza poche cause/procedure utili, anche dai fallimenti, oppure motiva perché non sono trasferibili. Non inventare benefici né trasferire fatti specifici nelle skills. Un metodo proposto richiede accettazione; un test operativo serve solo per attivare automaticamente conoscenza tecnica.'}
     except (OSError, ValueError, TypeError):
         return {'error': 'Esperienza non archiviata: conserva il volume dati e riprova il recupero dalla scheda Esperienza.'}
 
@@ -131,6 +133,7 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
     """
     from .lessons import learn, pending, dismiss
     root = experience_root(runtime)
+    preserve_experience(workspace_for(runtime), runtime)
     thread = (getattr(runtime,'config',None) or {}).get('configurable',{}).get('thread_id') if current_project_only else None
     if dismiss_reason:
         if lesson_json:
