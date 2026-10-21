@@ -159,6 +159,8 @@ def collect(workspace, root, source_thread=None):
                 except (OSError, ValueError, KeyError):
                     role = {}
                 records.extend(sandbox_observations(workspace, attempt, role, source_thread, captured))
+                from .production_observations import observations as production_observations
+                records.extend(production_observations(workspace, attempt, role, source_thread))
                 review = attempt.get('quality_review') or {}
                 target = artifact_path(workspace, review.get('product_path', ''))
                 report = artifact_path(workspace, review.get('report_path', ''))

@@ -261,6 +261,19 @@ class AdaptiveToolTests(unittest.TestCase):
         runtime.config=shared_run({'input':None})['config']
         self.assertEqual(source_turn(runtime),'')
 
+    def test_lesson_tool_recovers_historical_failed_handoff_without_approval(self):
+        from test_production_observations import ProductionObservationsTests
+        from studio.lessons import accepted
+        from studio.tools import experience_root
+        fixture = ProductionObservationsTests(); fixture.setUp()
+        self.addCleanup(fixture.doCleanups)
+        runtime = SimpleNamespace(config={'configurable': {'thread_id':'historical-thread'}})
+        with patch('studio.tools.workspace_for', return_value=fixture.workspace):
+            result = json.loads(studio_lessons.func(runtime=runtime))
+            self.assertEqual(len(result['pending_sources']), 1)
+            self.assertEqual(result['pending_sources'][0]['status'], 'reported_failure')
+            self.assertEqual(accepted(experience_root(runtime)), set())
+
     def test_large_learning_evidence_stays_addressable_without_overflowing_control_context(self):
         from studio.tools import lesson_reply
         from studio.project_skills import read_document

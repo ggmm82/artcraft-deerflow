@@ -1,0 +1,45 @@
+"""Small execution brief; protocols and CLI references remain native skill files."""
+import json
+
+
+def build_prompt(job, selected, output_dir):
+    policy = {k: v for k, v in job.get('capability_policy', {}).items() if k in ('source', 'allowed', 'blocked')}
+    purpose = job.get('purpose', 'work')
+    return '\n\n'.join([
+        'Lavora in italiano. Ruolo: ' + (job.get('role') or {}).get('title', job['agent']) + '.',
+        'Incarico del coordinatore:\n' + job['task'],
+        'Disponibilità effettiva: ' + json.dumps(policy, ensure_ascii=False) +
+        '. Rispetta gli strumenti esclusi anche via shell/Python. Non installare software né aggirare disattivazioni.',
+        'Esegui la parte affidata con le capacità pertinenti. Un solo strumento può bastare; aggiungine uno quando '
+        'risolve un limite concreto senza perdere modificabilità o qualità. Le competenze del ruolo sono istruzioni, '
+        'non capacità acquisite per il solo fatto di nominarle. Le ricette CLI dimostrano sintassi, non finitura.',
+        'Prima di costruire identifica il risultato osservabile di questa fase e il criterio più rischioso. '
+        'Riusa asset, sorgenti e metodo validi. Un difetto locale richiede una correzione locale: cambia strumento '
+        'o riscrivi il prodotto soltanto per un limite osservato o un beneficio dimostrato su un piccolo confronto. '
+        'Un tool di rendering o compositing non crea automaticamente asset ben disegnati. '
+        'Se mancano asset o capacità, registra il limite; non costruire un sostituto rudimentale per riempire la consegna.',
+        'Fase: ' + purpose + '. Una prova riduce estensione o durata, conservando il livello di finitura richiesto. '
+        'Confronta il risultato reale con richieste e riferimenti. Descrivi il difetto, la causa ipotizzata e la prova '
+        'che distingue le cause prima di cambiare metodo. Non espandere un campione che sai essere insufficiente.',
+        'File della conversazione: /mnt/user-data. Scrivi solo in ' + str(output_dir) +
+        ' (ARTCRAFT_OUTPUT_DIR); non sovrascrivere gli input. Conserva sorgenti e checkpoint presto. '
+        'Python: /usr/bin/python3; craft e CLI: /usr/local/bin. Scopri solo comandi pertinenti con craft help/tools/commands. '
+        'Non delegare, pubblicare o accedere a credenziali e altre conversazioni. '
+        'Non leggere /credentials né le cartelle .codex/.gemini/.deepseek/.openai.',
+        'Le skills seguenti contengono la procedura. Leggi i riferimenti solo quando servono: '
+        'CLI-RECIPE per sintassi o recupero, QUALITY per la verifica della disciplina, protocolli di consegna '
+        'quando prepari handoff.json. Non avviare una ricetta minima come modello estetico del prodotto.',
+        *selected, job.get('instructions', ''),
+        'Concludi salvando handoff.json: file reali, sorgenti modificabili, riapertura effettiva, checks e limiti. '
+        'Per i dettagli usa i riferimenti di artcraft-workspace. Non scambiare export riuscito per qualità. '
+        'Un controllo fallito resta failed; un controllo non svolto resta not_run. '
+        'Le osservazioni negative sono utili anche se non hai ancora trovato una soluzione: preservale nel handoff. '
+        'Una lezione sul metodo può essere proposta con prove e limiti; non richiede un test CLI positivo. '
+        'L’attivazione automatica delle sole conoscenze tecniche richiede invece il test documentato.',
+        'Il budget vale per questa fase, non per tutto il progetto. Salva work/checkpoint.json con completed, files, '
+        'remaining, next_action. Registra work/method.json con approach, steps, scripts, limits. '
+        'Registra solo scoperte utili in work/tool-lessons.json; lo schema è nel riferimento LEARNING.md. '
+        'Aggiorna l’utente a ogni traguardo con report_progress oppure '
+        '/usr/bin/python3 /opt/studio/progress.py --phase creating --summary "Risultato e prossimo controllo". '
+        'Fasi: planning, creating, exporting, checking, finalizing. Nessuna percentuale inventata.'
+    ])

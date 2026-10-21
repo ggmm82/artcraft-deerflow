@@ -18,7 +18,7 @@ Usa SoundCraft per composizione MIDI, sintesi strumentale, sampler, sound design
 
 ## Ricetta operativa collaudata
 
-Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), da consultare per la sintassi pertinente. Mantieni i controlli e adatta la procedura agli input reali.
 
 ## Avvio e scoperta
 
@@ -86,7 +86,7 @@ Per una prima bozza produci presto un loop completo breve con ritmo, basso e acc
 
 ## Qualità del prodotto
 
-Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+Applica [i criteri specifici della disciplina](references/QUALITY.md), da leggere per valutare il risultato. Le prove CLI minime non sono modelli estetici per la consegna.
 
 ## Strumenti complementari
 

@@ -18,7 +18,7 @@ Usa EffectCraft per composizioni, motion graphics, keyframe ed effetti. Il monta
 
 ## Ricetta operativa collaudata
 
-Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), inclusa anche dal runtime. Mantieni i controlli e adatta la procedura agli input reali.
+Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), da consultare per la sintassi pertinente. Mantieni i controlli e adatta la procedura agli input reali.
 
 ## Avvio e scoperta
 
@@ -85,4 +85,4 @@ Prima di un render lungo crea una breve sequenza con gli asset reali e pose camp
 
 ## Qualità del prodotto
 
-Applica [i criteri specifici della disciplina](references/QUALITY.md), inclusi automaticamente nel contesto. Le prove CLI minime non sono modelli estetici per la consegna.
+Applica [i criteri specifici della disciplina](references/QUALITY.md), da leggere per valutare il risultato. Le prove CLI minime non sono modelli estetici per la consegna.
