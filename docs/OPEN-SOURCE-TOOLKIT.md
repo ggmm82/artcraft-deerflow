@@ -11,7 +11,7 @@ Il catalogo passa da 15 a 24 strumenti. I nuovi strumenti ereditano la configura
 | EPUBCheck | 5.4.0 | Conformità EPUB indipendente | EPUB e sorgenti prodotti dalle app di authoring; capitolo mancante rifiutato |
 | Pandoc | 3.12.1 | Conversione strutturata, template, bibliografie | Input, asset e ricetta; DOCX riaperto e contenuti EPUB controllati |
 | Typst | 0.15.1 | Impaginazione PDF/SVG/PNG da codice | `.typ`, font, moduli e media; modifica e ricompilazione dopo trasferimento |
-| FreeCAD | 0.20.2 Debian | CAD parametrico headless, geometria, STEP | `.FCStd`, script e dipendenze; quota modificata, volume ricalcolato, STEP riaperto |
+| FreeCAD | 0.20.2 Debian | CAD parametrico headless, geometria, STEP | `.FCStd`, script e dipendenze; quota e vincoli sketch modificati, Pad ricalcolato, STEP riaperto senza solidi duplicati |
 | whisper.cpp | 1.9.5 | Parlato CPU multilingue, TXT/SRT/JSON | Originale, sottotitoli e parametri/modello; campione parlato riconosciuto offline |
 
 FreeCAD usa il pacchetto compatibile con Debian Bookworm, **non** la release upstream 1.x. Chromium è legato al pacchetto Playwright; modello Whisper tiny multilingue e banca TimGM6mb sono disponibili nell’immagine. Versioni, hash, dimensioni, provenienza e licenze di software/risorse sono in `versions.lock.json`; dipendenze Node hanno anche il lock con integrità. Le dipendenze Debian provengono dai repository autenticati della distribuzione. L’installazione dei pacchetti principali e delle risorse verifica SHA-256. Nessun download di browser o modelli durante il collaudo offline.

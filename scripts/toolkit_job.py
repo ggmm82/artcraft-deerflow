@@ -25,9 +25,13 @@ def main():
         document.recompute()
         shapes = [obj for obj in document.Objects if hasattr(obj, 'Shape') and not obj.Shape.isNull()]
         if action == 'export_step':
-            if not shapes:
-                raise ValueError('No native shapes to export')
-            Part.export(shapes, str(target)); return
+            solids = [obj for obj in shapes if obj.Shape.Solids]
+            # A Body and its Pad share the final solid; exporting both doubles
+            # geometry. Likewise do not export operands beside their final Cut.
+            final_shapes = [obj for obj in solids if not any(parent in solids for parent in obj.InList)]
+            if not final_shapes:
+                raise ValueError('No final solid shapes to export')
+            Part.export(final_shapes, str(target)); return
         objects = []
         dependencies = []
         for obj in document.Objects:

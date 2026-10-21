@@ -31,3 +31,5 @@ App.closeDocument(doc.Name)
 Il collaudo salva e riapre un Part::Box con volume 1000 mm³, trasferisce il .FCStd, cambia Length da 20 a 30 mm, ricalcola 1500 mm³, esporta STEP e verifica il volume con il kernel nativo. Un .FCStd corrotto deve essere rifiutato. Il caso è in `scripts/acceptance_toolkit.py`, eseguito dalla CI nella stessa immagine di rilascio, senza rete e nel budget del worker.
 
 Dopo `delivery` confronta il risultato con i requisiti e con i sorgenti trasferiti. Questa fixture prova l’integrazione tecnica, non garantisce finitura professionale su qualsiasi incarico.
+
+La prova comprende anche un Body PartDesign con sketch rettangolare completamente vincolato, vincolo di larghezza nominato e Pad. Modifica il vincolo e verifica il ricalcolo; lo STEP deve contenere un solo solido finale, senza duplicare Body e Pad o esportare le lavorazioni intermedie.

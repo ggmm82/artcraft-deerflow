@@ -160,6 +160,37 @@ def freecad(c):
     if not helper.exists(): helper = Path('/opt/studio/source_packages.py')
     report = json.loads(c.run('python3', helper, 'verify', archive, '--native'))
     c.check('Native CAD source reopened from transferred ZIP', any(x['check'] == 'freecad_reopen' and x['status'] == 'passed' for x in report['checks']), report)
+    parametric = c.root / 'sketch-pad.py'
+    parametric.write_text("""import FreeCAD as App
+import Part, Sketcher, os
+from pathlib import Path
+doc=App.newDocument('ParametricFixture')
+body=doc.addObject('PartDesign::Body','Body')
+sketch=body.newObject('Sketcher::SketchObject','Profile')
+points=[(0,0),(20,0),(20,10),(0,10)]
+for i in range(4):
+    a,b=points[i],points[(i+1)%4]
+    sketch.addGeometry(Part.LineSegment(App.Vector(*a,0),App.Vector(*b,0)),False)
+for i in range(4):sketch.addConstraint(Sketcher.Constraint('Coincident',i,2,(i+1)%4,1))
+for i in (0,2):sketch.addConstraint(Sketcher.Constraint('Horizontal',i))
+for i in (1,3):sketch.addConstraint(Sketcher.Constraint('Vertical',i))
+sketch.addConstraint(Sketcher.Constraint('Coincident',0,1,-1,1))
+width=sketch.addConstraint(Sketcher.Constraint('Distance',0,20.0))
+sketch.addConstraint(Sketcher.Constraint('Distance',1,10.0))
+sketch.renameConstraint(width,'width')
+pad=body.newObject('PartDesign::Pad','Pad');pad.Profile=sketch;pad.Length=5
+doc.recompute()
+assert abs(body.Shape.Volume-1000)<.01 and sketch.FullyConstrained
+sketch.setDatum(width,App.Units.Quantity('30 mm'));doc.recompute()
+assert abs(body.Shape.Volume-1500)<.01
+doc.saveAs(str(Path(os.environ['ARTCRAFT_JOB_OUTPUT'])/'parametric.FCStd'))
+App.closeDocument(doc.Name)
+""")
+    advanced = c.root / 'Parametric';call(c, 'execute', input=str(parametric), output=str(advanced))
+    advanced_step = c.root / 'parametric.step';call(c, 'export_step', input=str(advanced / 'parametric.FCStd'), output=str(advanced_step))
+    verify_pad = c.root / 'verify-pad.py';verify_pad.write_text('import Part\ns=Part.read(' + repr(str(advanced_step)) + ')\nassert s.isValid() and len(s.Solids)==1 and abs(s.Volume-1500)<.01\n')
+    call(c, 'execute', input=str(verify_pad), output=str(c.root / 'parametric-proof'))
+    c.check('Constrained sketch/Pad editable; STEP contains one final solid without duplicates', advanced_step.is_file(), str(advanced_step))
     broken = c.root / 'broken.FCStd';broken.write_bytes(b'not a native project')
     rejected(c, 'inspect', input=str(broken), output=str(c.root / 'broken.json'))
 
