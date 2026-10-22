@@ -252,6 +252,15 @@ def effectcraft(c):
     c.check('Keyframe persistenti e alpha', a != b and len(a) == len(b) == 160 * 90 * 4 and a[3] == 0, str(native))
     stream = c.probe(output)['streams'][0]
     c.check('GIF animata con sei fotogrammi', int(stream['nb_frames']) == 6, stream)
+    # Fresh-process revisions must explicitly save; otherwise a successful set
+    # can leave the original unchanged and waste an entire render/review cycle.
+    changed = c.root / 'revision.png'
+    c.run('effectcraft-cli', '--project', native, '--save', 'script', '--eval',
+          'app.project.item(1).layer(1).property("Transform").property("Opacity").setValue(0);')
+    c.run('effectcraft-cli', '--project', native, 'render-frame', '--comp', 'Main', '--time', '0',
+          '--out', changed, '--transparent')
+    pixels = c.pixels(changed)
+    c.check('Revisione salvata e riaperta in processo nuovo', pixels != a and not any(pixels[3::4]), str(native))
 
 
 def designcraft(c):

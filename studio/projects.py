@@ -129,6 +129,8 @@ def available_paths(workspace, attempt):
 
 
 def media_accepted(record, value):
+    if record.get('finalization_pending'):
+        return False
     required = {k for k, v in value.get('requirements', {}).items() if v}
     return not required or (value.get('product_path') in record.get('verified_products', [])
         and all(record.get('requirements', {}).get(k) is True for k in required))
@@ -138,7 +140,7 @@ def delivery_summary(record):
     if not record:
         return None
     return {**{k: record.get(k) for k in ('id', 'title', 'purpose', 'technical_status', 'requirements', 'verified_products', 'source_status')},
-        **{k:record[k] for k in ('source_coverage','timing') if record.get(k)},
+        **{k:record[k] for k in ('source_coverage','timing','finalization_pending') if record.get(k)},
         'issues': [clean_summary(s) for s in record.get('issues', [])[:8]],
         'files': [{**{k: f.get(k) for k in ('path', 'sha256', 'role')},
                    **{k: clean_summary(f.get(k, '')) for k in ('open_with', 'editability')},
@@ -317,6 +319,8 @@ def read_project(workspace):
                 'issues': [clean_summary(s) for s in record.get('issues', [])[:5]],
                 'current': value.get('product_path') in attempt.get('output_files', []),
                 'purpose': attempt.get('context', {}).get('purpose', 'work')})
+            if record.get('finalization_pending'):
+                result['deliveries'][-1]['finalization_pending'] = [clean_summary(s) for s in record['finalization_pending'][:5]]
             coverage=record.get('source_coverage')
             if coverage:
                 result['deliveries'][-1]['source_coverage']=coverage
@@ -341,6 +345,11 @@ def read_project(workspace):
             result['results'].append({**record, 'path': path})
         if len(result['results']) >= 160:
             break
+    samples = {d['id'] for d in result['deliveries'] if d['purpose'] == 'preview'}
+    sample_exports = [r for r in result['results'] if r['delivery_id'] in samples
+                      and r['role'] in ('export', 'preview') and r['validated']]
+    if sample_exports:
+        result['latest_sample'] = max(sample_exports, key=lambda r: (r['at'], r['role'] == 'export'))
     used = {d['id'] for d in result['deliveries'] if d['current']}
     pending = list(used)
     while pending:
@@ -364,6 +373,8 @@ def read_project(workspace):
             matches = not value.get('acceptance') or review.get('contract_hash') == value['acceptance']['hash']
             result['quality_status'] = review['status'] if matches else 'needs_review'
             result['review_criteria'] = review.get('criteria', []) if matches else []
+            result['review_checkpoint'] = review.get('checkpoint') if matches else None
+            result['review_unavailable_methods'] = review.get('unavailable_methods', []) if matches else []
             result['revision_actions'] = review.get('revision_actions', []) if matches else []
             result['comparison'] = review.get('comparison') if matches else None
             break
@@ -471,11 +482,17 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 value[key] = clean_summary(text)
         if product_path:
             path = artifact_path(workspace, product_path)
+            draft = status == 'review'
             produced = [p for s in value['steps'] for a in s['attempts']
                         if a.get('validated', a.get('status') == 'completed') for p in a.get('output_files', [])]
-            if not path or not any(artifact_path(workspace, p) == path for p in produced):
+            reviewed_draft = path and draft and any(
+                a.get('validated') and artifact_path(workspace, (a.get('quality_review') or {}).get('product_path', '')) == path
+                and (a.get('quality_review') or {}).get('sha256') == digest(path)
+                and (a.get('quality_review') or {}).get('contract_hash') == (value.get('acceptance') or {}).get('hash')
+                for s in value['steps'] for a in s['attempts'])
+            if not path or not (any(artifact_path(workspace, p) == path for p in produced) or reviewed_draft):
                 raise ValueError('Il prodotto deve essere un file realmente prodotto e verificato da uno specialista')
-            if value.get('requirements') and not any(product_path in a.get('verified_products', [])
+            if not draft and value.get('requirements') and not any(product_path in a.get('verified_products', [])
                     for s in value['steps'] for a in s['attempts']):
                 raise ValueError('Prima della consegna finale usa studio_delegate con purpose=delivery per controllare il file completo')
             value['product_path'] = product_path
@@ -537,6 +554,19 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
         value.update(schema_version=2, updated_at=utcnow())
         atomic_json(folder / 'project.json', value)
     return read_project(workspace)
+
+
+def mark_incomplete_turn(workspace):
+    """Never leave an exhausted completion guard looking like task success."""
+    with locked(workspace) as folder:
+        value = load(folder, workspace)
+        if not value or value.get('status') == 'ready':
+            return
+        value.update(status='review', attention={'code': 'incomplete_objective',
+            'message': 'Il coordinatore ha chiuso senza completare il risultato richiesto.',
+            'action': 'I file sono conservati. Riprendi dal prossimo obiettivo oppure modifica metodo o modello della squadra.'},
+            updated_at=utcnow())
+        atomic_json(folder / 'project.json', value)
 
 
 def accept_delivery(workspace, delivery_id):
@@ -747,6 +777,13 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             if recovery:
                 value['method_recovery'] = recovery
                 result['method_recovery'] = recovery
+        if result.get('quality_review'):
+            from .control_memory import continuation
+            followup = continuation(result['quality_review'])
+            if followup and followup['action'] in ('continue_production', 'request_user_verification'):
+                value.update(status='review', next_action=followup['instruction'])
+                value['summary'] = ('Prova mirata superata; prodotto finale da completare.'
+                    if followup['action'] == 'continue_production' else 'Versione disponibile; serve la tua verifica dei controlli non disponibili.')
         atomic_json(folder / 'project.json', value)
     result.update(activity={'id': sid, 'status': step['status']}, review_notes=notes)
     if attention:

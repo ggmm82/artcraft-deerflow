@@ -17,6 +17,69 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def test_native_completion_guard_resumes_incomplete_production_without_polluting_messages(self):
+        from langchain_core.messages import AIMessage, HumanMessage
+        from langgraph.runtime import Runtime as GraphRuntime
+        from studio.completion_middleware import ProjectCompletionMiddleware
+        from studio.projects import create_plan, read_project
+        middleware = ProjectCompletionMiddleware()
+        runtime = GraphRuntime(context={'user_id': 'owner'})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            create_plan(root, 'Finish the product', [], next_action='Correct the observed defect', status='review')
+            state = {**middleware.before_agent({}, runtime), 'messages': [HumanMessage('Finish the product'),
+                AIMessage('', tool_calls=[{'id': 'delegate', 'name': 'studio_delegate', 'args': {'purpose': 'preview'}}])]}
+            state.update(middleware.after_model(state, runtime))
+            state['messages'].append(AIMessage('Here is an unfinished sample.'))
+            with patch('studio.completion_middleware.workspace_for', return_value=root):
+                result = middleware.after_model(state, runtime)
+                self.assertEqual(result['jump_to'], 'model')
+                self.assertNotIn('messages', result)
+                state.update(result)
+                class Request:
+                    def __init__(self): self.state=state; self.messages=list(state['messages'])
+                    def override(self, **kwargs): return SimpleNamespace(**kwargs)
+                request = Request()
+                augmented = middleware.augmented(request)
+                self.assertEqual(len(request.messages), len(state['messages']))
+                self.assertEqual(len(augmented.messages), len(request.messages)+1)
+                self.assertIn('Correct the observed defect', augmented.messages[-1].content)
+                state.update(middleware.after_model(state, runtime))
+                self.assertEqual(state['studio_completion_nudges'], 2)
+                capped = middleware.after_model(state, runtime)
+                self.assertNotIn('jump_to', capped)
+                self.assertEqual(read_project(root)['attention']['code'], 'incomplete_objective')
+                runtime.context['stop_reason']='loop_capped'
+                self.assertNotIn('jump_to', middleware.after_model({**state,'studio_completion_nudges':0},runtime))
+            # Explain-only invocations do not inherit an old production flag.
+            fresh = {**middleware.before_agent(state, runtime), 'messages': state['messages']}
+            self.assertFalse(fresh['studio_production_started'])
+
+    def test_completion_guard_runs_inside_native_compiled_agent_graph(self):
+        from langchain.agents import create_agent
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+        from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
+        from langchain_core.tools import tool
+        from studio.completion_middleware import ProjectCompletionMiddleware
+        from studio.projects import create_plan, read_project
+        class Model(FakeMessagesListChatModel):
+            def bind_tools(self, tools, **kwargs): return self
+        @tool
+        def studio_delegate(purpose: str) -> str:
+            """Declared fixture: record that the sample is not the final product."""
+            return '{"ok":true,"decision":"needs_revision"}'
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            create_plan(root,'Complete product',[],status='review',next_action='Finish the result')
+            model=Model(responses=[AIMessage('',tool_calls=[{'name':'studio_delegate','id':'fixture','args':{'purpose':'preview'}}]),
+                AIMessage('Unfinished draft'),AIMessage('Still unfinished'),AIMessage('Cannot finish')])
+            agent=create_agent(model,tools=[studio_delegate],middleware=[ProjectCompletionMiddleware()])
+            with patch('studio.completion_middleware.workspace_for',return_value=root):
+                result=agent.invoke({'messages':[HumanMessage('Complete the product')]})
+            self.assertEqual(result['studio_completion_nudges'],2)
+            self.assertFalse(any(isinstance(m,SystemMessage) for m in result['messages']))
+            self.assertEqual(read_project(root)['attention']['code'],'incomplete_objective')
+
     def test_native_middleware_records_model_and_tool_failures_without_prompts(self):
         import asyncio
         from studio.audit_log import page

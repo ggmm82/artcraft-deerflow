@@ -45,3 +45,9 @@ Una revisione non termina con una lista di difetti. In `quality-review.json` agg
 
 Per una versione corretta leggi anche il precedente artefatto, includilo in `source_files` e indica `baseline_path`. Aggiungi `comparison`: lista di `requirement_id`, `status` tra `improved`, `unchanged`, `regressed`, `not_verified` ed `evidence` puntuale. Il runtime registra gli hash dei due file, rifiuta miglioramenti su byte identici e mantiene non verificato ciò che il collegamento non permette di osservare. Migliorato non significa necessariamente sufficiente: i criteri ancora falliti rimangono falliti.
 
+
+## Verifica di una prova e chiusura del lavoro
+
+Per una prova limitata aggiungi al rapporto `"scope":{"kind":"checkpoint","question":"Domanda concreta della prova","requirement_ids":["id_del_requisito_rischioso"]}`. Seleziona solo ID del contratto: nessun elenco di professioni o tipi di progetto. Il runtime restituisce due verdetti: `checkpoint.status` riguarda la domanda selezionata; `status` riguarda sempre tutti i requisiti finali. Un checkpoint superato non approva il prodotto finale. Riporta anche le mancanze finali, ma distingui una durata/estensione volutamente ridotta dai difetti della tecnica che la prova doveva dimostrare. Non inserire una durata non definitiva e una qualità sensoriale nello stesso criterio: usa requisiti osservabili separati e il metodo pertinente a ciascuno.
+
+`continuation` distingue correzione, completamento della produzione e verifica umana. Se restano solo modalità indisponibili, presenta il prodotto esatto e i sorgenti con i limiti, mantieni `status=review` e chiedi la verifica necessaria. Non ripetere lo stesso incarico e non rigenerare il prodotto per ottenere un ascolto o una visione che il collegamento non offre.

@@ -5,6 +5,16 @@ import json
 def build_prompt(job, selected, output_dir):
     policy = {k: v for k, v in job.get('capability_policy', {}).items() if k in ('source', 'allowed', 'blocked')}
     purpose = job.get('purpose', 'work')
+    phase = {
+        'preview': 'Produci soltanto la prova necessaria a decidere il metodo, con il sorgente riapribile e le risorse usate. '
+            'Non preparare ZIP, manuali estesi o componenti estranei alla domanda della prova, salvo richiesta esplicita. '
+            'Il runtime registra il pacchetto mancante come lavoro finale da completare; se consegni un archivio deve essere valido.',
+        'review': 'Distingui la domanda della prova dal contratto finale. Per un campione dichiara scope checkpoint con '
+            'question e requirement_ids pertinenti nel rapporto; conserva separatamente tutti i requisiti finali non soddisfatti. '
+            'Non chiedere una rigenerazione per una modalità di osservazione indisponibile. Non modificare il prodotto.',
+        'delivery': 'Completa il prodotto richiesto, pacchetti portabili, associazioni componenti e verifiche reali. '
+            'Riusa i sorgenti della prova e correggi gli scarti rimasti; evita un nuovo campione equivalente.'
+    }.get(purpose, 'Riusa i risultati disponibili e completa soltanto la parte affidata.')
     return '\n\n'.join([
         'Lavora in italiano. Ruolo: ' + (job.get('role') or {}).get('title', job['agent']) + '.',
         'Incarico del coordinatore:\n' + job['task'],
@@ -16,11 +26,14 @@ def build_prompt(job, selected, output_dir):
         'Prima di costruire identifica il risultato osservabile di questa fase e il criterio più rischioso. '
         'Riusa asset, sorgenti e metodo validi. Un difetto locale richiede una correzione locale: cambia strumento '
         'o riscrivi il prodotto soltanto per un limite osservato o un beneficio dimostrato su un piccolo confronto. '
+        'Per una correzione isola prima il difetto prioritario con la prova meno costosa pertinente '
+        '(per esempio un fotogramma, un caso di calcolo o una breve esecuzione), poi ripeti la produzione estesa. '
         'Un tool di rendering o compositing non crea automaticamente asset ben disegnati. '
         'Se mancano asset o capacità, registra il limite; non costruire un sostituto rudimentale per riempire la consegna.',
         'Fase: ' + purpose + '. Una prova riduce estensione o durata, conservando il livello di finitura richiesto. '
         'Confronta il risultato reale con richieste e riferimenti. Descrivi il difetto, la causa ipotizzata e la prova '
         'che distingue le cause prima di cambiare metodo. Non espandere un campione che sai essere insufficiente.',
+        phase,
         'File della conversazione: /mnt/user-data. Scrivi solo in ' + str(output_dir) +
         ' (ARTCRAFT_OUTPUT_DIR); non sovrascrivere gli input. Conserva sorgenti e checkpoint presto. '
         'Python: /usr/bin/python3; craft e CLI: /usr/local/bin. Scopri solo comandi pertinenti con craft help/tools/commands. '
@@ -31,6 +44,9 @@ def build_prompt(job, selected, output_dir):
         'quando prepari handoff.json. Non avviare una ricetta minima come modello estetico del prodotto.',
         *selected, job.get('instructions', ''),
         'Concludi salvando handoff.json: file reali, sorgenti modificabili, riapertura effettiva, checks e limiti. '
+        'Prima di chiudere esegui /usr/bin/python3 /opt/studio/handoff.py validate "' + str(output_dir) + '". '
+        'Se fallisce correggi il manifest nella stessa sessione senza rifare i prodotti; '
+        'lo schema effettivo è disponibile con /usr/bin/python3 /opt/studio/handoff.py schema. '
         'Per i dettagli usa i riferimenti di artcraft-workspace. Non scambiare export riuscito per qualità. '
         'Un controllo fallito resta failed; un controllo non svolto resta not_run. '
         'Le osservazioni negative sono utili anche se non hai ancora trovato una soluzione: preservale nel handoff. '

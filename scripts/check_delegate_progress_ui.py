@@ -515,11 +515,32 @@ window.showThread();
                 # Selecting a two-page proof does not turn it into a full version.
                 state['job']={**job,'phase':'completed'}
                 state['project']={**project,'status':'review','deliveries':[
-                    {**project['deliveries'][0],'purpose':'preview','category':'sample','version':None}]}
+                    {**project['deliveries'][0],'purpose':'preview','category':'sample','version':None,
+                     'technical_status':'passed','issues':[], 'finalization_pending':['Pacchetto portabile da preparare']}]}
                 page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
                 section('Risultato')
                 expect(page.get_by_test_id('selected-version')).to_contain_text('Campione')
                 expect(page.get_by_test_id('selected-version')).not_to_contain_text('Versione 2')
+                expect(page.get_by_role('button',name='Ho verificato: accetta questa versione')).to_have_count(0)
+                expect(page.get_by_test_id('selected-version').get_by_text('Prima della consegna finale: Pacchetto portabile da preparare',exact=True)).to_be_visible()
+                # A new sample remains visible while the next correction runs;
+                # a stale selected preview must not pin the old video forever.
+                state['project']={**project,'status':'review',
+                    'product_path':project['results'][-1]['path'],
+                    'latest_sample':project['results'][0],
+                    'deliveries':[{**project['deliveries'][0],'current':False,'purpose':'preview','category':'sample'},
+                                  {**project['deliveries'][1],'current':True,'category':'sample'}]}
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Risultato')
+                expect(page.get_by_test_id('latest-sample')).to_contain_text('Ultimo campione disponibile')
+                expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'))
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Robot con musica')
+                # A selected complete delivery keeps precedence over samples.
+                state['project']={**project,'status':'review','latest_sample':project['results'][-1]}
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Risultato')
+                expect(page.get_by_test_id('latest-sample')).to_have_count(0)
+                expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'))
                 # Old observations are curated only on explicit request, scoped
                 # to this chat; proposing never implies accepting the lessons.
                 state['pending_observations']=3

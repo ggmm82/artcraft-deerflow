@@ -39,6 +39,19 @@ DELIVERY_SCHEMA['properties']['timing'] = {'type':'object','properties':{
     'required':['master','cues'],'additionalProperties':False}
 
 
+HANDOFF_SCHEMA = {'type': 'object', 'properties': {
+        'task': {'type': 'string'},
+        'delivery': DELIVERY_SCHEMA,
+        'source_files': {'type': 'array', 'items': {'type': 'string'}},
+        'output_files': {'type': 'array', 'minItems': 1, 'items': {'type': 'string'}},
+        'previews': {'type': 'array', 'items': {'type': 'string'}},
+        'checks': {'type': 'array', 'minItems': 1, 'items': {'type': 'object', 'properties': {
+            'name': {'type': 'string'}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'not_run']},
+            'evidence': {'type': 'string'}}, 'required': ['name', 'status', 'evidence'], 'additionalProperties': False}},
+        'warnings': {'type': 'array', 'items': {'type': 'string'}}},
+        'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings', 'delivery'],
+        'additionalProperties': False}
+
 def validate_delivery(value):
     """Validate claims and downloadable sources, not actual application compatibility."""
     delivery = value.get('delivery')
@@ -156,3 +169,32 @@ def validate_handoff(output_dir, workspace, *, require_delivery=False):
     if require_delivery or 'delivery' in value:
         validate_delivery(value)
     return value
+
+
+def main():
+    """Give every CLI worker the same preflight feedback as submit_handoff."""
+    import argparse
+    parser = argparse.ArgumentParser(description='Controlla i metadati senza approvare il prodotto o modificare i file.')
+    sub = parser.add_subparsers(dest='command', required=True)
+    sub.add_parser('schema')
+    check = sub.add_parser('validate')
+    check.add_argument('output_dir', type=Path)
+    check.add_argument('--workspace', type=Path, default=Path('/mnt/user-data'))
+    args = parser.parse_args()
+    if args.command == 'schema':
+        print(json.dumps(HANDOFF_SCHEMA, ensure_ascii=False))
+        return 0
+    try:
+        handoff = validate_handoff(args.output_dir, args.workspace, require_delivery=True)
+    except (ValueError, OSError) as error:
+        print(json.dumps({'ok': False, 'product_approved': False, 'error': str(error),
+            'instruction': 'Correggi soltanto il manifest usando i file esistenti. Conserva failed e not_run, esplicita i limiti; non rigenerare il prodotto per un errore di metadati.'}, ensure_ascii=False))
+        return 1
+    print(json.dumps({'ok': True, 'product_approved': False, 'output_count': len(handoff['output_files']),
+        'failed_checks': [c['name'] for c in handoff['checks'] if c['status'] == 'failed'],
+        'instruction': 'Manifest strutturalmente valido; compatibilità, qualità e contratto finale richiedono le rispettive verifiche.'}, ensure_ascii=False))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

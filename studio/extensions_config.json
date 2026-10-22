@@ -48,6 +48,7 @@
     }
   },
   "middlewares": [
-    "studio.audit_middleware:ConversationAuditMiddleware"
+    "studio.audit_middleware:ConversationAuditMiddleware",
+    "studio.completion_middleware:ProjectCompletionMiddleware"
   ]
 }

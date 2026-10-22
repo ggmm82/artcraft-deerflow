@@ -9,7 +9,7 @@ import { ConversationAudit } from "./conversation-audit";
 import { ExperiencePanel } from "./experience-panel";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
-type Delivery = { source_coverage?: { status: string; components: { name: string; tool: string; status: string; sources: {path: string; member?: string}[] }[] }; timing?: {status:string; cues:{name:string;status:string;delta_seconds:number}[]}; category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
+type Delivery = { finalization_pending?: string[]; source_coverage?: { status: string; components: { name: string; tool: string; status: string; sources: {path: string; member?: string}[] }[] }; timing?: {status:string; cues:{name:string;status:string;delta_seconds:number}[]}; category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
 type RevisionAction = { requirement_id: string; action: string; reason?: string; priority: number; strategy: string };
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
@@ -18,7 +18,7 @@ type Outcome = { title: string; result: string; format: string; use: string; qua
 type ProjectRole = { experience?: { count: number; ids: string[] }; id: string; title: string; mission: string; version: string; expertise: string[]; procedure?: string[]; checks: string[]; tools: string[] };
 type Orientation = { active_step_ids?: string[]; history_step_ids?: string[]; history_count?: number; total: number; counts: Record<string, number>; current: { id: string; goal: string; role_id: string; task: string }[]; remaining: { id: string; goal: string; status: string }[]; roles?: Record<string, { attempts: number; completed: number; running: number }>; needs_briefing: boolean };
 type UserDirection = { visual_approach: string; instructions: string; revision: number };
-type Project = { correction_focus?: { requirement_id: string; criterion: string; reassess_role: boolean; action: string }[]; user_control?: { paused: boolean }; user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
+type Project = { latest_sample?: Result | null; correction_focus?: { requirement_id: string; criterion: string; reassess_role: boolean; action: string }[]; user_control?: { paused: boolean }; user_direction?: UserDirection | null; strategy?: MethodStrategy | null; method_recovery?: { message: string } | null; outcome?: Outcome | null; orientation?: Orientation; roles?: ProjectRole[]; acceptance?: { user_requests: string[]; request_manifest?: { path: string }; request_documents?: { path: string }[]; request_count?: number; criteria: { id: string; requirement: string; critical: boolean; origin?: string; source_quote?: string }[] } | null; review_criteria?: Criterion[]; revision_actions?: RevisionAction[]; comparison?: Comparison | null; deliveries?: Delivery[]; quality_status?: string; summary?: string; next_action?: string; status?: string; product_path?: string; results?: Result[]; attention?: { code: string; message: string; action: string } | null; id: string; brief: string; steps: { id: string; agent: string; goal: string;
   status: string; role_id?: string; role_title?: string; note?: string; error?: string; attempt_count?: number }[] };
 type Result = { path: string; agent: string; label: string; validated: boolean; at: string; delivery_id?: string; role?: string; open_with?: string; editability?: string; limitations?: string[] };
 const roles: Record<string, string> = { export: "Prodotto", editable_source: "Sorgente modificabile", source_archive: "Pacchetto sorgenti", preview: "Anteprima", report: "Rapporto", dependency: "Risorsa collegata", file: "File" };
@@ -182,7 +182,10 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
   const selected: Result | undefined = project?.product_path
     ? results.find((r) => r.path === project.product_path) ?? { path: project.product_path, label: project.product_path.split("/").pop() ?? "Risultato", agent: "", validated: false, at: "" }
     : undefined;
-  const preview = selected ?? currentResults.find(r => r.role === "export") ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const latestSample = project?.latest_sample;
+  const showLatestSample = latestSample && (!selectedDelivery || (selectedDelivery.purpose === "preview" && latestSample.at >= selectedDelivery.at));
+  const preview = (showLatestSample ? latestSample : selected) ?? currentResults.find(r => r.role === "export") ?? media.find((r) => kind(r.path) === "video") ?? media[0];
+  const previewDelivery = deliveries.find(d => d.id === preview?.delivery_id) ?? selectedDelivery;
   const pairedSources = preview?.delivery_id ? results.filter(r => r.delivery_id === preview.delivery_id && ["editable_source", "source_archive"].includes(r.role ?? "")) : [];
   const audio = currentResults.find((r) => kind(r.path) === "audio");
   const attention = !working && !active ? project?.attention : null;
@@ -408,14 +411,16 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       </div>}
       {tab === "preview" && <div className="space-y-3">
         <p><StatusBadge tone={ready ? "done" : "attention"}>{ready ? "Prodotto finale" : "Bozza di lavoro: può essere incompleta e non sostituisce il prodotto finale."}</StatusBadge></p>
-        {selectedDelivery && <section className="space-y-1 text-sm" data-testid="selected-version">
-          <p className="font-semibold">{versionName(selectedDelivery)} · {ready ? "Consegna finale" : "Da valutare"}</p>
-          <p>{selectedDelivery.title}</p>
-          {editing && editing.id !== selectedDelivery.id && <p className="text-muted-foreground">{versionName(editing)} in lavorazione. Qui vedi ancora {versionName(selectedDelivery).toLowerCase()}.</p>}
+        {previewDelivery && <section className="space-y-1 text-sm" data-testid="selected-version">
+          <p className="font-semibold">{versionName(previewDelivery)} · {ready ? "Consegna finale" : "Da valutare"}</p>
+          <p>{previewDelivery.title}</p>
+          {!!previewDelivery.finalization_pending?.length && <p className="text-muted-foreground">Prima della consegna finale: {previewDelivery.finalization_pending.join("; ")}</p>}
+          {editing && editing.id !== previewDelivery.id && <p className="text-muted-foreground">{versionName(editing)} in lavorazione. Qui vedi ancora {versionName(previewDelivery).toLowerCase()}.</p>}
           <p className="text-muted-foreground text-xs">Anteprima, download e sorgenti sotto appartengono a questa lavorazione.</p>
-          {selectedDelivery.source_coverage && <details className="rounded border p-3" data-testid="component-sources"><summary className="cursor-pointer">Sorgenti delle componenti · {selectedDelivery.source_coverage.status === "documented" ? "documentati" : "da completare"}</summary>{selectedDelivery.source_coverage.components.map((c,i) => <div className="my-2" key={i}><p><strong>{c.name}</strong> · {c.tool} · {c.status === "documented" ? "sorgenti associati" : "sorgenti incompleti"}</p>{c.sources.map((r,n) => <p className="break-all text-xs" key={n}>{r.member || r.path.split("/").pop()}</p>)}</div>)}<p className="text-xs">Il progetto principale non dimostra la modificabilità di tutte le risorse. Apertura e ricostruzione hanno verifiche distinte.</p></details>}
-          {selectedDelivery.timing && <details className="rounded border p-3" data-testid="delivery-timing"><summary className="cursor-pointer">Sincronismo · {selectedDelivery.timing.status === "passed" ? "cue misurati" : "da verificare"}</summary>{selectedDelivery.timing.cues.map((c,i) => <p className="my-1 text-xs" key={i}>{c.name}: {c.status === "not_run" ? "non verificato" : `${c.delta_seconds} s di scarto`}</p>)}<p className="text-xs">Il controllo dei picchi audio non sostituisce l’ascolto e la verifica visiva.</p></details>}
+          {previewDelivery.source_coverage && <details className="rounded border p-3" data-testid="component-sources"><summary className="cursor-pointer">Sorgenti delle componenti · {previewDelivery.source_coverage.status === "documented" ? "documentati" : "da completare"}</summary>{previewDelivery.source_coverage.components.map((c,i) => <div className="my-2" key={i}><p><strong>{c.name}</strong> · {c.tool} · {c.status === "documented" ? "sorgenti associati" : "sorgenti incompleti"}</p>{c.sources.map((r,n) => <p className="break-all text-xs" key={n}>{r.member || r.path.split("/").pop()}</p>)}</div>)}<p className="text-xs">Il progetto principale non dimostra la modificabilità di tutte le risorse. Apertura e ricostruzione hanno verifiche distinte.</p></details>}
+          {previewDelivery.timing && <details className="rounded border p-3" data-testid="delivery-timing"><summary className="cursor-pointer">Sincronismo · {previewDelivery.timing.status === "passed" ? "cue misurati" : "da verificare"}</summary>{previewDelivery.timing.cues.map((c,i) => <p className="my-1 text-xs" key={i}>{c.name}: {c.status === "not_run" ? "non verificato" : `${c.delta_seconds} s di scarto`}</p>)}<p className="text-xs">Il controllo dei picchi audio non sostituisce l’ascolto e la verifica visiva.</p></details>}
         </section>}
+        {showLatestSample && <p className="text-sm" data-testid="latest-sample">Ultimo campione disponibile · {new Date(latestSample.at).toLocaleString()} · Il prodotto finale resta da completare.</p>}
         {preview && <div className="bg-muted/20 space-y-3 rounded-xl border p-3" data-testid="primary-result">
           {kind(preview.path) === "video" && <video key={preview.path} className="max-h-[35dvh] w-full rounded" controls playsInline preload="metadata" aria-label="Anteprima video" src={artifactURL(threadId, preview.path)} />}
           {kind(preview.path) === "image" && <img className="max-h-[35dvh] w-full object-contain" alt="Anteprima del lavoro" src={artifactURL(threadId, preview.path)} />}
@@ -450,7 +455,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}
           {project.acceptance.request_manifest && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_manifest.path, true)}>Indice dei messaggi conservati ({project.acceptance.request_count ?? 1})</a></p>}
         </details>}
-        {!ready && !working && !active && selectedDelivery?.technical_status === "passed" && <div className="space-y-2 border-t pt-3">
+        {!ready && !working && !active && selectedDelivery?.technical_status === "passed" && !selectedDelivery.finalization_pending?.length && <div className="space-y-2 border-t pt-3">
           <p className="text-sm">Se hai verificato il risultato e ti soddisfa, puoi accettare questa versione. I controlli dei sorgenti restano obbligatori.</p>
           <button type="button" className="rounded border px-3 py-2 text-sm disabled:opacity-50" disabled={accepting} onClick={() => void acceptVersion()}>{accepting ? "Registro la scelta…" : "Ho verificato: accetta questa versione"}</button>
         </div>}
@@ -493,6 +498,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <p className="mt-2 text-xs">{d.role_title || person(d.agent)}{d.at ? ` · ${new Date(d.at).toLocaleString("it-IT")}` : ""}</p>
           {d.execution_status !== "running" && <p className="mt-2"><StatusBadge tone={d.technical_status === "passed" ? "done" : "attention"}>{d.technical_status === "passed" ? "Controlli tecnici superati" : d.technical_status === "needs_revision" ? "Consegna incompleta: da correggere" : "Controlli tecnici non confermati"}</StatusBadge></p>}
           {d.issues.map((issue, i) => <p className="mt-1 text-sm" key={i}>{issue}</p>)}
+          {!!d.finalization_pending?.length && <p className="mt-2 text-muted-foreground">Prova disponibile. Prima della consegna finale: {d.finalization_pending.join("; ")}</p>}
           {d.execution_status === "running" && <p className="mt-2">I file in preparazione non sostituiscono ancora la versione selezionata.</p>}
           <ul className="mt-3 space-y-3">{results.filter(r => r.delivery_id === d.id && r.role !== "preview" && r.role !== "dependency").map(r => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>
           {deliveries.filter(review => review.review?.target_delivery_id === d.id).map(review => <ReviewCard key={review.id} delivery={review} threadId={threadId} />)}
@@ -502,6 +508,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <summary className="cursor-pointer font-medium">Campioni, contributi e verifiche ({supporting.length})</summary>
           <p className="my-2 text-xs text-muted-foreground">Sono lavorazioni della squadra, non nuove versioni del prodotto completo.</p>
           {supporting.map(d => <details key={d.id} className="my-2 rounded-lg border p-3" data-testid="delivery-group"><summary className="cursor-pointer">{d.purpose === "review" ? "Verifica" : d.purpose === "preview" ? "Campione" : "Contributo"} · {d.title}</summary>
+            {!!d.finalization_pending?.length && <p className="mt-2 text-muted-foreground">Prima della consegna finale: {d.finalization_pending.join("; ")}</p>}
             {d.review && <ReviewCard delivery={d} threadId={threadId} />}
             <ul className="mt-3 space-y-3">{results.filter(r => r.delivery_id === d.id && r.role !== "dependency").map(r => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>
           </details>)}
@@ -548,7 +555,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
       {resumeError && <p className="text-xs" role="alert">{resumeError}</p>}
     </div>
     <nav className="flex flex-wrap items-center gap-2 border-t p-3 text-sm" aria-label="Controlli del progetto">
-      <button type="button" className="bg-foreground text-background rounded-lg px-3 py-2 disabled:opacity-50" disabled={!preview} onClick={() => toggle("preview")}>{ready ? "Apri consegna" : "Vedi anteprima"}</button>
+      <button type="button" className="bg-foreground text-background rounded-lg px-3 py-2 disabled:opacity-50" disabled={!preview} onClick={() => toggle("preview")}>{ready ? "Apri consegna" : showLatestSample ? "Apri ultimo campione" : "Vedi anteprima"}</button>
       <button type="button" className={tabStyle} onClick={() => toggle("intervene")}>Intervieni</button>
       {(active || working) && onPause && <button type="button" className={tabStyle} disabled={controlBusy} onClick={() => void pauseWork()}>{controlBusy ? "Attendi…" : "Metti in pausa"}</button>}
       {!active && !working && !ready && !waitingForReview && !questions.length && onContinue && <button type="button" className={tabStyle} disabled={controlBusy || resumeRequested === threadId} onClick={() => void resume()}>{resumeRequested === threadId ? "Ripresa richiesta…" : "Riprendi lavoro"}</button>}

@@ -323,7 +323,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     if result.get('output_dir') and handoff:
         compact['handoff_path'] = result['output_dir'] + '/handoff.json'
     record = result.get('delivery_record') or {}
-    compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status')}
+    compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status', 'finalization_pending')}
     compact['quality_review'] = result.get('quality_review')
     compact['correction_focus'] = (read_project(workspace) or {}).get('correction_focus', [])
     compact['learning_review'] = result.get('learning_review')
@@ -339,6 +339,14 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     from .control_memory import reply, counts
     compact['check_counts'] = counts(handoff.get('checks', []))
     compact['output_count'] = len(handoff.get('delivery', {}).get('files', []))
+    if result.get('ok') and purpose in ('preview', 'delivery'):
+        files = handoff.get('delivery', {}).get('files', [])
+        primary = next((f['path'] for f in files if f.get('role') == 'export'), None)
+        if primary:
+            sources = sorted((f for f in files if f.get('role') in ('source_archive', 'editable_source')),
+                             key=lambda f: f['role'] != 'source_archive')
+            compact['presentation'] = {'paths': [primary, *[f['path'] for f in sources[:2]]],
+                'instruction': 'Presenta questi file con present_files prima della prossima delega. Spiega cosa è cambiato e i difetti rimasti. Un campione o un prodotto non approvato resta una bozza; non dichiararlo finito e non nascondere la versione disponibile mentre continui le correzioni.'}
     return reply(workspace, compact, 'delegate')
 
 
