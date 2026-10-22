@@ -47,6 +47,10 @@ def preserve_experience(workspace, runtime):
         thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
         saved = collect(workspace, experience_root(runtime), thread)
         proposals = propose_findings(experience_root(runtime), thread)
+        if saved or proposals:
+            from .audit_log import append
+            append(workspace, 'Memoria', 'Fonti esperienza archiviate', 'completed',
+                   detail=f'{saved} nuove fonti; {len(proposals)} proposte. Archiviazione e apprendimento sono distinti.')
         sources = pending(experience_root(runtime), limit=3, source_thread=thread)
         return {'saved': saved, 'proposed_lessons': len(proposals), 'pending': len(pending(experience_root(runtime))),
                 'sources_to_evaluate': [{k: s.get(k) for k in ('id', 'criterion', 'status')} for s in sources],
