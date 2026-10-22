@@ -23,6 +23,23 @@ def experience_root(runtime):
     return get_paths().user_dir(resolve_runtime_user_id(runtime)) / 'artcraft-experience'
 
 
+@tool('studio_read_context', parse_docstring=True)
+def studio_read_context(runtime: Runtime, path: str, sha256: str, offset: int = 0) -> str:
+    """Read a hash-verified project context reference in bounded pages.
+
+    Use for details_path/details_sha256, saved requests and compiled role references.
+    Native read_file cannot read hidden project context. Follow next_offset until null.
+
+    Args:
+        runtime: Injected DeerFlow runtime.
+        path: Exact virtual path supplied by a project context reference.
+        sha256: Exact SHA-256 supplied with that reference.
+        offset: Character offset; zero initially, then the returned next_offset.
+    """
+    from .context_reader import read_context
+    return json.dumps(read_context(workspace_for(runtime), path, sha256, offset), ensure_ascii=False)
+
+
 def preserve_experience(workspace, runtime):
     from .experience import collect
     from .lessons import pending, propose_findings
@@ -30,6 +47,10 @@ def preserve_experience(workspace, runtime):
         thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
         saved = collect(workspace, experience_root(runtime), thread)
         proposals = propose_findings(experience_root(runtime), thread)
+        if saved or proposals:
+            from .audit_log import append
+            append(workspace, 'Memoria', 'Fonti esperienza archiviate', 'completed',
+                   detail=f'{saved} nuove fonti; {len(proposals)} proposte. Archiviazione e apprendimento sono distinti.')
         sources = pending(experience_root(runtime), limit=3, source_thread=thread)
         return {'saved': saved, 'proposed_lessons': len(proposals), 'pending': len(pending(experience_root(runtime))),
                 'sources_to_evaluate': [{k: s.get(k) for k in ('id', 'criterion', 'status')} for s in sources],
@@ -97,7 +118,8 @@ def lesson_reply(runtime, value):
     result = {'saved_lesson': value.get('saved_lesson'), 'decision': value.get('decision'),
               'pending_sources': compact, 'source_count': len(value.get('pending_sources', [])),
               'details_path': document['path'], 'details_sha256': document['sha256'],
-              'instruction': 'Leggi details_path prima di generalizzare: contiene le procedure e le prove complete, non trasferirne i fatti specifici nelle skills.'}
+              'details_reader': 'studio_read_context',
+              'instruction': 'Usa studio_read_context con details_path e details_sha256 prima di generalizzare; non trasferirne i fatti specifici nelle skills.'}
     while compact and len(json.dumps(result, ensure_ascii=False)) > 8000:
         compact.pop()
     return json.dumps(result, ensure_ascii=False)

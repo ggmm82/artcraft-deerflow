@@ -88,6 +88,9 @@ def environment():
     # The offscreen plugin can segfault during HTML/cover rendering; use Xvfb
     # with Mesa software OpenGL instead of probing unavailable GPU/Vulkan devices.
     os.environ['QT_QPA_PLATFORM'] = 'xcb'
+    # ensure_app(headless=True) passes an explicit -platform argument, which
+    # overrides QT_QPA_PLATFORM. Use Calibre's own switch for those subprocesses.
+    os.environ['CALIBRE_HEADLESS_PLATFORM'] = 'xcb'
     os.environ.pop('QT_QUICK_BACKEND', None)
     os.environ['QT_OPENGL'] = 'software'
     os.environ['QSG_RHI_BACKEND'] = 'opengl'

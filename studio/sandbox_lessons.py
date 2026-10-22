@@ -90,7 +90,7 @@ def observations(workspace, attempt, role, source_thread, captured=()):
         return []
     try:
         value = json.loads(manifest.read_text())
-        candidates = value['lessons']
+        candidates = value if isinstance(value, list) else value['lessons']
         if not isinstance(candidates, list) or len(candidates) > 3:
             return []
     except (OSError, ValueError, KeyError, TypeError):
@@ -139,6 +139,10 @@ def observations(workspace, attempt, role, source_thread, captured=()):
             })
             observation['origin_id'] = fingerprint(observation)
             records.append({'id': fingerprint(observation), 'at': attempt.get('finished_at') or utcnow(), 'observation': observation})
-        except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            continue  # An invalid learning note must never break the delivery.
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            from .learning_notes import preserve_note
+            record = preserve_note(workspace, attempt, manifest, manifest_hash, capture_key,
+                                   candidate, installed, source_thread, error)
+            if record:
+                records.append(record)
     return records

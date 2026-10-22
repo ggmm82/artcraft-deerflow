@@ -6,6 +6,22 @@ from studio.component_sources import inspect_components
 
 
 class ComponentSourcesTests(unittest.TestCase):
+    def test_packaged_copies_inherit_coverage_only_when_bytes_are_identical(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);video=root/'master.mp4';video.write_bytes(b'export')
+            source=root/'animation.py';source.write_text('# editable recipe')
+            archive=root/'sources.zip'
+            files=[{'path':str(video),'role':'export'}, {'path':str(source),'role':'editable_source'},
+                   {'path':str(archive),'role':'source_archive','verification':{'status':'passed'}}]
+            handoff={'delivery':{'components':[{'name':'Animation','tool':'code',
+                'artifacts':[{'path':str(video)}], 'sources':[{'path':str(source)}]}]}}
+            for content,expected in [(b'export','documented'),(b'different video','incomplete')]:
+                with zipfile.ZipFile(archive,'w') as z:
+                    z.writestr('package/master.mp4',content);z.writestr('animation.py',source.read_bytes())
+                result=inspect_components(handoff,files,required=True)
+                self.assertEqual(result['status'],expected)
+                if expected=='incomplete':self.assertIn('sources.zip:package/master.mp4',str(result['issues']))
+
     def test_editable_parent_does_not_hide_audio_without_sources(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);video=root/'master.mp4';video.write_bytes(b'fixture')

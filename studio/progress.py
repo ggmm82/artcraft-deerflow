@@ -116,6 +116,16 @@ def update(path, phase=None, summary=None, **fields):
                 value['event_count'] = value.get('event_count', 0) + 1
                 history.append({'seq': value['event_count'], 'at': now, 'phase': phase, 'summary': summary})
                 value['events'] = history[-60:]
+                try:
+                    try:
+                        from .audit_log import append
+                    except ImportError:
+                        from audit_log import append
+                    append(Path(path).parents[2], value.get('role_title') or 'Specialista '+value.get('agent','workspace'),
+                           summary, 'failed' if phase in ('failed','timed_out') else 'completed' if phase=='completed' else 'progress',
+                           correlation=value.get('job_id',''), identifier=f"job:{value.get('job_id')}:{value['event_count']}", at=now)
+                except (OSError,ValueError):
+                    pass
         return value.copy()
 
 
@@ -194,6 +204,7 @@ class Reporter:
         self.execution_state = 'model'
         self.tool_events = []
         self.engine, self.model = job['engine'], job['model']
+        self.role_title = (job.get('role') or {}).get('title') or 'Specialista '+job['agent']
 
     def emit(self, phase, summary=None, **fields):
         if phase in ('running_tool', 'waiting_model'):
@@ -205,7 +216,7 @@ class Reporter:
 
     def start(self, timeout):
         now = time.time()
-        self.emit('preparing', started_at=utcnow(),
+        self.emit('preparing', role_title=self.role_title, started_at=utcnow(),
                   deadline_at=datetime.fromtimestamp(now + timeout, timezone.utc).isoformat())
         self.pulse()
         self.thread = threading.Thread(target=self._watch, daemon=True)

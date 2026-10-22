@@ -116,7 +116,7 @@ def reply(workspace, payload, kind):
         value['learning'] = full.get('learning', {})
     if kind == 'plan' and full.get('generation_capabilities'):
         value['generation_capabilities'] = full['generation_capabilities']
-    value.update(details_path=reference['path'], details_sha256=reference['sha256'])
+    value.update(details_path=reference['path'], details_sha256=reference['sha256'], details_reader='studio_read_context')
     if 'capability_policy' in full:
         value['capability_policy'] = full['capability_policy']
     if len(json.dumps(value, ensure_ascii=False)) <= LIMIT:
@@ -158,9 +158,10 @@ def reply(workspace, payload, kind):
             if 'quality_review' in value:
                 value['quality_review'].pop('criteria', None)
         value.update(details_path=reference['path'], details_sha256=reference['sha256'],
-                     details_required=True, instruction='Leggi il risultato completo prima di decidere; le liste omesse non sono controlli superati.')
+                     details_required=True, details_reader='studio_read_context', instruction='Usa studio_read_context con details_path e details_sha256 prima di decidere; le liste omesse non sono controlli superati.')
     # A malicious/oversize input must not turn into an unbounded control message.
     if len(json.dumps(value, ensure_ascii=False)) > LIMIT:
         value = {k: value.get(k) for k in ('ok', 'decision', 'check_counts', 'review_counts', 'details_path', 'details_sha256')}
         value['details_required'] = True
+        value['details_reader'] = 'studio_read_context'
     return json.dumps(value, ensure_ascii=False)

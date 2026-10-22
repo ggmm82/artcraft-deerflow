@@ -78,6 +78,16 @@ def result_envelope(output):
     return results[0]
 
 
+def result_error(envelope):
+    """Use the reported cause; generic guidance is not proof of exhausted quota."""
+    error = envelope.get('error')
+    if isinstance(error, dict):
+        error = error.get('message') or error.get('code')
+    if isinstance(error, str) and error.strip():
+        return 'Antigravity: ' + error.strip()[:1200]
+    return 'Antigravity: completamento non confermato dalla CLI (stato: ' + str(envelope.get('status', 'assente'))[:80] + '). Ispeziona i file salvati e il dettaglio dell’esecuzione.'
+
+
 def generate(payload):
     prepare_home(coordinator=True)
     schema = payload['schema']
@@ -98,7 +108,7 @@ def generate(payload):
     except ValueError:
         raise RuntimeError('Risposta JSON Antigravity non valida') from None
     if result.returncode or envelope.get('status') != 'SUCCESS':
-        raise RuntimeError('Antigravity: richiesta fallita; verifica login, modello e quota dell’abbonamento')
+        raise RuntimeError(result_error(envelope))
     decision = envelope.get('structured_output')
     if not isinstance(decision, dict):
         raise RuntimeError('Antigravity non ha restituito la decisione strutturata')

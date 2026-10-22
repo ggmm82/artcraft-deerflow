@@ -2,7 +2,7 @@
 
 Quando `Scopo incarico: review` riguarda il prodotto conclusivo, valuta il file esistente rispetto al brief e ai criteri `references/QUALITY.md`. Usa immagini reali in un tool visivo, campioni delle transizioni e ascolto effettivo quando disponibili. Il collegamento DeepSeek corrente è testuale: non può attestare visione o ascolto. Non modificare il prodotto durante questa verifica; indica difetti e correzioni mirate. Non promuovere una bozza solo perché è decodificabile.
 
-Consegna nella tua cartella `quality-review.json`, ruolo `report`, elencato in `output_files`; il prodotto esaminato deve essere in `source_files`. Esempio di struttura (non di valutazione da copiare):
+Consegna nella tua cartella `quality-review.json`, ruolo `report`, elencato in `output_files`; il prodotto esaminato deve essere in `source_files`. Se manca `handoff.json` o sono errati i suoi metadati, il runtime compila l’involucro dal rapporto valido, conserva l’originale in work/ e mantiene i controlli dichiarati falliti, senza alterare i giudizi. Il rapporto può indicare `source_files` e deve usare il `product_sha256` effettivamente osservato quando lo dichiara. La revisione non deve copiare o riesportare il prodotto per diventare una consegna valida. Esempio di struttura (non di valutazione da copiare):
 
 ```json
 {

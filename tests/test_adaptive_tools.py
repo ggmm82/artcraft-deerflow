@@ -17,6 +17,47 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def test_native_middleware_records_model_and_tool_failures_without_prompts(self):
+        import asyncio
+        from studio.audit_log import page
+        from langgraph.runtime import Runtime as GraphRuntime
+        from deerflow.agents.middlewares.configured_extensions import load_configured_extension_middlewares
+        config=SimpleNamespace(extensions=SimpleNamespace(middlewares=['studio.audit_middleware:ConversationAuditMiddleware']))
+        middleware,=load_configured_extension_middlewares(config)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            runtime=GraphRuntime(context={'user_id':'owner'})
+            config={'configurable':{'thread_id':'thread','artcraft_user_turn':'turn-fixture',
+                'artcraft_user_messages':['PRIVATE BRIEF must not be stored']}}
+            request=SimpleNamespace(runtime=runtime,tool_call={'name':'read_file','id':'call-fixture'})
+            with patch('studio.audit_middleware.workspace_for',return_value=root), patch('langgraph.config.get_config',return_value=config):
+                middleware.before_agent({},runtime)
+                middleware.wrap_tool_call(request,lambda _:SimpleNamespace(content='Error: access denied'))
+                middleware.wrap_model_call(request,lambda _:SimpleNamespace(content='PRIVATE RESPONSE'))
+                async def cancelled(_):raise asyncio.CancelledError()
+                with self.assertRaises(asyncio.CancelledError):asyncio.run(middleware.awrap_model_call(request,cancelled))
+            rows=page(root)['events']
+            self.assertEqual(sum(r['actor']=='Utente' for r in rows),1)
+            self.assertTrue(any(r['status']=='failed' for r in rows))
+            self.assertTrue(any(r['status']=='interrupted' for r in rows))
+            self.assertNotIn('PRIVATE',json.dumps(rows))
+
+    def test_hidden_project_context_uses_a_scoped_hash_checked_reader(self):
+        from studio.project_skills import scoped_file
+        from studio.tools import studio_read_context
+        from deerflow.sandbox.tools import _validate_resolved_user_data_path
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            for name in ('workspace','uploads','outputs'):(root/name).mkdir()
+            reference=scoped_file(root,'control-results/actual.json','{"state":"full"}')
+            local=root/'.studio-project/control-results/actual.json'
+            thread_data={name+'_path':str(root/name) for name in ('workspace','uploads','outputs')}
+            with self.assertRaises(PermissionError):_validate_resolved_user_data_path(local,thread_data)
+            with patch('studio.tools.workspace_for',return_value=root):
+                value=json.loads(studio_read_context.func(runtime=SimpleNamespace(),path=reference['path'],sha256=reference['sha256']))
+                self.assertEqual(json.loads(value['content']),{'state':'full'})
+            self.assertNotIn('runtime',studio_read_context.tool_call_schema.model_json_schema()['properties'])
+
     def setUp(self):
         directory = tempfile.TemporaryDirectory(); self.addCleanup(directory.cleanup)
         fixture = patch('studio.tools.experience_root', return_value=Path(directory.name) / 'library')

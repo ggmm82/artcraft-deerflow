@@ -16,13 +16,17 @@ except ImportError:
 def read_review(handoff, output_dir, workspace, engine, acceptance=None):
     """Read a separate review of an existing product, never of a self-made export."""
     path = Path(output_dir) / 'quality-review.json'
-    if not path.is_file() or str(path) not in handoff['output_files'] or path.stat().st_size > 30000:
+    if path.is_symlink() or not path.is_file() or str(path) not in handoff['output_files'] or path.stat().st_size > 30000:
         return None
     value = json.loads(path.read_text())
+    if not isinstance(value, dict):
+        raise ValueError('Revisione: rapporto JSON non valido')
     target = Path(value.get('product_path', '')).resolve()
     if (not target.is_relative_to(Path(workspace).resolve()) or target.is_relative_to(Path(output_dir).resolve())
             or str(target) not in handoff['source_files'] or not target.is_file()):
         raise ValueError('La revisione deve riguardare un prodotto esistente in source_files, non un nuovo export')
+    if value.get('product_sha256') and value['product_sha256'] != digest(target):
+        raise ValueError('Revisione: il prodotto è cambiato rispetto all’hash osservato')
     criteria = value.get('criteria', [])
     if not isinstance(criteria, list) or not 1 <= len(criteria) <= 20:
         raise ValueError('Revisione: specificare criteri concreti del brief')
@@ -69,6 +73,78 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
             'comparison_warning': comparison_warning, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
             'report_path': str(path), 'report_sha256': digest(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
+
+
+def prepare_review_handoff(output_dir, workspace, engine, acceptance=None):
+    """Wrap an existing, valid review report; never fabricate a quality verdict.
+
+    Review jobs deliver an assessment, not a second copy of the product. A
+    missing or invalid bookkeeping envelope must not discard their assessment.
+    """
+    root, boundary = Path(output_dir).resolve(), Path(workspace).resolve()
+    manifest, report = root / 'handoff.json', root / 'quality-review.json'
+    previous = {}
+    original = None
+    if manifest.is_symlink():
+        raise ValueError('Revisione: involucro collegato fuori dal protocollo')
+    if manifest.exists():
+        try:
+            try:
+                from .handoff import validate_handoff
+            except ImportError:
+                from handoff import validate_handoff
+            validate_handoff(root, boundary, require_delivery=True)
+            return False
+        except ValueError:
+            if manifest.stat().st_size > 100000:
+                raise ValueError('Revisione: involucro troppo grande')
+            original = manifest.read_bytes()
+            try:
+                previous = json.loads(original)
+            except ValueError:
+                previous = {}
+            if not isinstance(previous, dict):
+                previous = {}
+    if report.is_symlink() or not report.is_file() or report.stat().st_size > 30000:
+        return False
+    value = json.loads(report.read_text())
+    if not isinstance(value, dict):
+        raise ValueError('Revisione: rapporto JSON non valido')
+    sources = value.get('source_files', previous.get('source_files', []))
+    if not isinstance(sources, list) or len(sources) > 100:
+        raise ValueError('Revisione: input non validi')
+    sources = [s for s in [value.get('product_path'), value.get('baseline_path'), *sources] if s is not None]
+    if any(not isinstance(s, str) or not Path(s).is_absolute() or not Path(s).resolve().is_relative_to(boundary)
+           or not Path(s).is_file() for s in sources):
+        raise ValueError('Revisione: input mancante o fuori dalla conversazione')
+    sources = list(dict.fromkeys(sources))
+    handoff = {'task':'Revisione del prodotto esistente', 'source_files':sources,
+        'output_files':[str(report)], 'previews':[],
+        'checks':[{'name':'Rapporto di revisione', 'status':'passed',
+                   'evidence':'Rapporto JSON acquisito e validato dal runtime; questo controllo non approva il prodotto.'}],
+        'warnings':['Involucro di consegna compilato dal runtime dal rapporto esistente; i giudizi restano quelli del revisore.'],
+        'delivery':{'source_status':'not_applicable', 'source_note':'Consegna di un rapporto sul prodotto esistente, senza rigenerazione.',
+            'files':[{'path':str(report), 'role':'report', 'format':'JSON', 'open_with':'Editor JSON',
+                      'editability':'Rapporto testuale', 'reopen':{'status':'passed','evidence':'JSON letto e validato dal runtime.'},
+                      'limitations':['I giudizi dipendono dalle evidenze del revisore e dalle capacità effettive del collegamento.']}]}}
+    # Keep meaningful failed checks rather than making a broken envelope a way
+    # to erase an unfavorable assessment. All original metadata stays on disk.
+    for check in previous.get('checks', []) if isinstance(previous.get('checks'), list) else []:
+        if (isinstance(check, dict) and check.get('status') in ('passed', 'failed', 'not_run')
+                and all(isinstance(check.get(k), str) and check[k].strip() for k in ('name', 'evidence'))):
+            handoff['checks'].append({k:check[k] for k in ('name','status','evidence')})
+    # Validate the real product, criteria and baseline before writing anything.
+    read_review(handoff, root, boundary, engine, acceptance)
+    if original is not None:
+        backup = root / 'work/review-handoff-original.json'
+        if backup.is_symlink() or not backup.resolve().is_relative_to(root):
+            raise ValueError('Revisione: percorso di recupero non valido')
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        if backup.exists() and backup.read_bytes() != original:
+            raise ValueError('Revisione: involucro originale già conservato con dati diversi')
+        backup.write_bytes(original)
+    manifest.write_text(json.dumps(handoff, ensure_ascii=False, indent=2))
+    return True
 
 
 def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=(), require_components=False, require_timing=False, workspace=None):

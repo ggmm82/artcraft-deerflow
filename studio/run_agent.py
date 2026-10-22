@@ -13,14 +13,14 @@ try:
     from .progress import Reporter
     from .cli_runner import run_cli
     from .work_results import validate_media
-    from .deliveries import build_delivery, read_review
+    from .deliveries import build_delivery, read_review, prepare_review_handoff
     from .acceptance import capabilities
 except ImportError:  # Direct invocation inside the worker image.
     from handoff import validate_handoff
     from progress import Reporter
     from cli_runner import run_cli
     from work_results import validate_media
-    from deliveries import build_delivery, read_review
+    from deliveries import build_delivery, read_review, prepare_review_handoff
     from acceptance import capabilities
 
 ALLOWED_AUTH = {
@@ -238,7 +238,11 @@ def main():
                 return result.returncode
             parsed = result_envelope(result.stdout)
             if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
-                raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
+                try:
+                    from .antigravity_cli import result_error
+                except ImportError:
+                    from antigravity_cli import result_error
+                raise RuntimeError(result_error(parsed))
             message = parsed.get('structured_output', {}).get('summary')
             if not isinstance(message, str) or not message.strip():
                 raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
@@ -246,6 +250,8 @@ def main():
         learning_path = output_dir / 'work/tool-lessons.json'
         learning_review = 'recorded' if learning_path.is_file() and not learning_path.is_symlink() else 'not_recorded'
         try:
+            if job.get('purpose') == 'review':
+                prepare_review_handoff(output_dir, Path('/mnt/user-data'), engine, job.get('acceptance'))
             handoff = validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
         except ValueError as exc:
             reporter.emit('failed', 'Controlli di consegna non superati')
@@ -256,7 +262,7 @@ def main():
         if learning_review == 'not_recorded':
             handoff['warnings'].append('Valutazione delle lezioni non registrata: le prove restano disponibili, nessun apprendimento automatico dichiarato.')
         verified_products = []
-        if job.get('requirements'):
+        if job.get('requirements') and job.get('purpose') != 'review':
             candidates = [f for f in handoff['output_files'] if Path(f).suffix.lower() in
                           ('.mp4', '.mov', '.webm', '.mkv', '.wav', '.mp3', '.m4a')]
             if not candidates:

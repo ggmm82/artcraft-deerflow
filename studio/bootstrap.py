@@ -117,7 +117,7 @@ def initialize():
                 changed = True
         template = yaml.safe_load((ROOT / 'deerflow.yaml').read_text())
         for tool in template.get('tools', []):
-            if tool.get('name') in ('studio_plan', 'studio_lessons') and not any(
+            if tool.get('name') in ('studio_plan', 'studio_lessons', 'studio_read_context') and not any(
                     t.get('name') == tool.get('name') for t in content.get('tools', [])):
                 content.setdefault('tools', []).append(tool)
                 changed = True
@@ -182,6 +182,13 @@ def initialize():
     extension = STATE / 'extensions_config.json'
     if not extension.exists():
         extension.write_text((ROOT / 'extensions_config.json').read_text())
+    from .state import atomic_json
+    extensions = json.loads(extension.read_text())
+    middleware = 'studio.audit_middleware:ConversationAuditMiddleware'
+    configured = extensions.setdefault('middlewares', [])
+    if middleware not in configured:
+        configured.append(middleware)
+        atomic_json(extension, extensions)
     catalog()
 
 

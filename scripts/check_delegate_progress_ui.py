@@ -144,6 +144,9 @@ window.showThread();
                 self.do_GET()
 
             def do_GET(self):
+                if '/studio-audit' in self.path:
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
+                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture'}], 'next_before':None,'latest_seq':1}).encode());return
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':state.get('pending_observations',0), 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
@@ -204,6 +207,11 @@ window.showThread();
                     if not page.get_by_test_id('studio-drawer').count():
                         page.get_by_role('button', name='Dettagli progetto', exact=True).click()
                     page.get_by_role('button', name=name, exact=True).click()
+                section('Registro')
+                expect(page.get_by_test_id('conversation-audit')).to_be_visible()
+                expect(page.get_by_test_id('conversation-audit').get_by_text('Coordinatore',exact=True)).to_be_visible()
+                expect(page.get_by_test_id('conversation-audit').get_by_role('link',name='Scarica CSV')).to_have_attribute('href','/api/threads/fixture/studio-audit?export=true')
+                page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 composer = page.get_by_role('textbox', name='Scrivi un messaggio')
                 for viewport in ({'width': 1100, 'height': 800}, {'width': 390, 'height': 740}):
                     page.set_viewport_size(viewport)
@@ -223,6 +231,12 @@ window.showThread();
                     page.wait_for_function('document.querySelector("[data-testid=studio-drawer]").getBoundingClientRect().top >= 0')
                     expect(page.get_by_role('button', name='Chiudi dettagli del progetto')).to_be_in_viewport()
                     composer.evaluate('(el)=>el.style.height=""')
+                    section('Registro')
+                    expect(page.get_by_test_id('conversation-audit')).to_be_visible()
+                    page.get_by_label('Solo errori e interruzioni').check()
+                    expect(page.get_by_test_id('conversation-audit').get_by_text('Strumento: read_file')).to_be_visible()
+                    if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir/f'registro-{viewport["width"]}.png'))
+                    section('Risultato')
                     expect(page.get_by_test_id('paired-sources').get_by_role('link', name='Sorgenti.zip')).to_be_visible()
                     expect(page.get_by_test_id('paired-sources').get_by_role('link', name='bozza.mp4')).to_have_count(0)
                     assert page.get_by_test_id('primary-result').evaluate('(el)=>!!(el.compareDocumentPosition(document.querySelector("[data-testid=acceptance-criteria]")) & Node.DOCUMENT_POSITION_FOLLOWING)')
