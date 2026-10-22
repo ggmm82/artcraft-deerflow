@@ -7,11 +7,13 @@ import subprocess
 
 def failure_info(error):
     text = str(error).lower()
+    legacy_guidance = text.startswith(('antigravity: incarico non completato; verifica modello, login e quota',
+                                      'antigravity: richiesta fallita; verifica login, modello e quota'))
     if any(s in text for s in ('memoria esaurita', 'out of memory', 'oom_kill')):
         return {'code': 'resource_memory', 'retryable': False,
                 'message': 'Il worker ha esaurito la memoria; i file salvati restano disponibili.',
                 'action': 'Controlla il budget condiviso in La tua squadra e riprendi dal checkpoint; non ripetere lo stesso render con gli stessi limiti.'}
-    if any(s in text for s in ('quota', 'usage limit', 'resource_exhausted', 'out of credit', 'billing', 'insufficient_balance')):
+    if not legacy_guidance and any(s in text for s in ('quota', 'usage limit', 'resource_exhausted', 'out of credit', 'billing', 'insufficient_balance')):
         return {'code': 'provider_quota', 'retryable': False,
                 'message': 'Il servizio AI ha esaurito la quota: i file già salvati sono conservati.',
                 'action': 'Apri La tua squadra e scegli un servizio disponibile, oppure attendi il ripristino della quota.'}

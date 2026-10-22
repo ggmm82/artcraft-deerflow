@@ -65,6 +65,7 @@ class CalibreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp, patch.object(cli,'ROOT',Path(temp)), patch.dict(os.environ, {'ARTCRAFT_OUTPUT_DIR':temp,'QT_QUICK_BACKEND':'software'}):
             cli.environment()
             self.assertEqual(os.environ['QT_QPA_PLATFORM'],'xcb')
+            self.assertEqual(os.environ['CALIBRE_HEADLESS_PLATFORM'],'xcb')
             self.assertNotIn('QT_QUICK_BACKEND',os.environ)
             self.assertEqual(os.environ['QSG_RHI_BACKEND'],'opengl')
             self.assertEqual(os.environ['LIBGL_ALWAYS_SOFTWARE'],'1')

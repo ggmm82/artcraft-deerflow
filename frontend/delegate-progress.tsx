@@ -5,6 +5,7 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
+import { ConversationAudit } from "./conversation-audit";
 import { ExperiencePanel } from "./experience-panel";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
@@ -327,7 +328,10 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [working, pending]);
-  if (!jobs.length && !project && !pending && !coordinatorError) return null;
+  if (!jobs.length && !project && !pending && !coordinatorError) return <details className="mb-2 rounded-xl border text-sm" data-testid="chat-audit-only" onToggle={event => setPanel(event.currentTarget.open ? { threadId, tab: "audit" } : null)}>
+    <summary className="cursor-pointer p-3">Registro della conversazione</summary>
+    {tab === "audit" && <div className="p-3"><ConversationAudit key={threadId} threadId={threadId} /></div>}
+  </details>;
   const health = current ? jobHealth(current, now) : null;
   const recent = [...jobs.filter((job) => !terminalJob(job)), ...jobs.filter(terminalJob).slice(0, 4)];
   return <section ref={dock} className="bg-background relative mb-2 rounded-2xl border shadow-sm" aria-label="Il tuo progetto" data-testid="delegate-progress">
@@ -338,7 +342,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={() => setPanel(null)} aria-label="Chiudi dettagli del progetto">Chiudi</button>
       </header>
       <nav className="grid shrink-0 grid-cols-3 gap-1 border-b p-2 text-sm sm:flex sm:flex-wrap" aria-label="Sezioni del progetto">
-        {([["project", "Stato"], ["preview", "Risultato"], ["team", "Squadra"], ["files", "Consegne"], ["activity", "Attività"], ["experience", "Lezioni"]] as const).map(([id, label]) => <button key={id} type="button" className={`${tabStyle} shrink-0`} aria-current={tab === id ? "page" : undefined} aria-expanded={tab === id} onClick={() => setPanel({ threadId, tab: id })}>{label}</button>)}
+        {([["project", "Stato"], ["preview", "Risultato"], ["team", "Squadra"], ["files", "Consegne"], ["activity", "Attività"], ["experience", "Lezioni"], ["audit", "Registro"]] as const).map(([id, label]) => <button key={id} type="button" className={`${tabStyle} shrink-0`} aria-current={tab === id ? "page" : undefined} aria-expanded={tab === id} onClick={() => setPanel({ threadId, tab: id })}>{label}</button>)}
       </nav>
       <div key={tab} className="min-h-0 flex-1 overflow-y-auto p-4" data-testid="studio-drawer-content">
       {tab === "intervene" && <ProjectDirection key={threadId} saved={project?.user_direction} onApply={applyDirection} busy={controlBusy} />}
@@ -509,6 +513,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         await onContinue(`Valuta al massimo tre osservazioni significative di questa conversazione (${threadId}) usando studio_lessons(current_project_only=true). Proponi solo singole lezioni generali con condizioni, procedura, verifiche e limiti, distinguendo benefici osservati da ipotesi. Valuta senza generalizzare le fonti che non contengono una lezione utile. Non produrre altri artefatti e non accettare lezioni al mio posto. Presenta poche proposte in ordine di impatto.`);
         if (resumeOwner.current === threadId) setPanel(null);
       } : undefined} />}
+      {tab === "audit" && <ConversationAudit key={threadId} threadId={threadId} />}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} threadId={threadId} />)}</div>}
       </div>
       <footer className="shrink-0 space-y-2 border-t bg-background p-3">

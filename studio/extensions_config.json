@@ -46,5 +46,8 @@
     "artcraft-figcraft": {
       "enabled": true
     }
-  }
+  },
+  "middlewares": [
+    "studio.audit_middleware:ConversationAuditMiddleware"
+  ]
 }

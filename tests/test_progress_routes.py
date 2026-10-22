@@ -62,6 +62,15 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'no-permission'}).status_code, 403)
                 self.assertEqual(client.get('/api/threads/missing/studio-jobs', headers={'X-Test-User': 'owner'}).status_code, 404)
+                audit_url='/api/threads/conversation/studio-audit'
+                self.assertEqual(client.get(audit_url).status_code,401)
+                self.assertEqual(client.get(audit_url,headers={'X-Test-User':'other'}).status_code,404)
+                audit=client.get(audit_url,headers={'X-Test-User':'owner'})
+                self.assertEqual(audit.status_code,200)
+                self.assertTrue(audit.json()['events'])
+                export=client.get(audit_url+'?export=true',headers={'X-Test-User':'owner'})
+                self.assertIn('text/csv',export.headers['content-type'])
+                self.assertIn('timestamp_utc',export.text)
                 control_url = '/api/threads/conversation/studio-control'
                 self.assertEqual(client.put(control_url,json={'paused':True}).status_code,401)
                 self.assertEqual(client.put(control_url,json={'paused':True},headers={'X-Test-User':'other'}).status_code,404)

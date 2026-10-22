@@ -13,6 +13,29 @@ from .projects import read_project, accept_delivery
 router = APIRouter()
 
 
+def audited(workspace, operation, value):
+    from .audit_log import append
+    append(workspace, 'Utente', operation, 'completed')
+    return value
+
+
+@router.get('/api/threads/{thread_id}/studio-audit')
+@require_permission('threads', 'read', owner_check=True, require_existing=True)
+async def conversation_audit(thread_id: ThreadId, request: Request, response: Response,
+                             after: int | None = None, before: int | None = None, export: bool = False):
+    from .audit_log import page, export_rows
+    from starlette.responses import StreamingResponse
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        if export:
+            return StreamingResponse(export_rows(workspace), media_type='text/csv', headers={
+                'Cache-Control':'no-store', 'Content-Disposition':'attachment; filename="registro-conversazione.csv"'})
+        return await run_in_threadpool(page, workspace, after, before)
+    except (ValueError,OSError) as error:
+        raise HTTPException(409, 'Registro non disponibile') from error
+
+
 class ProjectDirection(BaseModel):
     visual_approach: str = Field(pattern='^(unspecified|generated|vector|mixed|automatic)$')
     instructions: str = Field(default='', max_length=2000)
@@ -29,7 +52,8 @@ async def project_control(thread_id: ThreadId, body: ProjectControl, request: Re
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     response.headers['Cache-Control'] = 'no-store'
     try:
-        return {'user_control': await run_in_threadpool(set_user_control, workspace, body.paused)}
+        return audited(workspace, 'Pausa richiesta' if body.paused else 'Ripresa richiesta',
+                       {'user_control': await run_in_threadpool(set_user_control, workspace, body.paused)})
     except ValueError as error:
         raise HTTPException(409, str(error)) from error
 
@@ -41,7 +65,7 @@ async def project_direction(thread_id: ThreadId, body: ProjectDirection, request
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     response.headers['Cache-Control'] = 'no-store'
     try:
-        return await run_in_threadpool(set_user_direction, workspace, body.visual_approach, body.instructions)
+        return audited(workspace, 'Indicazioni aggiornate', await run_in_threadpool(set_user_direction, workspace, body.visual_approach, body.instructions))
     except ValueError as error:
         raise HTTPException(409, str(error)) from error
 
@@ -65,7 +89,7 @@ async def accept_version(thread_id: ThreadId, body: DeliveryAcceptance, request:
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     response.headers['Cache-Control'] = 'no-store'
     try:
-        return {'project': await run_in_threadpool(accept_delivery, workspace, body.delivery_id)}
+        return audited(workspace, 'Consegna accettata', {'project': await run_in_threadpool(accept_delivery, workspace, body.delivery_id)})
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
 
@@ -125,6 +149,8 @@ async def lesson_accept(thread_id: ThreadId, body: LessonAcceptance, request: Re
     response.headers['Cache-Control'] = 'no-store'
     try:
         await run_in_threadpool(accept, experience_root(), body.id, body.accepted)
+        workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+        audited(workspace, 'Lezione accettata' if body.accepted else 'Accettazione lezione revocata', None)
         return await run_in_threadpool(summary, experience_root())
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Lezione non disponibile') from error
@@ -154,6 +180,6 @@ async def stop_job(thread_id: ThreadId, job_id: str, request: Request, response:
     import subprocess
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     try:
-        return await run_in_threadpool(request_stop, workspace, job_id)
+        return audited(workspace, 'Arresto sandbox richiesto', await run_in_threadpool(request_stop, workspace, job_id))
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         raise HTTPException(409, 'Arresto non confermato: aggiorna lo stato della fase prima di riprovare') from error

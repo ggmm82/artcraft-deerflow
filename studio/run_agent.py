@@ -238,7 +238,11 @@ def main():
                 return result.returncode
             parsed = result_envelope(result.stdout)
             if parsed.get('status') != 'SUCCESS' or parsed.get('error'):
-                raise RuntimeError('Antigravity: incarico non completato; verifica modello, login e quota')
+                try:
+                    from .antigravity_cli import result_error
+                except ImportError:
+                    from antigravity_cli import result_error
+                raise RuntimeError(result_error(parsed))
             message = parsed.get('structured_output', {}).get('summary')
             if not isinstance(message, str) or not message.strip():
                 raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
