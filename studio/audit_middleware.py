@@ -7,9 +7,24 @@ from langgraph.errors import GraphBubbleUp
 from .audit_log import append
 
 
+def runtime_config(runtime):
+    config=getattr(runtime,'config',None)
+    if not isinstance(config,dict):
+        from langgraph.config import get_config
+        config=get_config()
+    return config
+
+
+def workspace_for(runtime):
+    from deerflow.config.paths import get_paths
+    from deerflow.runtime.user_context import resolve_runtime_user_id
+    thread=runtime_config(runtime).get('configurable',{}).get('thread_id')
+    if not thread:raise ValueError('Registro senza conversazione')
+    return get_paths().sandbox_user_data_dir(thread,user_id=resolve_runtime_user_id(runtime))
+
+
 def scope(runtime):
-    from .tools import workspace_for
-    config=(getattr(runtime,'config',None) or {}).get('configurable',{})
+    config=runtime_config(runtime).get('configurable',{})
     root=workspace_for(runtime)
     turn=config.get('artcraft_user_turn')
     if turn:
@@ -32,6 +47,16 @@ def result_status(result):
 
 
 class ConversationAuditMiddleware(AgentMiddleware):
+    def before_agent(self,state,runtime):
+        try:
+            root,actor=scope(runtime)
+            turn=runtime_config(runtime).get('configurable',{}).get('artcraft_user_turn')
+            append(root,actor,'Preparazione del turno','started',identifier='begin:'+str(turn)+':'+actor if turn else None)
+        except (AttributeError,ValueError,OSError):pass
+
+    async def abefore_agent(self,state,runtime):
+        return self.before_agent(state,runtime)
+
     def begin(self,request,kind):
         try:
             root,actor=scope(request.runtime)
@@ -52,7 +77,7 @@ class ConversationAuditMiddleware(AgentMiddleware):
     def after_agent(self,state,runtime):
         try:
             root,actor=scope(runtime)
-            turn=(runtime.config.get('configurable') or {}).get('artcraft_user_turn')
+            turn=runtime_config(runtime).get('configurable',{}).get('artcraft_user_turn')
             append(root,actor,'Turno concluso','completed',identifier='end:'+str(turn)+':'+actor if turn else None)
         except (AttributeError,ValueError,OSError):pass
 

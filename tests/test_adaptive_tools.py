@@ -20,15 +20,18 @@ class AdaptiveToolTests(unittest.TestCase):
     def test_native_middleware_records_model_and_tool_failures_without_prompts(self):
         import asyncio
         from studio.audit_log import page
+        from langgraph.runtime import Runtime as GraphRuntime
         from deerflow.agents.middlewares.configured_extensions import load_configured_extension_middlewares
         config=SimpleNamespace(extensions=SimpleNamespace(middlewares=['studio.audit_middleware:ConversationAuditMiddleware']))
         middleware,=load_configured_extension_middlewares(config)
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
-            runtime=SimpleNamespace(config={'configurable':{'artcraft_user_turn':'turn-fixture',
-                'artcraft_user_messages':['PRIVATE BRIEF must not be stored']}})
+            runtime=GraphRuntime(context={'user_id':'owner'})
+            config={'configurable':{'thread_id':'thread','artcraft_user_turn':'turn-fixture',
+                'artcraft_user_messages':['PRIVATE BRIEF must not be stored']}}
             request=SimpleNamespace(runtime=runtime,tool_call={'name':'read_file','id':'call-fixture'})
-            with patch('studio.tools.workspace_for',return_value=root):
+            with patch('studio.audit_middleware.workspace_for',return_value=root), patch('langgraph.config.get_config',return_value=config):
+                middleware.before_agent({},runtime)
                 middleware.wrap_tool_call(request,lambda _:SimpleNamespace(content='Error: access denied'))
                 middleware.wrap_model_call(request,lambda _:SimpleNamespace(content='PRIVATE RESPONSE'))
                 async def cancelled(_):raise asyncio.CancelledError()
