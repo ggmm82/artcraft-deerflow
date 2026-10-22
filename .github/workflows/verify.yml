@@ -109,7 +109,7 @@ jobs:
       - name: Verify CLI registries and all native MCP servers
         if: matrix.component == 'sandbox'
         run: |
-          docker run --rm --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --render --output /tmp/checks.json
+          docker run --rm --init --memory=2g artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/smoke.py --mcp --render --output /tmp/checks.json
       - name: Check Codex credentials rotation with the pinned DeerFlow provider
         if: matrix.component == 'gateway'
         run: docker run --rm --entrypoint python --mount "type=bind,src=$PWD/tests,dst=/review,readonly" artcraft-deerflow-gateway:0.1.0 -m unittest discover -s /review -p test_codex_provider.py -v
@@ -149,7 +149,7 @@ jobs:
           exit "$result"
       - name: Check memory exhaustion using genuine cgroup counters
         if: matrix.component == 'sandbox'
-        run: docker run --rm --network=none --memory=256m --memory-swap=256m --pids-limit=64 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_resource_supervision.py
+        run: docker run --rm --init --network=none --memory=256m --memory-swap=256m --pids-limit=64 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_resource_supervision.py
       - name: Check official Antigravity CLI without account credentials
         if: matrix.component == 'sandbox'
         run: docker run --rm --network=none --entrypoint python3 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 /review/scripts/check_antigravity_native.py
@@ -161,19 +161,19 @@ jobs:
         run: docker run --rm --network=none -e STUDIO_REQUIRE_CODEX_NATIVE_TESTS=1 --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 -m unittest discover -s /review/tests -p test_codex_native.py -v
       - name: Run representative native file workflows for all specialists
         if: matrix.component == 'sandbox'
-        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
+        run: docker run --rm --init --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --output /mnt/user-data/outputs/acceptance/report.json
       - name: Verify pinned capability registries and native MIDI synthesis with source reopening
         if: matrix.component == 'sandbox'
-        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/check_tool_capabilities.py --native --soundcraft-authoring --output /mnt/user-data/outputs/capability-audit/report.json
+        run: docker run --rm --init --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/check_tool_capabilities.py --native --soundcraft-authoring --output /mnt/user-data/outputs/capability-audit/report.json
       - name: Repeat native Calibre conversion and reopening without a GPU
         if: matrix.component == 'sandbox'
         run: |
           for probe in 1 2 3; do
-            docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --agents calibre --output /mnt/user-data/outputs/calibre-repeat/report.json
+            docker run --rm --init --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges artcraft-deerflow-sandbox:0.1.0 python3 /opt/artcraft/acceptance.py --agents calibre --output /mnt/user-data/outputs/calibre-repeat/report.json
           done
       - name: Check real multidisciplinary asset, animation, audio and editing handoffs
         if: matrix.component == 'sandbox'
-        run: docker run --rm --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance --simulate-audio-interruption
+        run: docker run --rm --init --network=none --memory=1536m --memory-swap=1536m --cpus=1.5 --pids-limit=256 --cap-drop=ALL --security-opt=no-new-privileges --mount "type=bind,src=$PWD,dst=/review,readonly" artcraft-deerflow-sandbox:0.1.0 python3 /review/scripts/check_team_pipeline.py --output /mnt/user-data/outputs/team-acceptance --simulate-audio-interruption
       - name: Validate proxy configuration
         if: matrix.component == 'proxy'
         run: |
