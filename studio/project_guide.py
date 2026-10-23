@@ -128,6 +128,7 @@ def build(workspace, delivery_id=None):
         history.append({'id': identifier((activity, run)), 'title': text(activity['goal']), 'actor': role,
             'kind': PURPOSES.get(purpose, 'Lavorazione'), 'status': text(run.get('status')),
             'started_at': run.get('started_at', ''), 'finished_at': run.get('finished_at', ''),
+            'runtime_image': text(run.get('runtime_image')),
             'change': change, 'review_status': text(report.get('status')),
             'detail': text(run.get('error') or '; '.join(strings(run.get('failed_checks'))), 700)})
     coverage = record.get('source_coverage') or {}
@@ -153,15 +154,16 @@ def build(workspace, delivery_id=None):
                 'matches_sources': not source_hashes or bool(review.get('input_hashes'))
                     and source_hashes <= set(review['input_hashes'].values()),
                 'criteria': [{'criterion': text(c.get('criterion')), 'status': text(c.get('status')),
-                    'method': text(c.get('method')), 'evidence': text(c.get('evidence'))}
+                    'method': text(c.get('method')), 'evidence': text(c.get('evidence')), 'scope': c.get('scope','requirement')}
                     for c in review.get('criteria', [])[:24]],
                 'path': public_artifact(workspace, review.get('report_path', ''))})
     omitted = max(0, len(history) - 60)
     if omitted:
         history = history[:5] + history[-55:]
     return {'schema_version': 1, 'project_id': project['id'], 'delivery_id': selected_id,
-        'title': text((project.get('outcome') or {}).get('title') or project.get('brief'), 400),
-        'result': text(record.get('title') or step['goal']), 'brief': text(project.get('brief'), 4000),
+        'title': text(attempt.get('project_title') or record.get('title') or step['goal'], 400),
+        'result': text(record.get('title') or step['goal']),
+        'brief': text(attempt.get('project_brief') or attempt.get('task') or record.get('title') or step['goal'], 4000),
         'is_current': project.get('product_path') in attempt.get('output_files', []),
         'technical_status': text(record.get('technical_status', 'not_verified')),
         'snapshot_at': project.get('updated_at', ''), 'files': files, 'documents': documents, 'team': team[:64],
@@ -220,12 +222,14 @@ def markdown(guide, *, bundled=False):
         label = '[' + name + '](' + quote(f['bundle_path'], safe='/') + ')' if bundled else name
         lines += ['- **' + label + '** · ' + prose(f['role']), '  - Apertura: ' + (prose(f['open_with']) or 'Non registrata'),
                   '  - Modifiche: ' + (prose(f['editability']) or 'Non registrate')]
-    lines += ['', '## Storia delle lavorazioni', '', 'Orari ISO in UTC. Byte diversi non dimostrano un miglioramento creativo.', '']
+    lines += ['', '## Storia delle lavorazioni', '', 'Orari ISO in UTC. La storia comprende altre consegne e possibili release della conversazione: non tutti i passaggi hanno contribuito a questa versione. Byte diversi non dimostrano un miglioramento creativo.', '']
     for entry in guide['history']:
         change = {'identical_export': ' · export identico al precedente', 'different_export': ' · export con byte diversi',
                   'first_export': ' · primo export registrato'}.get(entry['change'], '')
         lines += ['- ' + entry['started_at'] + ' — ' + prose(entry['kind'] + ': ' + entry['title']) +
                   ' · ' + prose(entry['actor']) + ' · ' + entry['status'] + change]
+        if entry.get('runtime_image'):
+            lines += ['  - Immagine sandbox configurata: ' + prose(entry['runtime_image'])]
         if entry['detail']:
             lines += ['  - ' + prose(entry['detail'])]
     if guide['history_omitted']:
@@ -236,7 +240,7 @@ def markdown(guide, *, bundled=False):
         lines += ['Revisione registrata sugli hash dell’export: ' + review['status'] +
                   (' · contratto corrente' if review['matches_current_brief'] else ' · contratto precedente') +
                   (' · sorgenti associati agli input della revisione' if review['matches_sources'] else ' · associazione ai sorgenti non confermata')]
-        lines += ['- ' + c['status'] + ' · ' + prose(c['criterion']) + ': ' + prose(c['evidence']) for c in review['criteria']]
+        lines += ['- ' + c['status'] + (' · controllo aggiuntivo' if c.get('scope') == 'supplementary' else '') + ' · ' + prose(c['criterion']) + ': ' + prose(c['evidence']) for c in review['criteria']]
     if not guide['reviews']:
         lines.append('Nessuna revisione associata agli hash registrati di questa consegna.')
     limits = guide['limitations'] + guide['method']['limits'] + guide['instructions']['limits']

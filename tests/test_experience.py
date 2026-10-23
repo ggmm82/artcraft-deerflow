@@ -257,6 +257,20 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(experience.select(self.library, [self.spec], projects.applications()), [])
         self.assertNotIn(proposal, lessons.automatic(self.library))
 
+    def test_compiled_role_receives_verified_note_but_not_a_different_tool_version(self):
+        self.verified_note()
+        experience.collect(self.workspace,self.library,'thread-a')
+        identifier,=lessons.propose_findings(self.library,'thread-a')
+        projects.sync_project_context(self.workspace,experience_root=self.library)
+        compiled=projects.read_project(self.workspace)['roles'][0]
+        self.assertEqual(compiled['experience']['ids'],[identifier])
+        self.assertIn('Riaprire le dipendenze',load_compiled(self.workspace,compiled))
+        apps=[{**a,'version':a['version']+'-changed'} if a['id']=='vectorcraft' else a for a in projects.applications()]
+        with patch('studio.projects.applications',return_value=apps):
+            projects.sync_project_context(self.workspace,experience_root=self.library)
+        self.assertEqual(projects.read_project(self.workspace)['roles'][0]['experience']['count'],0)
+        self.assertIn(identifier,lessons.automatic(self.library))
+
     def test_verified_operational_knowledge_is_retained_without_inventing_impact(self):
         self.verified_note()
         path=self.product.parent/'work/tool-lessons.json'

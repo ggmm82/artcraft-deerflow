@@ -58,6 +58,12 @@ def evaluate(criteria, acceptance, engine):
     """Check coverage and observability; do not pretend to judge taste in Python."""
     result = [dict(c) for c in criteria]
     for c in result:
+        if c.get('scope', 'requirement') not in ('requirement', 'supplementary'):
+            raise ValueError('Revisione: scope del criterio requirement o supplementary')
+        if c.get('scope') == 'supplementary':
+            if c.get('requirement_id') or not acceptance:
+                raise ValueError('Revisione: un controllo supplementary non può sostituire un requirement_id; indica separatamente la verifica del requisito concordato')
+            c['critical'] = False
         # No supported audio observation path is wired into these transports.
         # Shell measurements and generating a waveform are structural evidence.
         if not capabilities(engine).get(c.get('method'), False):

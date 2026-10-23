@@ -8,6 +8,7 @@ import json
 from .acceptance import fingerprint, requirement_verdicts
 from .project_skills import redact_memory, scoped_file
 from .progress import clean_summary
+from .handoff import blocking_checks
 
 LIMIT = 8000  # Below pinned DeerFlow's 12,000-character synopsis threshold.
 
@@ -16,14 +17,23 @@ def counts(items):
     return {status: sum(x.get('status') == status for x in items) for status in ('passed', 'failed', 'not_run')}
 
 
+def has_blocking_checks(result):
+    # studio_delegate computes this on the full validated handoff before the
+    # display truncates it. A successor may be outside the short excerpt.
+    total = result.get('blocking_failed_checks')
+    if type(total) is int and total >= 0:
+        return total > 0
+    checks = result.get('checks', [])
+    return bool(list(blocking_checks(checks))) or result.get('check_counts', {}).get('failed', 0) > sum(c.get('status') == 'failed' for c in checks)
+
+
 def decision(result):
     review = result.get('quality_review') or {}
     delivery = result.get('delivery') or {}
-    checks = result.get('checks', [])
     if not result.get('ok'):
         return 'execution_failed'
     if (delivery.get('technical_status') == 'needs_revision' or delivery.get('issues')
-            or review.get('status') in ('failed', 'needs_revision') or result.get('check_counts', {}).get('failed', 0) or any(c.get('status') == 'failed' for c in checks)):
+            or review.get('status') in ('failed', 'needs_revision') or has_blocking_checks(result)):
         return 'needs_revision'
     if review.get('status') == 'passed':
         return 'review_passed'
@@ -100,7 +110,8 @@ def project_view(project):
     value['strategy']['alternatives'] = [fit(a, 160) for a in strategy.get('alternatives', [])]
     value['method_recovery'] = project.get('method_recovery')
     product = next((r for r in project.get('results', []) if r.get('path') == project.get('product_path')), None)
-    if product and project.get('status') in ('review', 'blocked', 'ready'):
+    show_sample = sample and (not product or sample.get('at','') > product.get('at',''))
+    if product and not show_sample and project.get('status') in ('review', 'blocked', 'ready'):
         sources = [r for r in project.get('results', []) if product.get('delivery_id')
                    and r.get('delivery_id') == product['delivery_id'] and r.get('role') in ('source_archive', 'editable_source')]
         sources.sort(key=lambda r: r.get('role') != 'source_archive')
@@ -123,10 +134,12 @@ def delegate_view(result):
     value['decision'] = decision(result)
     review = result.get('quality_review') or {}
     value['check_counts'] = result.get('check_counts', counts(result.get('checks', [])))
+    value['blocking_failed_checks'] = result.get('blocking_failed_checks', len(list(blocking_checks(result.get('checks', [])))))
     value['review_counts'] = counts(review.get('criteria', []))
+    value['required_review_counts'] = counts([c for c in review.get('criteria', []) if c.get('critical',True)])
     value['quality_review'] = {**review, 'requirement_verdicts': requirement_verdicts(review.get('criteria', []))}
     value['continuation'] = continuation(review)
-    if not review and any(c.get('status') == 'failed' for c in result.get('checks', [])):
+    if not review and has_blocking_checks(result):
         value['continuation'] = {'action': 'repair_known_defects',
             'instruction': 'Il produttore ha già dichiarato difetti concreti: correggi prima quelli sui sorgenti esistenti, senza una revisione completa equivalente. Isola la causa più importante con una prova economica prima di riesportare tutto. Se non migliora, rivaluta competenza o metodo, senza ripetere lo stesso incarico.',
             'final_status': 'needs_revision'}
@@ -182,7 +195,7 @@ def reply(workspace, payload, kind):
         value['quality_review']['revision_actions'] = [fit(a, 160) for a in review.get('revision_actions', [])[:3]]
         value['quality_review']['revision_action_count'] = len(review.get('revision_actions', []))
         value['quality_review']['comparison'] = fit(review.get('comparison'), 120)
-        value['quality_review']['criteria'] = [{k: c.get(k) for k in ('requirement_id', 'status', 'method')} |
+        value['quality_review']['criteria'] = [{k: c.get(k) for k in ('requirement_id', 'status', 'method', 'critical', 'scope')} |
             {'evidence': clean_summary(c.get('evidence'), 120)} for c in review.get('criteria', [])]
         value['outputs'] = [{k: f.get(k) for k in ('path', 'role', 'format')} for f in full.get('outputs', [])[:4]]
         value['output_count'] = full.get('output_count', len(full.get('outputs', [])))
@@ -200,7 +213,7 @@ def reply(workspace, payload, kind):
     if len(json.dumps(value, ensure_ascii=False)) > LIMIT:
         # All exceptions survive in the addressed full result; counters signal
         # that an omitted list is not evidence of success.
-        keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'review_counts',
+        keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'blocking_failed_checks', 'review_counts', 'required_review_counts',
                 'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction', 'continuation', 'presentation')
         if kind == 'plan':
             p = value.get('project') or {}

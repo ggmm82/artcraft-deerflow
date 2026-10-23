@@ -7,13 +7,34 @@ from pathlib import Path, PurePosixPath
 from contextlib import ExitStack
 import hashlib
 import zipfile
+import stat
 
 FLAT = {'.wav','.mp3','.m4a','.ogg','.flac','.aac','.mp4','.mov','.webm','.mkv','.png','.jpg','.jpeg','.webp'}
 ASSETS = FLAT | {'.svg','.obj','.glb','.gltf'}
 NATIVE_TOOL = {'.scraft':'soundcraft','.ecproj':'effectcraft','.fcproj':'filmcraft','.blend':'blender','.fcstd':'freecad'}
 
 
-def inspect_components(handoff, files, *, required=False, workspace=None):
+def component_metadata(component, index):
+    """Same field limits in provider schema, local preflight and runtime."""
+    prefix = f'delivery.components[{index}]'
+    if not isinstance(component, dict):
+        raise ValueError(prefix + ': oggetto obbligatorio')
+    for field, maximum in (('name', 140), ('tool', 48)):
+        value = component.get(field)
+        if not isinstance(value, str) or not value.strip() or len(value) > maximum:
+            raise ValueError(f'{prefix}.{field}: da 1 a {maximum} caratteri; usa un ID breve per tool, descrivi il metodo in name o nella guida')
+    for field, maximum in (('artifacts', 64), ('sources', 24)):
+        values = component.get(field)
+        if not isinstance(values, list) or not 1 <= len(values) <= maximum:
+            raise ValueError(f'{prefix}.{field}: da 1 a {maximum} riferimenti effettivi')
+        for i, ref in enumerate(values):
+            if (not isinstance(ref, dict) or set(ref) - {'path', 'member'}
+                    or not isinstance(ref.get('path'), str) or not ref['path'].strip()
+                    or 'member' in ref and (not isinstance(ref['member'], str) or not ref['member'].strip())):
+                raise ValueError(f'{prefix}.{field}[{i}]: path e member opzionale, stringhe non vuote')
+
+
+def inspect_components(handoff, files, *, required=False, workspace=None, inventory_only=False):
     declared = (handoff.get('delivery') or {}).get('components')
     if declared is None:
         return {'status':'not_recorded','components':[], 'issues':
@@ -23,11 +44,14 @@ def inspect_components(handoff, files, *, required=False, workspace=None):
     downloaded={f['path']:f for f in files}
     indexes={}
     for path,item in downloaded.items():
-        if item.get('role')=='source_archive' and item.get('verification',{}).get('status')=='passed':
+        if item.get('role')=='source_archive' and (inventory_only or item.get('verification',{}).get('status')=='passed'):
             indexes[path]={}
             budget={'files':0,'bytes':0}
             def collect(archive,prefix='',parents=(),depth=0):
                 for item in archive.infolist():
+                    name = PurePosixPath(item.filename)
+                    if name.is_absolute() or '..' in name.parts or '\\' in item.filename or stat.S_ISLNK(item.external_attr >> 16):
+                        raise ValueError('Inventario: membro ZIP non sicuro')
                     if item.is_dir():continue
                     budget['files']+=1;budget['bytes']+=item.file_size
                     if budget['files']>12000 or budget['bytes']>512*1024*1024:
@@ -52,12 +76,10 @@ def inspect_components(handoff, files, *, required=False, workspace=None):
             raise ValueError('indicare il file interno allo ZIP, non soltanto l’archivio')
         return (path,''),path
     covered=set();result=[];issues=[]
-    for component in declared:
+    for index, component in enumerate(declared):
         try:
-            if not isinstance(component,dict):raise ValueError('componente non valida')
+            component_metadata(component, index)
             name,tool=component.get('name'),component.get('tool')
-            if not isinstance(name,str) or not 1<=len(name)<=140 or not isinstance(tool,str) or not 1<=len(tool)<=48:
-                raise ValueError('nome e strumento effettivo obbligatori')
             tool=tool.lower()
             artifacts,sources=component.get('artifacts'),component.get('sources')
             if not isinstance(artifacts,list) or not 1<=len(artifacts)<=64 or not isinstance(sources,list) or not 1<=len(sources)<=24:

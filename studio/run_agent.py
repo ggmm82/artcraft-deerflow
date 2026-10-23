@@ -9,14 +9,14 @@ import sys
 from pathlib import Path
 
 try:
-    from .handoff import validate_handoff
+    from .handoff import validate_handoff, blocking_checks
     from .progress import Reporter
     from .cli_runner import run_cli
     from .work_results import validate_media
     from .deliveries import build_delivery, read_review, prepare_review_handoff
     from .acceptance import capabilities
 except ImportError:  # Direct invocation inside the worker image.
-    from handoff import validate_handoff
+    from handoff import validate_handoff, blocking_checks
     from progress import Reporter
     from cli_runner import run_cli
     from work_results import validate_media
@@ -27,6 +27,22 @@ ALLOWED_AUTH = {
     'codex': ('auth.json',),
     'deepseek': ('api.json',),
 }
+
+
+def learning_status(output_dir):
+    path = output_dir / 'work/tool-lessons.json'
+    if not path.is_file() or path.is_symlink():
+        return 'not_recorded'
+    if not path.resolve().is_relative_to(output_dir.resolve()) or path.stat().st_size > 24000:
+        return 'invalid'
+    try:
+        value = json.loads(path.read_text())
+        candidates = value if isinstance(value,list) else value['lessons']
+        if not isinstance(candidates,list) or len(candidates)>3:
+            return 'invalid'
+        return 'recorded' if candidates else 'no_findings'
+    except (OSError,ValueError,KeyError,TypeError):
+        return 'invalid'
 
 
 def copy_credentials(source, destination, engine):
@@ -89,7 +105,7 @@ def handoff_error(output_dir, error):
         if not path.resolve().is_relative_to(output_dir.resolve()):
             return str(error)[:1800]
         manifest = json.loads(path.read_text())
-        for check in manifest.get('checks', []):
+        for check in blocking_checks([c for c in manifest.get('checks', []) if isinstance(c,dict)]):
             if isinstance(check, dict) and check.get('status') == 'failed':
                 evidence = check.get('evidence')
                 if isinstance(evidence, str):
@@ -221,7 +237,11 @@ def main():
             except ImportError:
                 from codex_native import run
             reporter.model_wait_seconds = (job.get('resources') or {}).get('model_wait_seconds', 0)
-            message = run(job['model'], prompt, output_dir, job['timeout'], reporter, image_generation=native_images)
+            def preflight():
+                if job.get('purpose') == 'review':
+                    prepare_review_handoff(output_dir, Path('/mnt/user-data'), engine, job.get('acceptance'))
+                validate_handoff(output_dir, Path('/mnt/user-data'), require_delivery=True)
+            message = run(job['model'], prompt, output_dir, job['timeout'], reporter, image_generation=native_images, preflight=preflight)
         else:
             reporter.emit('waiting_model')
             result = run_cli(command(engine, job['model'], prompt, final), cwd=output_dir,
@@ -247,8 +267,7 @@ def main():
             if not isinstance(message, str) or not message.strip():
                 raise RuntimeError('Antigravity: manca la chiusura strutturata dello specialista')
         reporter.emit('checking')
-        learning_path = output_dir / 'work/tool-lessons.json'
-        learning_review = 'recorded' if learning_path.is_file() and not learning_path.is_symlink() else 'not_recorded'
+        learning_review = learning_status(output_dir)
         try:
             if job.get('purpose') == 'review':
                 prepare_review_handoff(output_dir, Path('/mnt/user-data'), engine, job.get('acceptance'))
@@ -259,7 +278,7 @@ def main():
                               'output_dir': str(output_dir),
                               'error': handoff_error(output_dir, exc)}, ensure_ascii=False))
             return 1
-        if learning_review == 'not_recorded':
+        if learning_review in ('not_recorded','invalid'):
             handoff['warnings'].append('Valutazione delle lezioni non registrata: le prove restano disponibili, nessun apprendimento automatico dichiarato.')
         verified_products = []
         if job.get('requirements') and job.get('purpose') != 'review':

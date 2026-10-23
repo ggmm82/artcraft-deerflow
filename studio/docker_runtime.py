@@ -237,6 +237,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         resources = effective()
         update(progress, limits=resources, can_stop=True)
         payload = {'resources': resources, 'agent': agent_id, 'engine': engine, 'model': settings['model'],
+                   'runtime_image': IMAGE,
                    'instructions': settings['instructions'], 'skills': settings['skills'], 'task': task,
                    'run_id': name, 'timeout': 1500, 'requirements': requirements or {}, 'purpose': purpose,
                    'acceptance': acceptance, 'role': role, 'compiled_skill': role_text}
@@ -308,6 +309,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             update(progress, 'failed', attention['message'], error_code=attention['code'],
                    action=attention['action'])
             return json.dumps({'ok': False, 'agent': agent_id, 'engine': engine, 'output_dir': output_dir,
+                               'runtime_image': IMAGE,
                                'error': clean_summary(error), 'attention': attention, 'available_files': available,
                                'partial': True, 'resume': 'Ispeziona i file salvati e work/checkpoint.json, '
                                'poi assegna una continuazione mirata. I file non sono ancora una consegna verificata.'}, ensure_ascii=False)
@@ -317,6 +319,7 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             raise RuntimeError('Risposta JSON dello specialista non valida') from None
         if not isinstance(result, dict) or result.get('ok') is not True:
             raise RuntimeError('Lo specialista non ha confermato il completamento')
+        result['runtime_image'] = IMAGE
         from .verification_cache import save as save_verifications
         try:
             save_verifications(STATE, workspace, IMAGE, result)

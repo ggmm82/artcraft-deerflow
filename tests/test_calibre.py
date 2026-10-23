@@ -16,6 +16,19 @@ from studio.source_packages import inspect_ebook, verify_archive
 
 
 class CalibreTests(unittest.TestCase):
+    def test_structural_checks_use_offscreen_and_retain_real_failures(self):
+        import os
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{}), patch.object(cli.shutil,'which',return_value=None):
+            with patch.object(cli,'supervise',return_value=(subprocess.CompletedProcess([],0,'verified',''),{})) as supervised:
+                argv=['calibre-debug','--exec-file','calibre_job.py','--','check','book.epub','result.json']
+                self.assertEqual(cli.run(argv,Path(temp),'Structural',structural=True),'verified')
+                self.assertEqual(supervised.call_args.args[0],argv)
+                self.assertEqual(os.environ['QT_QPA_PLATFORM'],'offscreen')
+                self.assertEqual(os.environ['CALIBRE_HEADLESS_PLATFORM'],'offscreen')
+            with patch.object(cli,'supervise',return_value=(subprocess.CompletedProcess([],139,'crashed',''),{})):
+                with self.assertRaisesRegex(RuntimeError,'139'):
+                    cli.run(argv,Path(temp),'Structural',structural=True)
+
     def test_official_multi_binary_distribution_uses_declared_root_launchers(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp); destination = root / 'app'; links = root / 'links'; links.mkdir()
