@@ -13,6 +13,38 @@ from .projects import read_project, accept_delivery
 router = APIRouter()
 
 
+@router.get('/api/threads/{thread_id}/studio-guide')
+@require_permission('threads', 'read', owner_check=True, require_existing=True)
+async def project_guide(thread_id: ThreadId, request: Request, response: Response,
+                        delivery_id: str | None = None, format: str = 'json'):
+    from .project_guide import build, markdown, bundle
+    from starlette.responses import StreamingResponse
+    from starlette.background import BackgroundTask
+    workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
+    response.headers['Cache-Control'] = 'no-store'
+    if format not in ('json', 'markdown', 'zip') or delivery_id is not None and len(delivery_id) > 100:
+        raise HTTPException(422, 'Formato o consegna non validi')
+    try:
+        guide = await run_in_threadpool(build, workspace, delivery_id)
+        if format == 'json':
+            return guide
+        if format == 'markdown':
+            return Response(markdown(guide), media_type='text/markdown', headers={
+                'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="GUIDA-PROGETTO.md"'})
+        stream = await run_in_threadpool(bundle, workspace, guide)
+        def chunks():
+            try:
+                while data := stream.read(1024 * 1024):
+                    yield data
+            finally:
+                stream.close()
+        return StreamingResponse(chunks(), media_type='application/zip', background=BackgroundTask(stream.close), headers={
+            'Cache-Control': 'no-store', 'Content-Disposition': 'attachment; filename="Consegna-con-guida.zip"'})
+    except (ValueError, OSError) as error:
+        detail = str(error)[:200] if isinstance(error, ValueError) else 'File non disponibili: aggiorna il progetto'
+        raise HTTPException(409, 'Guida o pacchetto non disponibili: ' + detail) from error
+
+
 def audited(workspace, operation, value):
     from .audit_log import append
     append(workspace, 'Utente', operation, 'completed')

@@ -112,6 +112,22 @@ class CompletionRoutingTests(unittest.TestCase):
             with self.subTest(ids=ids), self.assertRaises(ValueError):
                 self.review(ids)
 
+    def test_explicit_final_scope_accepts_the_report_without_narrowing_acceptance(self):
+        value = {'product_path': str(self.product), 'criteria': self.criteria,
+                 'scope': {'kind': 'final', 'requirement_ids': ['risk']}}
+        self.report.write_text(json.dumps(value))
+        review = read_review({'source_files': [str(self.product)], 'output_files': [str(self.report)]},
+                             self.out, self.root, 'codex', self.acceptance)
+        self.assertIsNone(review['checkpoint'])
+        self.assertEqual(review['status'], 'needs_revision')
+        self.assertTrue(any(c['requirement_id'] == 'extent' and c['status'] == 'failed' for c in review['criteria']))
+        self.criteria = [self.criterion('request_fidelity', 'content', 'passed')]
+        value.update(criteria=self.criteria, scope={'kind':'final'})
+        self.report.write_text(json.dumps(value))
+        review = read_review({'source_files': [str(self.product)], 'output_files': [str(self.report)]},
+                             self.out, self.root, 'codex', self.acceptance)
+        self.assertEqual(review['status'], 'needs_review')
+
     def test_full_verdict_and_routing_survive_large_control_reply(self):
         review = self.review(['risk'])
         value = json.loads(reply(self.root, {'ok': True, 'quality_review': review,

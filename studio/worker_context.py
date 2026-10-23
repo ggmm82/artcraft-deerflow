@@ -54,6 +54,7 @@ def build_prompt(job, selected, output_dir):
         'L’attivazione automatica delle sole conoscenze tecniche richiede invece il test documentato.',
         'Il budget vale per questa fase, non per tutto il progetto. Salva work/checkpoint.json con completed, files, '
         'remaining, next_action. Registra work/method.json con approach, steps, scripts, limits. '
+        'Per la consegna salva work/guide.json: uso, file da modificare, passi provati e limiti; schema in GUIDE.md. '
         'Registra solo scoperte utili in work/tool-lessons.json; lo schema è nel riferimento LEARNING.md. '
         'Un errore riprodotto del verificatore o una correzione di uso della CLI può insegnare una regola tecnica: '
         'non scartarla come fatto specifico soltanto perché il prodotto non è ancora approvato. '

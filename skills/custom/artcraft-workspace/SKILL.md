@@ -25,6 +25,7 @@ Riusa i sorgenti validi. Se il risultato è insufficiente distingui errore di co
 
 - **Produzione/export/consegna:** [DELIVERY.md](references/DELIVERY.md), prima di scrivere `handoff.json`. File reali, sorgenti modificabili e dipendenze; riapertura in sessione nuova, limiti dichiarati. Sorgenti scaricabili anche in `output_files`, fuori da `work/`. Un export non dimostra modificabilità.
 - **Revisione:** [REVIEW.md](references/REVIEW.md). Ispeziona il prodotto esatto; collega osservazioni ai requisiti. Distingui controllo tecnico, osservazione visiva/ascolto e confronto col riferimento. Un requisito della fase non ancora assegnata non invalida una componente già valida. Il revisore deve ricevere le CLI necessarie.
+- **Guida per l’utente:** [GUIDE.md](references/GUIDE.md). Registra costruzione, uso e modifiche nei file `work/method.json` e `work/guide.json`; collega istruzioni e sorgenti reali della versione consegnata.
 - **Operazioni lunghe:** [OPERATIONS.md](references/OPERATIONS.md). Supervisione, timeout, checkpoint, risorse e ripresa senza duplicare i processi.
 - **Scoperta utile:** [LEARNING.md](references/LEARNING.md). Registra una lezione appena hai evidenze, anche da una correzione o un fallimento. Un metodo generale richiede accettazione dell’utente; soltanto l’attivazione automatica di conoscenza tecnica richiede test operativo. L’assenza di un test automatico non cancella un’osservazione negativa. Nessuna lezione inventata per riempire il registro.
 

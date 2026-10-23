@@ -92,10 +92,21 @@ def checkpoint_assessment(scope, criteria, acceptance, engine):
     """
     if scope is None:
         return None
+    if isinstance(scope, dict) and scope.get('kind') == 'final':
+        identifiers = scope.get('requirement_ids')
+        known = {r['id'] for r in (acceptance or {}).get('criteria', [])}
+        if identifiers is not None and (not isinstance(identifiers, list)
+                or not identifiers or len(identifiers) > 20
+                or any(not isinstance(i, str) or i not in known for i in identifiers)
+                or len(set(identifiers)) != len(identifiers)):
+            raise ValueError('Scope finale: requirement_ids deve contenere ID unici del contratto')
+        # A final scope never filters acceptance, even if the worker lists
+        # only some IDs. evaluate() below still covers the full contract.
+        return None
     if (not isinstance(scope, dict) or scope.get('kind') != 'checkpoint'
             or not isinstance(scope.get('question'), str) or not scope['question'].strip()
             or len(scope['question']) > 600):
-        raise ValueError('Scope: checkpoint richiede una domanda concreta entro 600 caratteri')
+        raise ValueError('Scope: usa kind=final oppure kind=checkpoint con question entro 600 caratteri')
     identifiers = scope.get('requirement_ids')
     rules = (acceptance or {}).get('criteria', [])
     known = {r['id'] for r in rules}
