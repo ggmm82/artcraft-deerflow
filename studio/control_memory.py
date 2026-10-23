@@ -30,6 +30,42 @@ def decision(result):
     return 'review_required' if result.get('outputs') else 'work_complete'
 
 
+def continuation(review):
+    """Route follow-up by observed defects, scope and available observation.
+
+    This is guidance, never a replacement for the full acceptance verdict.
+    In particular, an unsupported sensory check cannot be fixed by re-rendering.
+    """
+    if not review or not review.get('criteria'):
+        return None
+    checkpoint = review.get('checkpoint')
+    criteria = [c for c in review['criteria'] if c.get('critical', True)]
+    if checkpoint:
+        criteria = [c for c in criteria if c.get('requirement_id') in checkpoint['requirement_ids']]
+    failed = [c for c in criteria if c['status'] == 'failed']
+    pending = [c for c in criteria if c['status'] == 'not_run']
+    unavailable = set(review.get('unavailable_methods', []))
+    waiting = [c for c in pending if c.get('method') in unavailable]
+    if failed:
+        action = 'revise_checkpoint' if checkpoint else 'revise_product'
+        instruction = 'Correggi solo i difetti osservati pertinenti a questa verifica, riusando i sorgenti. Non ripetere controlli che il collegamento non può eseguire.'
+    elif pending and len(waiting) == len(pending):
+        action = 'request_user_verification'
+        instruction = 'Presenta il file esatto e indica i controlli da verificare con l’utente. Mantieni status=review; non rigenerare il prodotto né ripetere la stessa verifica con un collegamento privo della capacità necessaria.'
+    elif pending or (not checkpoint and review.get('status') != 'passed'):
+        action = 'verify_checkpoint' if checkpoint else 'verify_product'
+        instruction = 'Completa le verifiche effettivamente disponibili sul file esistente; una verifica mancante non dimostra un difetto da correggere.'
+    elif checkpoint:
+        action = 'continue_production'
+        instruction = 'La prova selezionata è superata: riusa il metodo e completa il prodotto richiesto, evitando un altro campione equivalente. Il contratto finale resta da soddisfare e verificare.'
+    else:
+        action = 'present_result'
+        instruction = 'Presenta il prodotto e i suoi sorgenti; prima di dichiararlo pronto verifica anche i controlli tecnici della consegna.'
+    return {'action': action, 'instruction': instruction, 'final_status': review.get('status'),
+            'failed_requirement_ids': list(dict.fromkeys(c.get('requirement_id') for c in failed if c.get('requirement_id'))),
+            'unavailable_methods': sorted({c['method'] for c in waiting})}
+
+
 def project_view(project):
     if not project or project.get('archived'):
         return project
@@ -49,11 +85,16 @@ def project_view(project):
     value['roles'] = [{k: r.get(k) for k in ('id', 'title', 'tools', 'skill', 'experience')} |
             {'mission': clean_summary(r.get('mission'), 160)} for r in project.get('roles', [])][:12]
     value['results'] = [{k: r.get(k) for k in ('path', 'role', 'delivery_id')} for r in project.get('results', [])[:4]]
+    sample = project.get('latest_sample')
+    value['latest_sample'] = {k: sample.get(k) for k in ('path', 'delivery_id', 'at', 'validated')} if sample else None
     value['deliveries'] = [{k: d.get(k) for k in ('id', 'title', 'technical_status', 'current')} for d in project.get('deliveries', [])[:3]]
     value['requirement_verdicts'] = requirement_verdicts(project.get('review_criteria', []))
     value['revision_actions'] = [fit(a, 160) for a in project.get('revision_actions', [])[:3]]
     value['revision_action_count'] = len(project.get('revision_actions', []))
     value['comparison'] = fit(project.get('comparison'), 120)
+    value['continuation'] = continuation({'criteria': project.get('review_criteria', []),
+        'status': project.get('quality_status'), 'checkpoint': project.get('review_checkpoint'),
+        'unavailable_methods': project.get('review_unavailable_methods', [])})
     strategy = project.get('strategy') or {}
     value['strategy'] = {k: strategy.get(k) for k in ('state', 'method', 'reason', 'user_action', 'stop_reason', 'record')}
     value['strategy']['alternatives'] = [fit(a, 160) for a in strategy.get('alternatives', [])]
@@ -67,6 +108,12 @@ def project_view(project):
             'instruction': 'Prima di terminare o mettere in pausa il turno, chiama present_files sui file utili indicati. '
                 'Se non approvati, etichettali come bozza/studio incompleto e spiega i difetti. La presenza nel pannello '
                 'Progetto non sostituisce present_files e non dimostra il completamento del risultato richiesto.'}
+    elif sample:
+        sources = [r for r in project.get('results', []) if r.get('delivery_id') == sample.get('delivery_id')
+                   and r.get('role') in ('source_archive', 'editable_source')]
+        sources.sort(key=lambda r: r.get('role') != 'source_archive')
+        value['presentation'] = {'paths': [sample['path'], *[s['path'] for s in sources[:2]]],
+            'instruction': 'Presenta con present_files l’ultimo campione e i suoi sorgenti prima di continuare: descrivi cambiamenti e difetti rimasti, senza chiamarlo prodotto finale.'}
     return value
 
 
@@ -78,6 +125,11 @@ def delegate_view(result):
     value['check_counts'] = result.get('check_counts', counts(result.get('checks', [])))
     value['review_counts'] = counts(review.get('criteria', []))
     value['quality_review'] = {**review, 'requirement_verdicts': requirement_verdicts(review.get('criteria', []))}
+    value['continuation'] = continuation(review)
+    if not review and any(c.get('status') == 'failed' for c in result.get('checks', [])):
+        value['continuation'] = {'action': 'repair_known_defects',
+            'instruction': 'Il produttore ha già dichiarato difetti concreti: correggi prima quelli sui sorgenti esistenti, senza una revisione completa equivalente. Isola la causa più importante con una prova economica prima di riesportare tutto. Se non migliora, rivaluta competenza o metodo, senza ripetere lo stesso incarico.',
+            'final_status': 'needs_revision'}
     if review.get('criteria'):
         value['review_scope_instruction'] = 'Il verdetto aggregato comprende tutti i controlli dello stesso requisito: un passed locale non annulla failed o not_run. Un campione prova solo il risultato osservato; prima di estendere verifica i rischi e i difetti ancora aperti, senza abbassare il brief.'
     value['next_action'] = (review.get('revision_actions') or [{}])[0].get('action', '')
@@ -125,7 +177,7 @@ def reply(workspace, payload, kind):
     if kind == 'delegate':
         # Put verdicts before inventories, not after pages of opening instructions.
         review = full.get('quality_review') or {}
-        value['quality_review'] = {k: review.get(k) for k in ('status', 'product_path', 'report_path')}
+        value['quality_review'] = {k: review.get(k) for k in ('status', 'product_path', 'report_path', 'checkpoint', 'unavailable_methods')}
         value['quality_review']['requirement_verdicts'] = requirement_verdicts(review.get('criteria', []))
         value['quality_review']['revision_actions'] = [fit(a, 160) for a in review.get('revision_actions', [])[:3]]
         value['quality_review']['revision_action_count'] = len(review.get('revision_actions', []))
@@ -149,10 +201,10 @@ def reply(workspace, payload, kind):
         # All exceptions survive in the addressed full result; counters signal
         # that an omitted list is not evidence of success.
         keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'review_counts',
-                'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction')
+                'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction', 'continuation', 'presentation')
         if kind == 'plan':
             p = value.get('project') or {}
-            value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention', 'method_recovery', 'presentation')}}
+            value = {'project': {k: p.get(k) for k in ('id', 'status', 'summary', 'next_action', 'quality_status', 'attention', 'method_recovery', 'presentation', 'continuation')}}
         else:
             value = {k: value[k] for k in keys if k in value}
             if 'quality_review' in value:

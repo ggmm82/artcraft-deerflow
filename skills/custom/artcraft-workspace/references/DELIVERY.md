@@ -13,6 +13,8 @@
 
 ## Schema di consegna
 
+In `purpose=preview` conserva il sorgente riapribile e le risorse necessarie alla prova. Il pacchetto portabile può essere rinviato: `delivery.finalization_pending` registra ciò che resta obbligatorio per la consegna finale. Non preparare un archivio e una documentazione completi a ogni ritocco, salvo che la prova riguardi proprio la portabilità. Gli archivi effettivamente dichiarati vengono comunque verificati; file mancanti, riaperture fallite e difetti reali restano errori.
+
 Esempio strutturale: sostituisci i percorsi con quelli reali di `ARTCRAFT_OUTPUT_DIR` e riporta esclusivamente prove effettive.
 
 ```json
@@ -88,3 +90,7 @@ Per media sincronizzati usa un riferimento temporale comune: secondi, fps, sampl
 
 Prima di chiudere valuta anche se è emersa una lezione nuova e trasferibile. Se non emerge, registra `{"lessons":[],"reason":"Motivo concreto"}` in `work/tool-lessons.json`. Il registro non è un download finale. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. I fatti particolari rimangono nelle prove.
 
+
+## Preflight nella stessa sandbox
+
+Prima di concludere usa `/usr/bin/python3 /opt/studio/handoff.py validate "$ARTCRAFT_OUTPUT_DIR"`. Se il manifest è incompleto, correggilo sugli stessi file: il comando restituisce l’errore prima della chiusura del worker. `/usr/bin/python3 /opt/studio/handoff.py schema` espone lo schema comune anche a Codex e Antigravity, identico a `submit_handoff`. Il preflight non approva il prodotto, non verifica da solo la compatibilità nativa e non riscrive giudizi. Mantieni i controlli falliti e dichiara un limite quando una riapertura resta `not_run` o `failed`.

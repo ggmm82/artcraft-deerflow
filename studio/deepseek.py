@@ -12,9 +12,9 @@ BASE_URL = 'https://api.deepseek.com'
 MAX_TURNS = 64
 
 try:
-    from .handoff import DELIVERY_SCHEMA, validate_handoff
+    from .handoff import HANDOFF_SCHEMA, validate_handoff
 except ImportError:
-    from handoff import DELIVERY_SCHEMA, validate_handoff
+    from handoff import HANDOFF_SCHEMA, validate_handoff
 
 
 def request(key, path, payload=None, timeout=120):
@@ -44,18 +44,7 @@ def models(key):
 HANDOFF_TOOL = {'type': 'function', 'function': {
     'name': 'submit_handoff',
     'description': 'Consegna i file già prodotti. Scrive handoff.json e verifica percorsi e file. Includi sorgenti modificabili e delivery con formato, app di apertura, modificabilità e riapertura per ogni output. Riporta soltanto controlli effettivi; usa not_run per quelli non svolti.',
-    'parameters': {'type': 'object', 'properties': {
-        'task': {'type': 'string'},
-        'delivery': DELIVERY_SCHEMA,
-        'source_files': {'type': 'array', 'items': {'type': 'string'}},
-        'output_files': {'type': 'array', 'minItems': 1, 'items': {'type': 'string'}},
-        'previews': {'type': 'array', 'items': {'type': 'string'}},
-        'checks': {'type': 'array', 'minItems': 1, 'items': {'type': 'object', 'properties': {
-            'name': {'type': 'string'}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'not_run']},
-            'evidence': {'type': 'string'}}, 'required': ['name', 'status', 'evidence'], 'additionalProperties': False}},
-        'warnings': {'type': 'array', 'items': {'type': 'string'}}},
-        'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings', 'delivery'],
-        'additionalProperties': False}}}
+    'parameters': HANDOFF_SCHEMA}}
 
 PROGRESS_TOOL = {'type': 'function', 'function': {
     'name': 'report_progress',

@@ -5,11 +5,11 @@ import subprocess
 
 try:
     from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
-    from .acceptance import METHODS, evaluate
+    from .acceptance import METHODS, evaluate, checkpoint_assessment, capabilities
     from .revision import actions, comparison
 except ImportError:
     from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
-    from acceptance import METHODS, evaluate
+    from acceptance import METHODS, evaluate, checkpoint_assessment, capabilities
     from revision import actions, comparison
 
 
@@ -54,6 +54,7 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
         if needed and not any(c['method'] == method for c in criteria):
             criteria.append({'criterion': 'Qualità del contenuto ' + method, 'method': method,
                              'status': 'not_run', 'evidence': 'Il rapporto contiene soltanto controlli di altre modalità.'})
+    checkpoint = checkpoint_assessment(value.get('scope'), criteria, acceptance, engine)
     criteria, status = evaluate(criteria, acceptance, engine)
     corrections = actions(value, criteria)
     comparison_warning = ''
@@ -69,7 +70,10 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
     if compared:
         reference_hashes[compared['baseline_path']] = compared['baseline_sha256']
     return {'product_path': str(target), 'sha256': digest(target), 'criteria': criteria,
-            'status': status, 'revision_actions': corrections, 'comparison': compared,
+            'status': status, 'checkpoint': checkpoint,
+            'unavailable_methods': sorted({c['method'] for c in criteria if c['status'] == 'not_run'
+                                           and not capabilities(engine).get(c['method'], False)}),
+            'revision_actions': corrections, 'comparison': compared,
             'comparison_warning': comparison_warning, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
             'report_path': str(path), 'report_sha256': digest(path), 'note': 'Valutazione dello specialista; non una garanzia oggettiva di qualità artistica.'}
@@ -194,12 +198,17 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
         files.append(record)
     if delivery['source_status'] == 'unavailable':
         issues.append('Sorgenti modificabili mancanti: ' + delivery['source_note'])
+    finalization = []
     if any(Path(f['path']).suffix in NATIVE and f['role'] == 'editable_source' for f in files) and not packages:
-        issues.append('Progetto nativo senza pacchetto portabile verificato: usare source_packages.py pack')
+        note = 'Progetto nativo senza pacchetto portabile verificato: usare source_packages.py pack'
+        (finalization if purpose == 'preview' else issues).append(note)
     for item in files:
         if Path(item['path']).suffix in NATIVE and item['role'] == 'editable_source':
-            item['open_with'] = 'Usa il pacchetto sorgenti ZIP della stessa consegna e le sue istruzioni; questo progetto isolato può perdere i media.'
-            item['limitations'] = [*item.get('limitations', []), 'Il progetto scaricato da solo non include le risorse collegate.']
+            if purpose == 'preview' and not packages:
+                item['limitations'] = [*item.get('limitations', []), 'Sorgente della prova; il pacchetto portabile finale resta da preparare con le risorse collegate.']
+            else:
+                item['open_with'] = 'Usa il pacchetto sorgenti ZIP della stessa consegna e le sue istruzioni; questo progetto isolato può perdere i media.'
+                item['limitations'] = [*item.get('limitations', []), 'Il progetto scaricato da solo non include le risorse collegate.']
     renders = [c for p in packages for c in p['verification']['checks'] if c.get('check') == 'filmcraft_render']
     active_tools = {agent, *tools}
     if purpose == 'delivery' and 'filmcraft' in active_tools and delivery['source_status'] == 'included' and not renders:
@@ -253,7 +262,7 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
     issues.extend(c['name'] + ': ' + c['evidence'][:300] for c in handoff['checks'] if c['status'] == 'failed')
     value = {'id': root.name, 'title': handoff['task'][:200], 'purpose': purpose,
              'technical_status': 'passed' if not issues else 'needs_revision',
-             'issues': issues[:20], 'files': files, 'source_status': delivery['source_status'],
+             'issues': issues[:20], 'finalization_pending': finalization, 'files': files, 'source_status': delivery['source_status'],
              'source_coverage':coverage, 'timing':timing,
              'source_note': delivery['source_note'][:1000],
              'quality_status': 'not_reviewed',

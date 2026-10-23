@@ -184,11 +184,12 @@ def initialize():
         extension.write_text((ROOT / 'extensions_config.json').read_text())
     from .state import atomic_json
     extensions = json.loads(extension.read_text())
-    middleware = 'studio.audit_middleware:ConversationAuditMiddleware'
     configured = extensions.setdefault('middlewares', [])
-    if middleware not in configured:
-        configured.append(middleware)
-        atomic_json(extension, extensions)
+    for middleware in ('studio.audit_middleware:ConversationAuditMiddleware',
+                       'studio.completion_middleware:ProjectCompletionMiddleware'):
+        if middleware not in configured:
+            configured.append(middleware)
+            atomic_json(extension, extensions)
     catalog()
 
 

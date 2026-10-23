@@ -89,6 +89,30 @@ class HandoffTests(HandoffFixture):
 
 
 class DeliveryTests(HandoffFixture):
+    def test_same_sandbox_cli_preflight_uses_the_provider_schema_and_never_approves_quality(self):
+        import subprocess
+        import sys
+        from studio import handoff
+        from studio.deepseek import HANDOFF_TOOL
+        self.assertEqual(HANDOFF_TOOL['function']['parameters'],handoff.HANDOFF_SCHEMA)
+        self.delivery()
+        self.value['checks'][0]['status']='failed'
+        self.validate()
+        command=[sys.executable,handoff.__file__,'validate',str(self.output),'--workspace',str(self.workspace)]
+        result=subprocess.run(command,capture_output=True,text=True,check=True)
+        response=json.loads(result.stdout)
+        self.assertTrue(response['ok'])
+        self.assertFalse(response['product_approved'])
+        self.assertEqual(response['failed_checks'],['Contenuto'])
+        self.value['delivery']['files'][0]['limitations']=[]
+        self.value['delivery']['files'][0]['reopen']['status']='not_run'
+        (self.output/'handoff.json').write_text(json.dumps(self.value))
+        original=(self.output/'handoff.json').read_bytes()
+        failed=subprocess.run(command,capture_output=True,text=True)
+        self.assertEqual(failed.returncode,1)
+        self.assertIn('limite esplicito',json.loads(failed.stdout)['error'])
+        self.assertEqual((self.output/'handoff.json').read_bytes(),original)
+
     def metadata(self, path=None, role='editable_source'):
         return {'path': str(path or self.file), 'role': role, 'format': 'DXF',
                 'open_with': 'CADCraft', 'editability': 'Polilinee e layer',

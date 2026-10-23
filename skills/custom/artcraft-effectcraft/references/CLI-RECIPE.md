@@ -19,3 +19,14 @@ La prova ripetibile è in `/opt/artcraft/acceptance.py`, caso `effectcraft`. È 
 
 Consegna il progetto `.ecproj`, le risorse collegate necessarie e gli export richiesti (GIF/video/frame). Riapri con `effectcraft-cli --project ... info` e verifica composizioni, livelli e keyframe, non soltanto un frame renderizzato. Per media esterni prepara e prova un pacchetto autosufficiente estratto in una nuova cartella. Un video/GIF non conserva di per sé livelli o keyframe modificabili; registra font, plugin o effetti non disponibili.
 Compila `delivery` secondo `artcraft-workspace` e rendi scaricabili i sorgenti in `output_files`. La riapertura e la struttura modificabile devono riferirsi ai file effettivi del brief, non soltanto al collaudo di questa ricetta; segnala qualsiasi controllo `failed` o `not_run`.
+
+## Correggere un progetto esistente senza perdere le modifiche
+
+Le modifiche richiedono salvataggio esplicito e riapertura in un processo nuovo:
+
+```bash
+effectcraft-cli --project "$ARTCRAFT_OUTPUT_DIR/animazione.ecproj" --save script --eval 'app.project.item(1).layer(1).property("Transform").property("Opacity").setValue(0);'
+effectcraft-cli --project "$ARTCRAFT_OUTPUT_DIR/animazione.ecproj" render-frame --comp Main --time 0 --out "$ARTCRAFT_OUTPUT_DIR/previews/revisione.png" --transparent
+```
+
+È un test di persistenza sulla fixture sopra: il livello diventa trasparente dopo riapertura. Nel prodotto reale seleziona composizione, oggetto e proprietà effettivi; conserva la baseline con `--save-as` quando serve. Verifica una proprietà modificata o il fotogramma del difetto prima del render completo: un hash diverso da solo non dimostra che la modifica richiesta sia persistita.

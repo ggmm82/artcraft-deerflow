@@ -16,6 +16,10 @@ Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti. Consulta
 
 Usa EffectCraft per composizioni, motion graphics, keyframe ed effetti. Il montaggio finale di molte clip appartiene a FilmCraft.
 
+## Modifiche persistenti
+
+Ogni invocazione diretta della CLI apre un processo nuovo. Per modificare un progetto esistente usa `--project FILE --save` con `set`, `run` o `script`, oppure `--save-as COPIA` per conservare la baseline. Un comando riuscito senza salvataggio può lasciare invariato il file. Riapri in un altro processo e verifica proprietà/keyframe e un fotogramma pertinente prima di renderizzare l’intera sequenza. Il valore statico di una proprietà non prevale necessariamente sulle sue tracce animate: controlla i valori ai tempi del difetto e modifica le chiavi responsabili.
+
 ## Ricetta operativa collaudata
 
 Leggi [la ricetta CLI verificata](references/CLI-RECIPE.md), da consultare per la sintassi pertinente. Mantieni i controlli e adatta la procedura agli input reali.

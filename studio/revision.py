@@ -27,9 +27,12 @@ def correction_focus(project):
     if not reviews:
         return []
     latest = reviews[-1][1]
+    scope = latest.get('checkpoint')
     result = []
     for verdict in requirement_verdicts(latest.get('criteria', [])):
         rid = verdict['requirement_id']
+        if scope and rid not in scope['requirement_ids']:
+            continue  # Final-only gaps are not evidence that this experiment stalled.
         if verdict['status'] != 'failed':
             continue
         products = set()

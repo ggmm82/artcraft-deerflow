@@ -71,7 +71,7 @@ def evaluate(criteria, acceptance, engine):
                 continue
             for c in matches:
                 c['critical'] = rule['critical']
-                if rule['method'] != 'content' and c.get('method') != rule['method']:
+                if rule['method'] != 'content' and c.get('method') != rule['method'] and c.get('status') != 'failed':
                     c.update(status='not_run', evidence='Il metodo usato non verifica il requisito concordato.')
                 if rule['id'] == 'request_fidelity' and c.get('method') == 'technical':
                     c.update(status='not_run', evidence='Decodifica, formato o esistenza del file non provano la rispondenza alla richiesta.')
@@ -82,6 +82,32 @@ def evaluate(criteria, acceptance, engine):
         relevant = result
     status = 'needs_revision' if any(c['status'] == 'failed' for c in relevant) else 'passed' if relevant and all(c['status'] == 'passed' for c in relevant) else 'needs_review'
     return result, status
+
+
+def checkpoint_assessment(scope, criteria, acceptance, engine):
+    """A bounded experiment can pass without approving the complete product.
+
+    The full acceptance verdict is always computed separately. This selection
+    only answers the experiment's question; it cannot authorize final delivery.
+    """
+    if scope is None:
+        return None
+    if (not isinstance(scope, dict) or scope.get('kind') != 'checkpoint'
+            or not isinstance(scope.get('question'), str) or not scope['question'].strip()
+            or len(scope['question']) > 600):
+        raise ValueError('Scope: checkpoint richiede una domanda concreta entro 600 caratteri')
+    identifiers = scope.get('requirement_ids')
+    rules = (acceptance or {}).get('criteria', [])
+    known = {r['id'] for r in rules}
+    if (not isinstance(identifiers, list) or not identifiers or len(identifiers) > 20
+            or any(not isinstance(i, str) or i not in known for i in identifiers)
+            or len(set(identifiers)) != len(identifiers)):
+        raise ValueError('Scope: selezionare requirement_ids unici presenti nel contratto')
+    selected = [c for c in criteria if c.get('requirement_id') in identifiers]
+    _, status = evaluate(selected, {'criteria': [r for r in rules if r['id'] in identifiers]}, engine)
+    return {'kind': 'checkpoint', 'question': scope['question'], 'requirement_ids': identifiers,
+            'status': status, 'final_approval': False,
+            'remaining_requirement_ids': [r['id'] for r in rules if r['id'] not in identifiers]}
 
 
 def requirement_verdicts(criteria):
