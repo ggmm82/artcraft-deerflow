@@ -598,7 +598,7 @@ window.showThread();
                                 'open_with':'Estrarre e aprire in Calibre','editability':'XHTML e CSS modificabili'}
                 sample_delivery={**project['deliveries'][1],'id':'sample-new','title':'Campione del nuovo progetto',
                                  'at':new_sample['at'],'category':'sample','technical_status':'passed'}
-                old_audio={**project['results'][0],'path':'/mnt/user-data/outputs/filmcraft/old.wav','role':'export'}
+                old_audio={**project['results'][0],'path':'/mnt/user-data/outputs/filmcraft/old.wav','label':'old.wav','role':'export'}
                 state['project']={**project,'status':'ready','quality_status':'accepted_by_user',
                     'latest_sample':new_sample,
                     'deliveries':[{**project['deliveries'][0],'technical_status':'passed'},sample_delivery],
@@ -621,8 +621,8 @@ window.showThread();
                 if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir / ('new-sample-%d.png'%viewport['width'])))
                 # For a video sample the separate soundtrack must also belong
                 # to that sample, rather than to the preserved delivery.
-                video_sample={**new_sample,'path':'/mnt/user-data/outputs/new/sample.mp4'}
-                sample_audio={**new_sample,'path':'/mnt/user-data/outputs/new/current.wav'}
+                video_sample={**new_sample,'path':'/mnt/user-data/outputs/new/sample.mp4','label':'sample.mp4'}
+                sample_audio={**new_sample,'path':'/mnt/user-data/outputs/new/current.wav','label':'current.wav'}
                 state['project']={**state['project'],'latest_sample':video_sample,
                     'results':project['results']+[video_sample,sample_sources,old_audio,sample_audio]}
                 expect(page.get_by_label('Traccia audio disponibile')).to_have_attribute('src',re.compile('/new/current.wav'),timeout=15000)
