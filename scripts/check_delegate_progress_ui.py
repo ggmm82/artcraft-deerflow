@@ -582,12 +582,58 @@ window.showThread();
                 expect(page.get_by_test_id('latest-sample')).to_contain_text('Ultimo campione disponibile')
                 expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'))
                 expect(page.get_by_test_id('selected-version')).to_contain_text('Robot con musica')
-                # A selected complete delivery keeps precedence over samples.
+                # A complete delivery keeps precedence over older samples.
                 state['project']={**project,'status':'review','latest_sample':project['results'][-1]}
                 page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
                 section('Risultato')
                 expect(page.get_by_test_id('latest-sample')).to_have_count(0)
                 expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'))
+                # A follow-up project in the same chat produces a newer sample
+                # without replacing the old final. Polling must display it with
+                # its own sources, guide and audio, never the old approval.
+                new_sample={**project['results'][0], 'path':'/mnt/user-data/outputs/new/sample.epub',
+                            'label':'sample.epub','delivery_id':'sample-new','at':iso(now+timedelta(minutes=1))}
+                sample_sources={**project['results'][1],'path':'/mnt/user-data/outputs/new/EPUB-sources.zip',
+                                'label':'EPUB-sources.zip','delivery_id':'sample-new','at':new_sample['at'],
+                                'open_with':'Estrarre e aprire in Calibre','editability':'XHTML e CSS modificabili'}
+                sample_delivery={**project['deliveries'][1],'id':'sample-new','title':'Campione del nuovo progetto',
+                                 'at':new_sample['at'],'category':'sample','technical_status':'passed'}
+                old_audio={**project['results'][0],'path':'/mnt/user-data/outputs/filmcraft/old.wav','role':'export'}
+                state['project']={**project,'status':'ready','quality_status':'accepted_by_user',
+                    'latest_sample':new_sample,
+                    'deliveries':[{**project['deliveries'][0],'technical_status':'passed'},sample_delivery],
+                    'results':project['results']+[new_sample,sample_sources,old_audio]}
+                # No reload: reproduce the transition while the result is open.
+                expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('sample.epub'),timeout=15000)
+                expect(page.get_by_test_id('latest-sample')).to_be_visible()
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Campione del nuovo progetto')
+                expect(page.get_by_test_id('selected-version')).not_to_contain_text('Consegna finale')
+                expect(page.get_by_test_id('paired-sources')).to_contain_text('EPUB-sources.zip')
+                expect(page.get_by_test_id('paired-sources')).not_to_contain_text('montaggio.locale.fcproj')
+                expect(page.get_by_role('button',name='Ho verificato: accetta questa versione')).to_have_count(0)
+                expect(page.get_by_text('Questa versione è stata accettata da te.',exact=True)).to_have_count(0)
+                page.get_by_test_id('previous-delivery').locator('summary').click()
+                expect(page.get_by_test_id('previous-delivery')).to_contain_text('Robot con musica')
+                expect(page.get_by_test_id('previous-delivery').get_by_role('link',name='preview.mp4',exact=True)).to_have_attribute('href',re.compile('preview.mp4'))
+                expect(page.get_by_test_id('previous-delivery')).to_contain_text('Sorgenti.zip')
+                page.get_by_test_id('project-guide').locator('summary').first.click()
+                expect(page.get_by_test_id('project-guide').get_by_role('link',name='Scarica guida',exact=True)).to_have_attribute('href',re.compile('delivery_id=sample-new'))
+                if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir / ('new-sample-%d.png'%viewport['width'])))
+                # For a video sample the separate soundtrack must also belong
+                # to that sample, rather than to the preserved delivery.
+                video_sample={**new_sample,'path':'/mnt/user-data/outputs/new/sample.mp4'}
+                sample_audio={**new_sample,'path':'/mnt/user-data/outputs/new/current.wav'}
+                state['project']={**state['project'],'latest_sample':video_sample,
+                    'results':project['results']+[video_sample,sample_sources,old_audio,sample_audio]}
+                expect(page.get_by_label('Traccia audio disponibile')).to_have_attribute('src',re.compile('/new/current.wav'),timeout=15000)
+                expect(page.locator('audio[src*="old.wav"]')).to_have_count(0)
+                # When a later final arrives, an earlier sample stops overriding
+                # it, even if latest_sample remains in the API response.
+                state['project']={**project,'status':'review','latest_sample':new_sample,
+                    'deliveries':[{**project['deliveries'][0],'at':iso(now+timedelta(minutes=2))},sample_delivery]}
+                expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'),timeout=15000)
+                expect(page.get_by_test_id('latest-sample')).to_have_count(0)
+                expect(page.get_by_test_id('previous-delivery')).to_have_count(0)
                 state['project']={**project,'status':'review','deliveries':[
                     {**project['deliveries'][0],'unchanged_content':True,'change_kind':'metadata','content_version':1}]}
                 page.reload();page.evaluate("window.showThread('fixture',false,false,false)")

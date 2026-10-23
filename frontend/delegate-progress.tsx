@@ -184,13 +184,16 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     ? results.find((r) => r.path === project.product_path) ?? { path: project.product_path, label: project.product_path.split("/").pop() ?? "Risultato", agent: "", validated: false, at: "" }
     : undefined;
   const latestSample = project?.latest_sample;
-  const showLatestSample = latestSample && (!selectedDelivery || (selectedDelivery.purpose === "preview" && latestSample.at >= selectedDelivery.at));
+  // A new iteration can start from a complete delivery. Keep that delivery
+  // selected, but show its newer sample rather than pinning the old product.
+  const showLatestSample = latestSample && (!selectedDelivery || latestSample.at > selectedDelivery.at
+    || (selectedDelivery.purpose === "preview" && latestSample.at === selectedDelivery.at));
   const preview = (showLatestSample ? latestSample : selected) ?? currentResults.find(r => r.role === "export") ?? media.find((r) => kind(r.path) === "video") ?? media[0];
   const previewDelivery = deliveries.find(d => d.id === preview?.delivery_id) ?? selectedDelivery;
   const pairedSources = preview?.delivery_id ? results.filter(r => r.delivery_id === preview.delivery_id && ["editable_source", "source_archive"].includes(r.role ?? "")) : [];
-  const audio = currentResults.find((r) => kind(r.path) === "audio");
+  const audio = (preview?.delivery_id ? results.filter(r => r.delivery_id === preview.delivery_id) : currentResults).find((r) => kind(r.path) === "audio");
   const attention = !working && !active ? project?.attention : null;
-  const ready = project?.status === "ready" && !!project.product_path && selectedDelivery?.technical_status === "passed"
+  const ready = !showLatestSample && project?.status === "ready" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && ["passed", "accepted_by_user"].includes(project.quality_status ?? "") && !coordinatorError && !working;
   const waitingForReview = project?.status === "review" && !!project.product_path && selectedDelivery?.technical_status === "passed"
     && project.quality_status !== "passed" && !attention && !coordinatorError;
@@ -443,7 +446,12 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           <h4 className="font-semibold">Sorgenti della stessa consegna</h4>
           <ul className="space-y-3">{pairedSources.map(file => <DeliveryFile key={file.path} file={file} threadId={threadId} />)}</ul>
         </section>}
-        {project?.quality_status && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: i controlli tecnici non verificano tutti i requisiti del progetto."}</p>}
+        {showLatestSample && selectedDelivery && selectedDelivery.id !== preview?.delivery_id && <details className="rounded-xl border p-3 text-sm" data-testid="previous-delivery">
+          <summary className="cursor-pointer font-medium">Consegna precedente conservata</summary>
+          <p className="my-2">{selectedDelivery.title}. Il campione mostrato sopra non la sostituisce e deve ancora essere completato e valutato.</p>
+          <ul className="space-y-3">{currentResults.filter(file => ["export", "editable_source", "source_archive"].includes(file.role ?? "")).map(file => <DeliveryFile key={file.path} file={file} threadId={threadId}/>)}</ul>
+        </details>}
+        {project?.quality_status && !showLatestSample && <p className="text-sm">{project.quality_status === "accepted_by_user" ? "Questa versione è stata accettata da te." : project.quality_status === "passed" ? "Revisione dello specialista registrata per questa versione." : "Qualità ancora da valutare: i controlli tecnici non verificano tutti i requisiti del progetto."}</p>}
         {project?.acceptance && <details className="rounded border p-3 text-sm" data-testid="acceptance-criteria">
           <summary className="cursor-pointer font-medium">Rispondenza alla tua richiesta</summary>
           <p className="my-2 whitespace-pre-wrap">{project.acceptance.user_requests[0]}</p>
@@ -458,7 +466,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
           {project.acceptance.request_documents?.[0] && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_documents[0].path, true)}>Leggi la richiesta originale completa</a></p>}
           {project.acceptance.request_manifest && <p><a className="underline" href={artifactURL(threadId, project.acceptance.request_manifest.path, true)}>Indice dei messaggi conservati ({project.acceptance.request_count ?? 1})</a></p>}
         </details>}
-        {!ready && !working && !active && selectedDelivery?.technical_status === "passed" && !selectedDelivery.finalization_pending?.length && <div className="space-y-2 border-t pt-3">
+        {!ready && !showLatestSample && !working && !active && selectedDelivery?.technical_status === "passed" && !selectedDelivery.finalization_pending?.length && <div className="space-y-2 border-t pt-3">
           <p className="text-sm">Se hai verificato il risultato e ti soddisfa, puoi accettare questa versione. I controlli dei sorgenti restano obbligatori.</p>
           <button type="button" className="rounded border px-3 py-2 text-sm disabled:opacity-50" disabled={accepting} onClick={() => void acceptVersion()}>{accepting ? "Registro la scelta…" : "Ho verificato: accetta questa versione"}</button>
         </div>}
