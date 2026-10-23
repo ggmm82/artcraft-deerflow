@@ -74,7 +74,7 @@ def page(workspace, after=None, before=None, limit=100):
 def export_rows(workspace):
     import csv,io
     stream=io.StringIO();writer=csv.writer(stream)
-    writer.writerow(['timestamp_utc','attore','operazione','esito','dettaglio','correlazione','strumento','azione','durata_secondi','codice_uscita','diagnostica','file'])
+    writer.writerow(['timestamp_utc','attore','operazione','esito','dettaglio','correlazione','strumento','azione','durata_secondi','codice_uscita','diagnostica','file','comando_estratto','comando_sha256'])
     yield '\ufeff'+stream.getvalue();cursor=0
     while True:
         rows=page(workspace,after=cursor,limit=200)['events']
@@ -86,6 +86,7 @@ def export_rows(workspace):
             values=[row[k] for k in ('at','actor','operation','status','detail','correlation')]
             values += [context.get(k,'') for k in ('tool','action','duration_seconds','exit_code','diagnostic')]
             values.append(' | '.join(context.get('files',[])))
+            values += [context.get('command_preview',''), context.get('command_sha256','')]
             values=[str(v) if v is not None else '' for v in values]
             writer.writerow(["'"+v if v.lstrip().startswith(('=','+','-','@')) else v for v in values])
             yield stream.getvalue();cursor=row['seq']

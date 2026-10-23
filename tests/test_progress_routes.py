@@ -62,6 +62,35 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'other'}).status_code, 404)
                 self.assertEqual(client.get(url, headers={'X-Test-User': 'no-permission'}).status_code, 403)
                 self.assertEqual(client.get('/api/threads/missing/studio-jobs', headers={'X-Test-User': 'owner'}).status_code, 404)
+                guide_url = '/api/threads/conversation/studio-guide'
+                self.assertEqual(client.get(guide_url).status_code, 401)
+                self.assertEqual(client.get(guide_url, headers={'X-Test-User':'other'}).status_code, 404)
+                self.assertEqual(client.get(guide_url, headers={'X-Test-User':'no-permission'}).status_code, 403)
+                self.assertEqual(client.get(guide_url, headers={'X-Test-User':'owner'}).status_code, 409)
+                from studio import projects
+                from studio.source_packages import digest
+                import json, io, zipfile
+                workspace = root / 'owner/conversation'
+                output = workspace / 'outputs/workspace/artcraft-job-222222222222'; output.mkdir(parents=True)
+                product = output / 'result.txt'; product.write_text('Owner-only product')
+                projects.execute_step(workspace, 'cadcraft', 'Tavola tecnica', 'drawing', lambda *a: json.dumps({
+                    'ok':True, 'output_dir':str(output), 'handoff':{'output_files':[str(product)],'checks':[]},
+                    'delivery_record':{'id':output.name,'title':'Tavola tecnica','technical_status':'passed',
+                                      'files':[{'path':str(product),'role':'export','sha256':digest(product)}]}}), purpose='delivery')
+                guide = client.get(guide_url, headers={'X-Test-User':'owner'})
+                self.assertEqual(guide.status_code, 200, guide.text)
+                self.assertEqual(guide.json()['delivery_id'], output.name)
+                self.assertEqual(guide.headers['cache-control'], 'no-store')
+                md = client.get(guide_url+'?format=markdown', headers={'X-Test-User':'owner'})
+                self.assertIn('Guida del progetto', md.text)
+                self.assertIn('attachment', md.headers['content-disposition'])
+                zipped = client.get(guide_url+'?format=zip', headers={'X-Test-User':'owner'})
+                self.assertEqual(zipped.status_code, 200, zipped.text if zipped.status_code != 200 else '')
+                with zipfile.ZipFile(io.BytesIO(zipped.content)) as archive:
+                    self.assertEqual(archive.read('File/result.txt'), b'Owner-only product')
+                    self.assertIn('GUIDA-PROGETTO.md', archive.namelist())
+                self.assertEqual(client.get(guide_url+'?format=zip', headers={'X-Test-User':'other'}).status_code, 404)
+                self.assertEqual(client.get(guide_url+'?delivery_id=other', headers={'X-Test-User':'owner'}).status_code, 409)
                 audit_url='/api/threads/conversation/studio-audit'
                 self.assertEqual(client.get(audit_url).status_code,401)
                 self.assertEqual(client.get(audit_url,headers={'X-Test-User':'other'}).status_code,404)

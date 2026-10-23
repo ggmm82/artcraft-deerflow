@@ -95,6 +95,7 @@ window.showThread();
 <body><main class="mx-auto flex h-dvh max-w-[960px] flex-col"><header class="shrink-0 border-b p-3">Chat ArtCraft</header><div id="messages" class="min-h-0 flex-1 overflow-y-auto p-3">'''+paragraphs+'''</div><footer class="shrink-0 p-3"><div id="root"></div><textarea class="h-14 w-full rounded border p-2" aria-label="Scrivi un messaggio"></textarea></footer></main><script src="/app.js"></script></body></html>''')
         css = '@import ' + json.dumps(str(modules / 'tailwindcss/index.css')) + ' source(none);\n'
         css += '@source ' + json.dumps(str(repo / 'frontend/delegate-progress.tsx')) + ';\n@source "./index.html";\n'
+        css += '@source ' + json.dumps(str(repo / 'frontend/project-guide.tsx')) + ';\n@source ' + json.dumps(str(repo / 'frontend/conversation-audit.tsx')) + ';\n'
         css += '@layer base { * { border-color: var(--color-border); } }\n'
         css += '@theme { --color-background: #ffffff; --color-foreground: #0f172a; --color-muted: #f1f5f9; --color-border: #cbd5e1; --color-ring: #2563eb; --color-muted-foreground: #64748b; }\n'
         (folder / 'input.css').write_text(css)
@@ -144,9 +145,27 @@ window.showThread();
                 self.do_GET()
 
             def do_GET(self):
+                if '/studio-guide' in self.path:
+                    if state.get('fail_guide'):
+                        self.send_response(409); self.end_headers(); return
+                    guide = {'title':'Progetto dimostrativo', 'result':'Montaggio finale modificabile', 'delivery_id':'final', 'is_current':True,
+                        'technical_status':'passed', 'team':[{'title':'Montatore', 'goal':'Integrare i contributi'}],
+                        'method':{'approach':'Animazione integrata con montaggio e audio', 'steps':['Riutilizzo dei sorgenti', 'Montaggio delle tracce'], 'scripts':[], 'limits':['Ascolto non effettuato']},
+                        'methods':[{'id':'first','title':'Costruzione iniziale','actor':'Animatore','kind':'Campione','selected':False,'approach':'Curve e keyframe originali','steps':['Impostare il movimento']}], 'methods_omitted':0,
+                        'instructions':{'overview':'Apri il progetto nativo', 'use':['Estrai tutte le risorse'],
+                            'editing':[{'goal':'Cambiare una scena','files':['/mnt/user-data/outputs/filmcraft/Sorgenti.zip'], 'steps':['Apri la timeline', 'Modifica la clip'], 'check':'Controlla il nuovo render'}], 'limits':[]},
+                        'components':[{'name':'Montaggio','tool':'filmcraft','version':'fixture','status':'passed'}],
+                        'documents':[], 'files':[{'path':'/mnt/user-data/outputs/filmcraft/Sorgenti.zip','name':'Sorgenti.zip','role':'source_archive','open_with':'Estrarre tutto','editability':'Timeline e clip','limitations':[]}],
+                        'reviews':[], 'limitations':[], 'unavailable_files':[], 'history_omitted':0,
+                        'history':[{'id':'first','title':'Prima scena','actor':'Animatore','kind':'Campione','status':'completed','started_at':'2026-10-22T00:00:00Z','change':'first_export','detail':'','review_status':''},
+                                   {'id':'copy','title':'Confezionamento','actor':'Montatore','kind':'Consegna','status':'completed','started_at':'2026-10-22T00:10:00Z','change':'identical_export','detail':'','review_status':''}]}
+                    self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers(); self.wfile.write(json.dumps(guide).encode()); return
+                if self.path.endswith('/command.txt'):
+                    self.send_response(200); self.send_header('Content-Type','text/plain'); self.end_headers()
+                    self.wfile.write(b'python3 - <<"PY"\nrender_scene("sample.ecproj")\nverify_result()\nPY'); return
                 if '/studio-audit' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture','context':{'tool':'effectcraft-cli','action':'render','duration_seconds':1.25,'exit_code':1,'diagnostic':'Parametro CLI non riconosciuto','files':['/mnt/user-data/outputs/sample.ecproj']}}], 'next_before':None,'latest_seq':1}).encode());return
+                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture','context':{'tool':'effectcraft-cli','action':'render','duration_seconds':1.25,'exit_code':1,'diagnostic':'Parametro CLI non riconosciuto','files':['/mnt/user-data/outputs/sample.ecproj'], 'command_preview':'python3 - <<"PY"\nrender_scene("sample.ecproj")', 'command_sha256':'a'*64, 'command_path':'/mnt/user-data/outputs/workspace/artcraft-job-123456abcdef/work/commands/aaaaaaaaaaaaaaaaaaaaaaaa/command.txt'}}], 'next_before':None,'latest_seq':1}).encode());return
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':state.get('pending_observations',0), 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
@@ -215,6 +234,9 @@ window.showThread();
                 expect(page.get_by_test_id('operation-details')).to_contain_text('1.25 s')
                 expect(page.get_by_test_id('operation-details')).to_contain_text('Parametro CLI non riconosciuto')
                 expect(page.get_by_test_id('operation-details')).to_contain_text('sample.ecproj')
+                expect(page.get_by_test_id('operation-command')).to_contain_text('render_scene')
+                page.get_by_text('Apri comando completo / script inline',exact=True).click()
+                expect(page.get_by_test_id('operation-command')).to_contain_text('verify_result()')
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 composer = page.get_by_role('textbox', name='Scrivi un messaggio')
                 for viewport in ({'width': 1100, 'height': 800}, {'width': 390, 'height': 740}):
@@ -243,6 +265,17 @@ window.showThread();
                     section('Risultato')
                     expect(page.get_by_test_id('paired-sources').get_by_role('link', name='Sorgenti.zip')).to_be_visible()
                     expect(page.get_by_test_id('paired-sources').get_by_role('link', name='bozza.mp4')).to_have_count(0)
+                    guide = page.get_by_test_id('project-guide')
+                    guide.locator('summary').first.click()
+                    expect(guide).to_contain_text('Montaggio finale modificabile')
+                    expect(guide).to_contain_text('Cambiare una scena')
+                    expect(guide.get_by_role('link',name='Scarica consegna con guida')).to_have_attribute('href','/api/threads/fixture/studio-guide?delivery_id=final&format=zip')
+                    guide.get_by_text('Storia delle lavorazioni',exact=True).click()
+                    expect(guide).to_contain_text('Export identico al precedente')
+                    guide.get_by_text('Dalla prima costruzione alle revisioni: procedure registrate',exact=True).click()
+                    expect(guide).to_contain_text('Curve e keyframe originali')
+                    if args.screenshots_dir: page.screenshot(path=str(args.screenshots_dir / f'guida-{viewport["width"]}.png'))
+                    guide.locator('summary').first.click()
                     assert page.get_by_test_id('primary-result').evaluate('(el)=>!!(el.compareDocumentPosition(document.querySelector("[data-testid=acceptance-criteria]")) & Node.DOCUMENT_POSITION_FOLLOWING)')
                     video = page.get_by_label('Anteprima video')
                     video.evaluate('(v)=>v.play()')

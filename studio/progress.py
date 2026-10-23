@@ -60,7 +60,7 @@ def job_path(workspace, job_id):
 
 def read_status(path):
     path = Path(path)
-    if path.is_symlink() or path.stat().st_size > 200000:
+    if path.is_symlink() or path.stat().st_size > 300000:
         raise ValueError('Stato avanzamento non valido')
     value = json.loads(path.read_text())
     if not isinstance(value, dict) or value.get('phase') not in PHASES:
@@ -213,9 +213,9 @@ class Reporter:
     def command_event(self, item, completed=False):
         try:
             try:
-                from .command_details import describe, diagnostic, public
+                from .command_details import describe, diagnostic, public, sanitized
             except ImportError:
-                from command_details import describe, diagnostic, public
+                from command_details import describe, diagnostic, public, sanitized
             ident = str(item.get('id') or 'current')
             if not completed:
                 if ident in self.commands:
@@ -224,6 +224,16 @@ class Reporter:
                 if item.get('tool'):
                     details.update(tool=clean_summary(item['tool'],80), action='Chiamata strumento')
                 details.update(id=hashlib.sha256((str(self.output_dir)+ident+utcnow()).encode()).hexdigest()[:24], started_at=utcnow())
+                command = sanitized(item.get('command'))
+                folder = self.output_dir / 'work/commands' / details['id']
+                if command and folder.resolve().is_relative_to(self.output_dir.resolve()) and not any(
+                        p.is_symlink() for p in (folder, folder.parent, folder.parent.parent)):
+                    folder.mkdir(parents=True, exist_ok=True)
+                    command_path = folder / 'command.txt'
+                    if not command_path.is_symlink():
+                        command_path.write_text(command)
+                        command_path.chmod(0o600)
+                        details['command_path'] = str(command_path)
                 self.commands[ident] = (time.monotonic(), details, output_snapshot(self.output_dir))
                 return public(details)
             started, details, before = self.commands.pop(ident, (None, describe(item.get('command')), []))

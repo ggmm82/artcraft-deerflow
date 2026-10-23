@@ -48,6 +48,8 @@ Per una versione corretta leggi anche il precedente artefatto, includilo in `sou
 
 ## Verifica di una prova e chiusura del lavoro
 
+Per la revisione completa usa `"scope":{"kind":"final"}` oppure ometti `scope`. Puoi elencare `requirement_ids` del contratto per documentazione: il verdetto finale controlla comunque tutti i requisiti, anche quelli non elencati. `kind=final` non è un checkpoint e non richiede `question`. Non ripetere un’ispezione già conclusa soltanto per correggere i metadati del rapporto; conserva prodotto, hash, osservazioni e giudizi reali.
+
 Per una prova limitata aggiungi al rapporto `"scope":{"kind":"checkpoint","question":"Domanda concreta della prova","requirement_ids":["id_del_requisito_rischioso"]}`. Seleziona solo ID del contratto: nessun elenco di professioni o tipi di progetto. Il runtime restituisce due verdetti: `checkpoint.status` riguarda la domanda selezionata; `status` riguarda sempre tutti i requisiti finali. Un checkpoint superato non approva il prodotto finale. Riporta anche le mancanze finali, ma distingui una durata/estensione volutamente ridotta dai difetti della tecnica che la prova doveva dimostrare. Non inserire una durata non definitiva e una qualità sensoriale nello stesso criterio: usa requisiti osservabili separati e il metodo pertinente a ciascuno.
 
 `continuation` distingue correzione, completamento della produzione e verifica umana. Se restano solo modalità indisponibili, presenta il prodotto esatto e i sorgenti con i limiti, mantieni `status=review` e chiedi la verifica necessaria. Non ripetere lo stesso incarico e non rigenerare il prodotto per ottenere un ascolto o una visione che il collegamento non offre.

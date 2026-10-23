@@ -1,6 +1,31 @@
-"""Operational metadata only; never shell code, prompts or raw transcripts."""
+"""Inspectable commands and operational metadata; credentials redacted first."""
 import re
 import shlex
+
+
+def sanitized(command):
+    """Keep executable code inspectable, redact credential values before storage."""
+    try:
+        from .progress import SECRET
+    except ImportError:
+        from progress import SECRET
+    if not isinstance(command, str):
+        return ''
+    value = command.replace('\x00', '')
+    value = re.sub(r'(?i)(\b(?:authorization|cookie)\s*:\s*)[^\r\n\'\"]+', r'\1[omesso]', value)
+    value = re.sub(r'\b(?:gh[pousr]_[A-Za-z0-9_]{16,}|github_pat_[A-Za-z0-9_]{16,}|AIza[A-Za-z0-9_-]{25,})', '[omesso]', value)
+    # Shell flags, environment assignments, JSON/Python keyword strings and
+    # Authorization headers. Redact before deriving previews or fingerprints.
+    names = r'(?:[\w-]*api[_-]?key|[\w-]*token|[\w-]*password|[\w-]*secret|[\w-]*(?:secret|access)[_-]?key(?:[_-]?id)?|authorization|cookie)'
+    value = re.sub(r'(?i)\bBasic\s+[A-Za-z0-9+/=]{8,}', 'Basic [omesso]', value)
+    value = re.sub(r'''(?ix)((?:--?)?\b''' + names + r'''["']?\s*(?:[:=]|\s)\s*)("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[^\s;,}\n"']+)''',
+                   lambda m: m[1] + (m[2][0] + '[omesso]' + m[2][0] if m[2].startswith(('"', "'")) else '[omesso]'), value)
+    value = re.sub(r'(?i)([?&][\w-]*(?:key|token|secret|signature|credential|password|sig)=)[^&\s\'\"]+', r'\1[omesso]', value)
+    value = re.sub(r'(?i)(https?://)[^/\s:@]+:[^/\s@]+@', r'\1[omesso]@', value)
+    value = re.sub(r'-----BEGIN [^-]*PRIVATE KEY-----.*?-----END [^-]*PRIVATE KEY-----',
+                   '[chiave privata omessa]', value, flags=re.S)
+    value = SECRET.sub(lambda m: m[0] if '[omesso]' in m[0] else '[omesso]', value)
+    return value if len(value) <= 48000 else value[:48000] + '\n[comando troncato a 48000 caratteri]'
 
 
 def describe(command):
@@ -26,6 +51,12 @@ def describe(command):
                 result['action'] = next((p for p in parts[i+1:] if p in allowed), 'Esecuzione strumento')
             break
     result['files'] = list(dict.fromkeys(p for p in parts if re.fullmatch(r'/mnt/user-data/(?:outputs|uploads|workspace)/[\w/ .-]{1,240}', p)))[:8]
+    safe = sanitized(command)
+    if safe:
+        import hashlib
+        result['command_sha256'] = hashlib.sha256(safe.encode()).hexdigest()
+        lines = [line for line in safe.splitlines() if line.strip()][:4]
+        result['command_preview'] = '\n'.join(lines)[:480]
     return result
 
 
@@ -61,6 +92,12 @@ def public(value):
             result[k] = value[k]
     if isinstance(value.get('record_path'), str) and re.fullmatch(r'/mnt/user-data/outputs/[\w/.-]+/work/commands/[a-f0-9]{24}/status\.json', value['record_path']):
         result['record_path'] = value['record_path']
+    if isinstance(value.get('command_path'), str) and re.fullmatch(r'/mnt/user-data/outputs/[\w/.-]+/work/commands/[a-f0-9]{24}/command\.txt', value['command_path']):
+        result['command_path'] = value['command_path']
+    if isinstance(value.get('command_preview'), str):
+        result['command_preview'] = sanitized(value['command_preview'])[:480]
+    if isinstance(value.get('command_sha256'), str) and re.fullmatch('[a-f0-9]{64}', value['command_sha256']):
+        result['command_sha256'] = value['command_sha256']
     result['files'] = [clean_summary(p, 280) for p in (value.get('files') if isinstance(value.get('files'), list) else [])[:4] if isinstance(p, str) and p.startswith('/mnt/user-data/')]
     result['changed_files'] = [clean_summary(p, 180) for p in (value.get('changed_files') if isinstance(value.get('changed_files'), list) else [])[:4] if isinstance(p, str)]
     return result
