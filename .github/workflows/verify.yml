@@ -13,7 +13,7 @@ permissions:
   pull-requests: read
 jobs:
   resolve:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       reuse: ${{ steps.resolve.outputs.reuse }}
     steps:
@@ -36,7 +36,7 @@ jobs:
   tests:
     needs: resolve
     if: needs.resolve.outputs.reuse != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -72,7 +72,7 @@ jobs:
   images:
     needs: [resolve, tests]
     if: needs.resolve.outputs.reuse != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -199,7 +199,7 @@ jobs:
   startup:
     needs: [resolve, images]
     if: needs.resolve.outputs.reuse != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: read
@@ -289,7 +289,7 @@ jobs:
       always() && needs.resolve.result == 'success' &&
       (needs.resolve.outputs.reuse == 'true' || needs.startup.result == 'success') &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       actions: read
