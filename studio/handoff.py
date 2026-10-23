@@ -1,6 +1,7 @@
 """Validate specialist deliverables before reporting a successful run."""
 import json
 from pathlib import Path
+import zipfile
 
 
 DELIVERY_SCHEMA = {
@@ -184,7 +185,10 @@ def validate_handoff(output_dir, workspace, *, require_delivery=False):
                 from .component_sources import inspect_components
             except ImportError:
                 from component_sources import inspect_components
-            coverage = inspect_components(value, value['delivery']['files'], workspace=workspace, inventory_only=True)
+            try:
+                coverage = inspect_components(value, value['delivery']['files'], workspace=workspace, inventory_only=True)
+            except (zipfile.BadZipFile, zipfile.LargeZipFile, EOFError, RuntimeError, NotImplementedError) as error:
+                raise ValueError('handoff.json: archivio dei sorgenti non leggibile: ' + str(error)[:500]) from error
             if coverage['issues']:
                 raise ValueError('handoff.json: ' + '; '.join(coverage['issues'][:8]))
     return value

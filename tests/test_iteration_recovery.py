@@ -78,6 +78,8 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(self.validate()['output_files'][1],str(archive))
         with zipfile.ZipFile(archive,'a') as z:z.writestr('../escape','never extracted')
         with self.assertRaisesRegex(ValueError,'non sicuro'):self.validate()
+        archive.write_bytes(b'not a ZIP container')
+        with self.assertRaisesRegex(ValueError,'archivio.*non leggibile'):self.validate()
 
     def test_superseded_failure_keeps_evidence_without_blocking_current_product(self):
         previous={'name':'Historical checker','status':'failed','evidence':'Original crash exit 139',
