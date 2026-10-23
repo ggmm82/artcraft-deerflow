@@ -12,6 +12,14 @@ from test_project_skills import role
 
 
 class ExperienceTests(unittest.TestCase):
+    def test_automatic_curation_does_not_turn_every_success_into_a_lesson(self):
+        experience.collect(self.workspace,self.library,'thread-a')
+        all_sources=lessons.pending(self.library,source_thread='thread-a')
+        meaningful=lessons.pending(self.library,source_thread='thread-a',meaningful_only=True)
+        self.assertTrue(any(s['status']=='passed' for s in all_sources))
+        self.assertTrue(meaningful)
+        self.assertTrue(all(s['status']=='failed' or s['corrections'] for s in meaningful))
+        self.assertLess(len(meaningful),len(all_sources))
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name); self.workspace = self.root / 'user-a/project'

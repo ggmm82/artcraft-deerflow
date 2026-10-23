@@ -14,7 +14,7 @@ def learning_sources(runtime):
     from .tools import experience_root
     from .lessons import pending
     thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
-    return pending(experience_root(runtime), limit=3, source_thread=thread) if thread else []
+    return pending(experience_root(runtime), limit=3, source_thread=thread, meaningful_only=True) if thread else []
 
 
 class CompletionState(AgentState):

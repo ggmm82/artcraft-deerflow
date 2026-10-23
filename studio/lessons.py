@@ -156,7 +156,7 @@ def propose_findings(root, source_thread, limit=3):
     return saved
 
 
-def pending(root, limit=6, *, source_thread=None):
+def pending(root, limit=6, *, source_thread=None, meaningful_only=False):
     from .experience import entries as observations, disabled
     covered = {s for r in entries(root) for s in r['basis']['source_ids']}
     excluded = disabled(root) | set(reviewed(root))
@@ -168,7 +168,11 @@ def pending(root, limit=6, *, source_thread=None):
              'impact': r['observation'].get('impact'), 'measurement': r['observation'].get('measurement'),
              'evidence_files': r['observation'].get('evidence_files', []), 'limitations': r['observation'].get('limitations', [])}
             for r in sorted(observations(root), key=lambda r: rank(r['observation'])) if r['id'] not in covered and r['id'] not in excluded
-            and (source_thread is None or r['observation'].get('source_thread')==source_thread)][:limit]
+            and (source_thread is None or r['observation'].get('source_thread')==source_thread)
+            and (not meaningful_only or r['observation'].get('suggested_lesson')
+                 or r['observation'].get('status') in ('failed','reported_failure','needs_generalization')
+                 or r['observation'].get('corrections')
+                 or (r['observation'].get('impact') or {}).get('level') in ('major','minor'))][:limit]
 
 
 def reviewed(root):
