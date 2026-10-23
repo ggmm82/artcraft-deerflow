@@ -10,18 +10,23 @@ function CommandDetails({ value, threadId }: { value: OperationContext; threadId
   const url = value.command_path ? `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}/artifacts/${value.command_path.replace(/^\//, "").split("/").map(encodeURIComponent).join("/")}` : undefined;
   useEffect(() => {
     if (!open || !url) return;
+    setError(false); setContent(undefined);
     const controller = new AbortController();
     void fetch(url, { signal: controller.signal }).then(async response => {
       if (!response.ok) throw new Error("Comando non disponibile");
       const data = await response.text();
+      if (!value.command_sha256 || data.length > 50000) throw new Error("Comando senza impronta verificabile");
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(data));
+      const actual = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+      if (actual !== value.command_sha256) throw new Error("Il testo del comando è stato modificato");
       if (!controller.signal.aborted) setContent(data.slice(0, 50000));
     }).catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => controller.abort();
-  }, [open, url]);
+  }, [open, url, value.command_sha256]);
   if (!value.command_preview && !url) return null;
   return <div className="space-y-1" data-testid="operation-command"><dt className="font-medium">Comando lanciato</dt><dd><pre className="max-h-36 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/40 p-2">{value.command_preview}</pre>
     {value.command_sha256 && <p className="text-muted-foreground">Identificativo del comando: {value.command_sha256.slice(0, 12)}</p>}
-    {url && <details onToggle={event => setOpen(event.currentTarget.open)}><summary className="cursor-pointer underline">Apri comando completo / script inline</summary>{open && <div className="space-y-2">{error ? <p>Testo non disponibile; resta l’estratto registrato.</p> : <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded border p-2">{content ?? "Caricamento…"}</pre>}<a className="underline" href={url} download>Scarica testo del comando</a></div>}</details>}
+    {url && <details onToggle={event => setOpen(event.currentTarget.open)}><summary className="cursor-pointer underline">Apri comando completo / script inline</summary>{open && <div className="space-y-2">{error ? <p>Testo non disponibile; resta l’estratto registrato.</p> : <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded border p-2">{content ?? "Caricamento…"}</pre>}{!error && <a className="underline" href={url} download>Scarica testo del comando</a>}</div>}</details>}
     <p className="text-muted-foreground">Valori riservati oscurati. Il testo serve a ispezionare l’operazione; controllalo prima di riutilizzarlo.</p></dd></div>;
 }
 export function OperationDetails({ value, threadId }: { value?: OperationContext; threadId?: string }) {

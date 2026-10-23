@@ -6,6 +6,7 @@ The chat/composer layout mirrors the pinned upstream flex layout; integration
 placement is checked separately against both real upstream pages.
 """
 import argparse
+import hashlib
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -162,10 +163,10 @@ window.showThread();
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers(); self.wfile.write(json.dumps(guide).encode()); return
                 if self.path.endswith('/command.txt'):
                     self.send_response(200); self.send_header('Content-Type','text/plain'); self.end_headers()
-                    self.wfile.write(b'python3 - <<"PY"\nrender_scene("sample.ecproj")\nverify_result()\nPY'); return
+                    self.wfile.write(b'modified command' if state.get('tamper_command') else b'python3 - <<"PY"\nrender_scene("sample.ecproj")\nverify_result()\nPY'); return
                 if '/studio-audit' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture','context':{'tool':'effectcraft-cli','action':'render','duration_seconds':1.25,'exit_code':1,'diagnostic':'Parametro CLI non riconosciuto','files':['/mnt/user-data/outputs/sample.ecproj'], 'command_preview':'python3 - <<"PY"\nrender_scene("sample.ecproj")', 'command_sha256':'a'*64, 'command_path':'/mnt/user-data/outputs/workspace/artcraft-job-123456abcdef/work/commands/aaaaaaaaaaaaaaaaaaaaaaaa/command.txt'}}], 'next_before':None,'latest_seq':1}).encode());return
+                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture','context':{'tool':'effectcraft-cli','action':'render','duration_seconds':1.25,'exit_code':1,'diagnostic':'Parametro CLI non riconosciuto','files':['/mnt/user-data/outputs/sample.ecproj'], 'command_preview':'python3 - <<"PY"\nrender_scene("sample.ecproj")', 'command_sha256':hashlib.sha256(b'python3 - <<"PY"\nrender_scene("sample.ecproj")\nverify_result()\nPY').hexdigest(), 'command_path':'/mnt/user-data/outputs/workspace/artcraft-job-123456abcdef/work/commands/aaaaaaaaaaaaaaaaaaaaaaaa/command.txt'}}], 'next_before':None,'latest_seq':1}).encode());return
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':state.get('pending_observations',0), 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
@@ -235,6 +236,15 @@ window.showThread();
                 expect(page.get_by_test_id('operation-details')).to_contain_text('Parametro CLI non riconosciuto')
                 expect(page.get_by_test_id('operation-details')).to_contain_text('sample.ecproj')
                 expect(page.get_by_test_id('operation-command')).to_contain_text('render_scene')
+                page.get_by_text('Apri comando completo / script inline',exact=True).click()
+                expect(page.get_by_test_id('operation-command')).to_contain_text('verify_result()')
+                state['tamper_command'] = True
+                page.get_by_text('Apri comando completo / script inline',exact=True).click()
+                page.get_by_text('Apri comando completo / script inline',exact=True).click()
+                expect(page.get_by_test_id('operation-command')).to_contain_text('Testo non disponibile')
+                expect(page.get_by_test_id('operation-command')).not_to_contain_text('modified command')
+                state['tamper_command'] = False
+                page.get_by_text('Apri comando completo / script inline',exact=True).click()
                 page.get_by_text('Apri comando completo / script inline',exact=True).click()
                 expect(page.get_by_test_id('operation-command')).to_contain_text('verify_result()')
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
