@@ -16,6 +16,19 @@ from studio.source_packages import inspect_ebook, verify_archive
 
 
 class CalibreTests(unittest.TestCase):
+    def test_missing_link_is_blocking_without_relabelling_native_warnings(self):
+        from types import SimpleNamespace
+        from scripts.calibre_job import issue_record
+        issue=SimpleNamespace(rule_id='DanglingLink',level=1,name='page.xhtml',line=3)
+        record=issue_record(issue,1)
+        self.assertEqual(record['severity'],'warning')
+        self.assertTrue(record['blocking'])
+        issue.rule_id='NonLinearItems'
+        self.assertFalse(issue_record(issue,1)['blocking'])
+        issue.level=2
+        self.assertEqual(issue_record(issue,1)['severity'],'error')
+        self.assertTrue(issue_record(issue,1)['blocking'])
+
     def test_structural_checks_use_offscreen_and_retain_real_failures(self):
         import os
         with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{}), patch.object(cli.shutil,'which',return_value=None):
