@@ -146,7 +146,7 @@ window.showThread();
             def do_GET(self):
                 if '/studio-audit' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
-                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture'}], 'next_before':None,'latest_seq':1}).encode());return
+                    self.wfile.write(json.dumps({'events':[{'seq':1,'at':'2026-10-22T00:00:00Z','actor':'Coordinatore','operation':'Strumento: read_file','status':'failed','detail':'Accesso non riuscito','correlation':'call-fixture','context':{'tool':'effectcraft-cli','action':'render','duration_seconds':1.25,'exit_code':1,'diagnostic':'Parametro CLI non riconosciuto','files':['/mnt/user-data/outputs/sample.ecproj']}}], 'next_before':None,'latest_seq':1}).encode());return
                 if '/studio-experience' in self.path:
                     self.send_response(200); self.send_header('Content-Type','application/json'); self.end_headers()
                     library = {'total':1,'excluded':int(state.get('experience_excluded',False)), 'pending':state.get('pending_observations',0), 'lessons':[{'id':'d'*64,'accepted':state.get('lesson_accepted',False),'excluded':False, 'basis':{'source_ids':['a'*64], 'source_statuses':['failed'], 'lesson':{'title':'Riaprire i pacchetti in una cartella nuova','applies_when':'Quando il progetto contiene risorse collegate','procedure':['Estrarre tutto il pacchetto'],'verification':['Verificare i collegamenti'],'limits':'Non prova qualità estetica','tools':['filmcraft']}}}], 'observations':[{
@@ -211,6 +211,10 @@ window.showThread();
                 expect(page.get_by_test_id('conversation-audit')).to_be_visible()
                 expect(page.get_by_test_id('conversation-audit').get_by_text('Coordinatore',exact=True)).to_be_visible()
                 expect(page.get_by_test_id('conversation-audit').get_by_role('link',name='Scarica CSV')).to_have_attribute('href','/api/threads/fixture/studio-audit?export=true')
+                page.get_by_test_id('conversation-audit').get_by_text('Dettagli operazione',exact=True).click()
+                expect(page.get_by_test_id('operation-details')).to_contain_text('1.25 s')
+                expect(page.get_by_test_id('operation-details')).to_contain_text('Parametro CLI non riconosciuto')
+                expect(page.get_by_test_id('operation-details')).to_contain_text('sample.ecproj')
                 page.get_by_role('button', name='Chiudi dettagli del progetto').click()
                 composer = page.get_by_role('textbox', name='Scrivi un messaggio')
                 for viewport in ({'width': 1100, 'height': 800}, {'width': 390, 'height': 740}):
@@ -541,6 +545,11 @@ window.showThread();
                 section('Risultato')
                 expect(page.get_by_test_id('latest-sample')).to_have_count(0)
                 expect(page.get_by_test_id('primary-result').get_by_role('link')).to_have_attribute('href',re.compile('preview.mp4'))
+                state['project']={**project,'status':'review','deliveries':[
+                    {**project['deliveries'][0],'unchanged_content':True,'change_kind':'metadata','content_version':1}]}
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Risultato')
+                expect(page.get_by_test_id('selected-version')).to_contain_text('Metadati aggiornati · versione 1 invariata')
                 # Old observations are curated only on explicit request, scoped
                 # to this chat; proposing never implies accepting the lessons.
                 state['pending_observations']=3

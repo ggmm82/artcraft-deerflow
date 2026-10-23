@@ -21,6 +21,7 @@ MAX_FILES = 12000
 # They are never executed here: prepare() below is the trusted runtime code.
 # Keep these identities when extending format checks, so existing sources reopen.
 RELEASED_PREPARERS = {
+    '758746a8222abe6097be5d6a62cd61e1f9f3b14770362e4ec5e39d6940278a5b',  # PR30: keep downloaded source packages compatible
     'ca41c6293e01c00de24a64c0451fb31392e2f2e8ec9c8abd1e0d1a4e5dce2586',  # PR23 / 2de17e3
     'dc64bb7d149025adba6c380ab676d0d19bbb74ea0779f70e0e514dd1a8b4c73a',  # 6e19bcabb8
     '5cc17a70890beeb481d9782cb85ecf184b64b137e1eee02f440a16eb2ddf9ede',  # 0f7da4742f
@@ -134,10 +135,11 @@ def run(argv, cwd, timeout=60):
 
 
 def sample(path, seconds=0):
+    """Normalize decoded RGB before reduction, including PNG/YUV range differences."""
     result = subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(seconds), '-i', str(path),
-        '-frames:v', '1', '-vf', 'scale=16:9,format=gray', '-f', 'rawvideo', '-'],
+        '-frames:v', '1', '-vf', 'format=rgb24,scale=16:9:flags=area,format=rgb24', '-f', 'rawvideo', '-'],
         capture_output=True, timeout=30, check=True)
-    if len(result.stdout) != 144:
+    if len(result.stdout) != 432:
         raise ValueError('Impossibile leggere il fotogramma: ' + Path(path).name)
     return list(result.stdout)
 
@@ -261,7 +263,7 @@ def inspect_tree(folder, *, native=False, budget=None, depth=0):
                     checks.append({'file': path.relative_to(folder).as_posix(), 'status': 'passed',
                         'check': 'filmcraft_render', 'duration': duration,
                         'width': info['sequence']['settings']['width'], 'height': info['sequence']['settings']['height'],
-                        'samples': samples})
+                        'sample_format': 'rgb24-area-v1', 'samples': samples})
                 elif path.suffix == '.ecproj':
                     run(['effectcraft-cli', '--project', path, 'info'], path.parent)
                 else:

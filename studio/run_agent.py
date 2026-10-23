@@ -282,7 +282,7 @@ def main():
                                          tools=(job.get('role') or {}).get('tools', []),
                                          require_components=job.get('purpose')=='delivery',
                                          require_timing=job.get('purpose')=='delivery' and all((job.get('requirements') or {}).get(k) for k in ('audio','video')),
-                                         workspace=Path('/mnt/user-data'))
+                                         workspace=Path('/mnt/user-data'), verified_archives=job.get('verified_archives'))
         delivery_record.update(requirements=job.get('requirements') or {}, verified_products=verified_products)
         (output_dir / 'delivery-manifest.json').write_text(json.dumps(delivery_record, ensure_ascii=False, indent=2))
         quality_review = read_review(handoff, output_dir, Path('/mnt/user-data'), engine, job.get('acceptance')) if job.get('purpose') == 'review' else None

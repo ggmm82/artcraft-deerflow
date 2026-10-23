@@ -243,6 +243,11 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
         from .projects import read_project
         payload['user_direction'] = (read_project(workspace) or {}).get('user_direction')
         payload['capability_policy'] = policy
+        from .verification_cache import load as load_verifications
+        try:
+            payload['verified_archives'] = load_verifications(STATE, workspace, IMAGE)
+        except (OSError, ValueError):
+            payload['verified_archives'] = {}
         if engine == 'deepseek' and not payload['model']:
             import yaml
             config = yaml.safe_load((STATE / 'config.yaml').read_text())
@@ -312,6 +317,11 @@ def delegate(agent_id, task, workspace, tool_call_id=None, on_started=None, requ
             raise RuntimeError('Risposta JSON dello specialista non valida') from None
         if not isinstance(result, dict) or result.get('ok') is not True:
             raise RuntimeError('Lo specialista non ha confermato il completamento')
+        from .verification_cache import save as save_verifications
+        try:
+            save_verifications(STATE, workspace, IMAGE, result)
+        except (OSError, ValueError):
+            pass  # Optional reuse must not discard a valid delivery.
         update(progress, 'completed')
         return json.dumps(result, ensure_ascii=False)
     except subprocess.TimeoutExpired:

@@ -120,7 +120,8 @@ def event_for_progress(method, params):
     if not mapped:
         return None
     return {'type': method.replace('/', '.'), 'item': {'type': mapped,
-            'command': item.get('command'), 'exit_code': item.get('exitCode'), 'tool': item.get('tool')}}
+            'id': item.get('id'), 'command': item.get('command'), 'exit_code': item.get('exitCode'), 'tool': item.get('tool'),
+            'duration_ms': item.get('durationMs'), 'output': item.get('aggregatedOutput')}}
 
 
 def run(model, prompt, output, timeout, progress, *, env=None, executable='codex', image_generation=True):

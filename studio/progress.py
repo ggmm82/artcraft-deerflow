@@ -60,7 +60,7 @@ def job_path(workspace, job_id):
 
 def read_status(path):
     path = Path(path)
-    if path.is_symlink() or path.stat().st_size > 100000:
+    if path.is_symlink() or path.stat().st_size > 200000:
         raise ValueError('Stato avanzamento non valido')
     value = json.loads(path.read_text())
     if not isinstance(value, dict) or value.get('phase') not in PHASES:
@@ -90,6 +90,7 @@ def edit_status(path):
 
 
 def update(path, phase=None, summary=None, **fields):
+    context = fields.pop('operation_details', None)
     with edit_status(path) as value:
         now = utcnow()
         value.update(fields)
@@ -112,9 +113,11 @@ def update(path, phase=None, summary=None, **fields):
             if phase in TERMINAL:
                 value['finished_at'] = now
             history = value.setdefault('events', [])
-            if not history or history[-1]['phase'] != phase or history[-1]['summary'] != summary:
+            if not history or history[-1]['phase'] != phase or history[-1]['summary'] != summary or (context and history[-1].get('context') != context):
                 value['event_count'] = value.get('event_count', 0) + 1
                 history.append({'seq': value['event_count'], 'at': now, 'phase': phase, 'summary': summary})
+                if context:
+                    history[-1]['context'] = context
                 value['events'] = history[-60:]
                 try:
                     try:
@@ -122,8 +125,8 @@ def update(path, phase=None, summary=None, **fields):
                     except ImportError:
                         from audit_log import append
                     append(Path(path).parents[2], value.get('role_title') or 'Specialista '+value.get('agent','workspace'),
-                           summary, 'failed' if phase in ('failed','timed_out') else 'completed' if phase=='completed' else 'progress',
-                           correlation=value.get('job_id',''), identifier=f"job:{value.get('job_id')}:{value['event_count']}", at=now)
+                           summary, 'failed' if phase in ('failed','timed_out') or (context or {}).get('exit_code',0) != 0 else 'completed' if phase=='completed' else 'progress',
+                           correlation=value.get('job_id',''), identifier=f"job:{value.get('job_id')}:{value['event_count']}", at=now, context=context)
                 except (OSError,ValueError):
                     pass
         return value.copy()
@@ -205,6 +208,46 @@ class Reporter:
         self.tool_events = []
         self.engine, self.model = job['engine'], job['model']
         self.role_title = (job.get('role') or {}).get('title') or 'Specialista '+job['agent']
+        self.commands = {}
+
+    def command_event(self, item, completed=False):
+        try:
+            try:
+                from .command_details import describe, diagnostic, public
+            except ImportError:
+                from command_details import describe, diagnostic, public
+            ident = str(item.get('id') or 'current')
+            if not completed:
+                if ident in self.commands:
+                    return public(self.commands[ident][1])
+                details = describe(item.get('command'))
+                if item.get('tool'):
+                    details.update(tool=clean_summary(item['tool'],80), action='Chiamata strumento')
+                details.update(id=hashlib.sha256((str(self.output_dir)+ident+utcnow()).encode()).hexdigest()[:24], started_at=utcnow())
+                self.commands[ident] = (time.monotonic(), details, output_snapshot(self.output_dir))
+                return public(details)
+            started, details, before = self.commands.pop(ident, (None, describe(item.get('command')), []))
+            previous = {f['name']: f for f in before}
+            details['changed_files'] = [f['name'] for f in output_snapshot(self.output_dir) if previous.get(f['name']) != f][:8]
+            details.update(finished_at=utcnow(), exit_code=item.get('exit_code'), diagnostic=diagnostic(item.get('output')) if type(item.get('exit_code')) is int and item['exit_code'] != 0 else '')
+            if started is not None:
+                details['duration_seconds'] = round(time.monotonic()-started, 3)
+            if type(item.get('duration_ms')) in (int,float):
+                details['duration_seconds'] = round(item['duration_ms']/1000, 3)
+            details = public(details)
+            if details.get('id'):
+                folder = self.output_dir / 'work/commands' / details['id']
+                if folder.resolve().is_relative_to(self.output_dir.resolve()) and not any(p.is_symlink() for p in (folder,folder.parent,folder.parent.parent)):
+                    folder.mkdir(parents=True, exist_ok=True)
+                    record = folder / 'status.json'
+                    details['record_path'] = str(record)
+                    if not record.is_symlink():
+                        record.write_text(json.dumps({**details, 'state':'completed' if item.get('exit_code')==0 else 'failed',
+                            'returncode':item.get('exit_code'), 'elapsed_seconds':details.get('duration_seconds'), 'oom_kills':0}))
+                        record.chmod(0o600)
+            return public(details)
+        except (OSError,ValueError,TypeError):
+            return {}
 
     def emit(self, phase, summary=None, **fields):
         if phase in ('running_tool', 'waiting_model'):
@@ -314,14 +357,15 @@ class Reporter:
         if engine == 'codex':
             item = event.get('item') or {}
             if kind == 'item.started' and item.get('type') == 'command_execution':
-                self.emit('running_tool', tool_label(item.get('command')))
+                self.emit('running_tool', tool_label(item.get('command')), operation_details=self.command_event(item))
             elif kind == 'item.completed' and item.get('type') == 'command_execution':
                 code = item.get('exit_code')
-                self.emit('waiting_model', 'Comando concluso' + (f' (uscita {code})' if isinstance(code, int) else ''))
+                details = self.command_event(item, completed=True)
+                self.emit('waiting_model', 'Comando concluso' + (f' (uscita {code})' if isinstance(code, int) else ''), operation_details=details)
             elif kind == 'item.started' and item.get('type') == 'mcp_tool_call':
-                self.emit('running_tool', 'Esecuzione di uno strumento MCP')
+                self.emit('running_tool', 'Esecuzione di uno strumento MCP', operation_details=self.command_event(item))
             elif kind == 'item.completed' and item.get('type') == 'mcp_tool_call':
-                self.emit('waiting_model', 'Strumento MCP concluso; elaborazione del risultato')
+                self.emit('waiting_model', 'Strumento MCP concluso; elaborazione del risultato', operation_details=self.command_event(item, completed=True))
             elif kind == 'item.started' and item.get('type') in ('image_generation', 'image_generation_call'):
                 self.emit('running_tool', 'Generazione di immagini tramite il modello')
             elif kind == 'item.completed' and item.get('type') in ('image_generation', 'image_generation_call'):
@@ -332,13 +376,13 @@ class Reporter:
             step = event.get('step_update') or {}
             if step.get('step_type') == 'tool':
                 if step.get('state') == 'DONE':
-                    self.emit('waiting_model', 'Strumento concluso; elaborazione del risultato')
+                    self.emit('waiting_model', 'Strumento concluso; elaborazione del risultato', operation_details=self.command_event({'id': str(step.get('step_index'))}, completed=True))
                 elif step.get('state') == 'ACTIVE':
                     info = step.get('tool_info') or {}
                     parameters = info.get('parameters') or {}
                     if not isinstance(parameters, dict):
                         parameters = {}
-                    self.emit('running_tool', tool_label(parameters.get('command')))
+                    self.emit('running_tool', tool_label(parameters.get('command')), operation_details=self.command_event({'id': str(step.get('step_index')), 'command':parameters.get('command'), 'tool':info.get('name') if not parameters.get('command') else None}))
             elif step.get('step_type') == 'finish':
                 self.emit('finalizing')
 
@@ -357,6 +401,13 @@ def public_status(value):
     result['queue_position'] = position if type(position) is int and 0 <= position <= 100000 else 0
     result['events'] = [{k: clean_summary(e.get(k)) for k in ('at', 'phase', 'summary')}
                         for e in value.get('events', [])[-60:] if isinstance(e, dict)]
+    try:
+        from .command_details import public
+    except ImportError:
+        from command_details import public
+    for event, original in zip(result['events'], [e for e in value.get('events', [])[-60:] if isinstance(e, dict)]):
+        if original.get('context'):
+            event['context'] = public(original['context'])
     result['files'] = [{'name': clean_summary(f.get('name')), 'size': f.get('size', 0)}
                        for f in value.get('files', [])[:100] if isinstance(f, dict)
                        and isinstance(f.get('size'), int) and f['size'] >= 0]

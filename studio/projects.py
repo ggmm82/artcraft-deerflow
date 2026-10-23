@@ -140,7 +140,7 @@ def delivery_summary(record):
     if not record:
         return None
     return {**{k: record.get(k) for k in ('id', 'title', 'purpose', 'technical_status', 'requirements', 'verified_products', 'source_status')},
-        **{k:record[k] for k in ('source_coverage','timing','finalization_pending') if record.get(k)},
+        **{k:record[k] for k in ('source_coverage','timing','finalization_pending','reused_archive_checks') if record.get(k)},
         'issues': [clean_summary(s) for s in record.get('issues', [])[:8]],
         'files': [{**{k: f.get(k) for k in ('path', 'sha256', 'role')},
                    **{k: clean_summary(f.get(k, '')) for k in ('open_with', 'editability')},
@@ -254,6 +254,34 @@ def assert_user_allows_work(value):
         raise ValueError('Progetto in pausa su richiesta dell’utente: attendi Riprendi dal pannello, senza avviare altre deleghe.')
 
 
+def review_matches(value, review, target_path, workspace):
+    target = artifact_path(workspace, target_path)
+    original = artifact_path(workspace, review.get('product_path', ''))
+    if not target:
+        return False
+    if original == target:
+        return not review.get('sha256') or digest(target) == review['sha256']
+    if not review.get('input_hashes') or digest(target) != review.get('sha256'):
+        return False
+    if review.get('report_sha256'):
+        report = artifact_path(workspace, review.get('report_path',''))
+        if not report or digest(report) != review['report_sha256']:
+            return False
+    if (value.get('acceptance') or {}).get('hash') != review.get('contract_hash'):
+        return False
+    for filename, expected in review['input_hashes'].items():
+        path = artifact_path(workspace, filename)
+        if not path or digest(path) != expected:
+            return False
+    reviewed_hashes = set(review['input_hashes'].values())
+    sources = [f for s in value['steps'] for a in s['attempts']
+               if any(artifact_path(workspace, p) == target for p in a.get('output_files', []))
+               for f in (a.get('delivery_record') or {}).get('files', [])
+               if f.get('role') in ('editable_source','source_archive')]
+    return bool(sources) and all(f.get('sha256') in reviewed_hashes and artifact_path(workspace, f.get('path',''))
+        and digest(artifact_path(workspace, f['path'])) == f['sha256'] for f in sources)
+
+
 def read_project(workspace):
     """Compact operational memory: histories remain on disk, not in every LLM turn."""
     if not (Path(workspace) / '.studio-project').exists():
@@ -326,6 +354,8 @@ def read_project(workspace):
                 result['deliveries'][-1]['source_coverage']=coverage
             if record.get('timing'):
                 result['deliveries'][-1]['timing']=record['timing']
+            if record.get('reused_archive_checks'):
+                result['deliveries'][-1]['reused_archive_checks']=record['reused_archive_checks']
             for filename in (available_paths(workspace, attempt) + attempt.get('previews', []))[:40]:
                 meta = metadata.get(filename, {})
                 candidates.append({'path': filename, 'agent': step['agent'], 'activity': step['id'],
@@ -369,7 +399,7 @@ def read_project(workspace):
                       key=lambda a: a.get('finished_at', ''), reverse=True)
     for attempt in reviewed:
         review = attempt['quality_review']
-        if public_artifact(workspace, review.get('product_path', '')) == result['product_path']:
+        if review_matches(value, review, result['product_path'], workspace):
             matches = not value.get('acceptance') or review.get('contract_hash') == value['acceptance']['hash']
             result['quality_status'] = review['status'] if matches else 'needs_review'
             result['review_criteria'] = review.get('criteria', []) if matches else []
@@ -522,14 +552,14 @@ def create_plan(workspace, brief, steps, project_type='', omissions=None, *, sum
                 raise ValueError('Consegna non collaudata o sorgenti incompleti: usa purpose=delivery e correggi delivery.issues. I file restano disponibili come bozza.')
             reviewed = sorted((a for s in value['steps'] for a in s['attempts'] if a.get('quality_review')),
                               key=lambda a: a.get('finished_at', ''), reverse=True)
-            reviews = [a['quality_review'] for a in reviewed if artifact_path(workspace,
-                a['quality_review'].get('product_path', '')) == target][:1]
+            reviews = [a['quality_review'] for a in reviewed if review_matches(value,
+                a['quality_review'], value.get('product_path'), workspace)][:1]
             accepted = value.get('user_acceptance') or {}
             if not (accepted.get('product_path') == value.get('product_path') and accepted.get('sha256') == target_hash) and not any(r.get('status') == 'passed' and r.get('sha256') == target_hash
                        and (not value.get('acceptance') or r.get('contract_hash') == value['acceptance']['hash'])
                        and all(artifact_path(workspace, p) and digest(artifact_path(workspace, p)) == sha
                                for p, sha in r.get('reference_hashes', {}).items())
-                       and artifact_path(workspace, r.get('product_path', '')) == target
+                       and review_matches(value, r, value.get('product_path'), workspace)
                        and (value.get('acceptance') or not value.get('requirements', {}).get('audio') or any(
                            c.get('method') == 'listening' and c.get('status') == 'passed' for c in r.get('criteria', [])))
                        for r in reviews):

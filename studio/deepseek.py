@@ -174,11 +174,11 @@ def run(model, prompt, output_dir, timeout, progress=None, transport=None, provi
                         from .progress import tool_label
                     except ImportError:
                         from progress import tool_label
-                    progress.emit('running_tool', tool_label(command))
+                    progress.emit('running_tool', tool_label(command), operation_details=getattr(progress, 'command_event', lambda *args, **kwargs: {})({'id':call['id'],'command':command}))
                 completed = subprocess.run(['bash', '-lc', command], cwd=output_dir,
                     capture_output=True, text=True, errors='replace', timeout=min(command_timeout, remaining))
                 if progress:
-                    progress.emit('waiting_model', 'Comando concluso (uscita ' + str(completed.returncode) + ')')
+                    progress.emit('waiting_model', 'Comando concluso (uscita ' + str(completed.returncode) + ')', operation_details=getattr(progress, 'command_event', lambda *args, **kwargs: {})({'id':call['id'],'exit_code':completed.returncode,'output':completed.stderr}, completed=True))
                 response = {'returncode': completed.returncode,
                             'stdout': completed.stdout[-12000:], 'stderr': completed.stderr[-3000:]}
             except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:

@@ -44,6 +44,9 @@ class AdaptiveToolTests(unittest.TestCase):
                 self.assertEqual(len(request.messages), len(state['messages']))
                 self.assertEqual(len(augmented.messages), len(request.messages)+1)
                 self.assertIn('Correct the observed defect', augmented.messages[-1].content)
+                no_progress = middleware.after_model(state, runtime)
+                self.assertNotIn('jump_to', no_progress)
+                state['studio_work_generation'] += 1
                 state.update(middleware.after_model(state, runtime))
                 self.assertEqual(state['studio_completion_nudges'], 2)
                 capped = middleware.after_model(state, runtime)
@@ -76,7 +79,7 @@ class AdaptiveToolTests(unittest.TestCase):
             agent=create_agent(model,tools=[studio_delegate],middleware=[ProjectCompletionMiddleware()])
             with patch('studio.completion_middleware.workspace_for',return_value=root):
                 result=agent.invoke({'messages':[HumanMessage('Complete the product')]})
-            self.assertEqual(result['studio_completion_nudges'],2)
+            self.assertEqual(result['studio_completion_nudges'],1)
             self.assertFalse(any(isinstance(m,SystemMessage) for m in result['messages']))
             self.assertEqual(read_project(root)['attention']['code'],'incomplete_objective')
 

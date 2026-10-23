@@ -26,6 +26,7 @@ def annotate(deliveries, project, workspace, artifact):
     attempts.sort(key=lambda item: (item[1].get('started_at', ''), item[1].get('finished_at', ''), item[0]['id']))
     by_id = {d['id']: d for d in deliveries}
     targets = {}
+    previous_product = None
     for step, attempt in attempts:
         identifier = (attempt.get('delivery_record') or {}).get('id') or Path(attempt.get('output_dir', '')).name or step['id']
         purpose = (attempt.get('context') or {}).get('purpose', 'work')
@@ -38,6 +39,17 @@ def annotate(deliveries, project, workspace, artifact):
         delivery.update(category=category, version=attempt.get('version_number') if category == 'version' else None,
                         execution_status=attempt.get('status', ''), file_count=len(attempt.get('output_files', [])),
                         role_title=attempt.get('role_title', ''))
+        if category == 'version':
+            files = (attempt.get('delivery_record') or {}).get('files', [])
+            exports = tuple(sorted(f['sha256'] for f in files if f.get('role') == 'export' and f.get('sha256')))
+            sources = {f['sha256'] for f in files if f.get('role') in ('editable_source','source_archive') and f.get('sha256')}
+            delivery['content_version'] = delivery.get('version')
+            if exports and previous_product and exports == previous_product[0]:
+                previous, old_sources = previous_product[1:]
+                delivery.update(unchanged_content=True, change_kind='sources' if sources != old_sources else 'metadata',
+                    content_version=previous.get('content_version'), based_on_delivery_id=previous['id'])
+            if exports:
+                previous_product = (exports, delivery, sources)
         for filename in attempt.get('output_files', []):
             path = artifact(workspace, filename)
             if path:

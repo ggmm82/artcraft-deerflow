@@ -14,6 +14,8 @@ class CompletionState(AgentState):
     studio_production_started: NotRequired[bool]
     studio_completion_nudges: NotRequired[int]
     studio_completion_reminder: NotRequired[str]
+    studio_work_generation: NotRequired[int]
+    studio_reminded_generation: NotRequired[int]
 
 
 class ProjectCompletionMiddleware(AgentMiddleware):
@@ -21,7 +23,8 @@ class ProjectCompletionMiddleware(AgentMiddleware):
     MAX_NUDGES = 2
 
     def before_agent(self, state, runtime):
-        return {'studio_production_started': False, 'studio_completion_nudges': 0, 'studio_completion_reminder': ''}
+        return {'studio_production_started': False, 'studio_completion_nudges': 0, 'studio_completion_reminder': '',
+                'studio_work_generation':0, 'studio_reminded_generation':-1}
 
     async def abefore_agent(self, state, runtime):
         return self.before_agent(state, runtime)
@@ -38,6 +41,7 @@ class ProjectCompletionMiddleware(AgentMiddleware):
             if any(c['name'] == 'studio_delegate' and c.get('args', {}).get('purpose', 'work') != 'review'
                    for c in last.tool_calls):
                 update['studio_production_started'] = True
+                update['studio_work_generation'] = state.get('studio_work_generation',0) + 1
             return update
         # Respect native provider/safety/loop terminalization and parsing errors.
         if last.invalid_tool_calls or any(k in last.additional_kwargs for k in
@@ -51,10 +55,11 @@ class ProjectCompletionMiddleware(AgentMiddleware):
             if not needs_continuation(project):
                 return update
             count = state.get('studio_completion_nudges', 0)
-            if count >= self.MAX_NUDGES:
+            unchanged = count > 0 and state.get('studio_work_generation',0) == state.get('studio_reminded_generation',-1)
+            if count >= self.MAX_NUDGES or unchanged:
                 mark_incomplete_turn(root)
                 append(root, 'Coordinatore', 'Obiettivo non completato', 'failed',
-                       detail='Terminati due richiami di completamento; file conservati, nessuna approvazione.')
+                       detail='Nessuna nuova lavorazione dopo il richiamo; evitate risposte ripetute.' if unchanged else 'Terminati due richiami di completamento; file conservati, nessuna approvazione.')
                 return update
             reminder = ('Il turno di produzione sta terminando ma il progetto non è completo. '
                 'Prossimo obiettivo registrato: ' + str(project.get('next_action', ''))[:500] + '. '
@@ -65,6 +70,7 @@ class ProjectCompletionMiddleware(AgentMiddleware):
             append(root, 'Coordinatore', 'Ripresa del lavoro incompleto', 'progress',
                    detail='Richiamo di completamento ' + str(count + 1) + '/2')
             return {**update, 'jump_to': 'model', 'studio_completion_nudges': count + 1,
+                    'studio_reminded_generation':state.get('studio_work_generation',0),
                     'studio_completion_reminder': reminder}
         except (AttributeError, ValueError, OSError):
             return update

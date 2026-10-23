@@ -323,7 +323,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     if result.get('output_dir') and handoff:
         compact['handoff_path'] = result['output_dir'] + '/handoff.json'
     record = result.get('delivery_record') or {}
-    compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status', 'finalization_pending')}
+    compact['delivery'] = {k: record.get(k) for k in ('id', 'title', 'technical_status', 'issues', 'source_status', 'finalization_pending', 'reused_archive_checks')}
     compact['quality_review'] = result.get('quality_review')
     compact['correction_focus'] = (read_project(workspace) or {}).get('correction_focus', [])
     compact['learning_review'] = result.get('learning_review')
