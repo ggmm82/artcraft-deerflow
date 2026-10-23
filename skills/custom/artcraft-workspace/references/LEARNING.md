@@ -1,5 +1,7 @@
 ## Singole lezioni sull’uso degli strumenti
 
+Quando risolvi un errore riproducibile della CLI, conserva la singola procedura corretta, le condizioni/versioni e la prova positiva in questa sandbox, prima di chiudere. Un archivio con osservazioni o un `tool-lessons.json` vuoto non significa che sia stata appresa una lezione. Il coordinatore valuta al massimo poche fonti significative a fine lavorazione; non occorre trasformare ogni controllo in una lezione. Il runtime aggiorna subito le skills dei ruoli quando una lezione viene salvata: solo quelle tecniche con test superato o i metodi accettati possono essere inclusi, se pertinenti agli strumenti e alle versioni. I metodi di realizzazione restano da accettare singolarmente.
+
 Indica `lesson.category`: `tool_operation` per uso di API/CLI, parametri, errori,
 risorse e riapertura; `production_method` per scelte di progettazione, stile,
 costruzione, collaborazione e organizzazione della produzione. Usare un’app non

@@ -124,7 +124,7 @@ def event_for_progress(method, params):
             'duration_ms': item.get('durationMs'), 'output': item.get('aggregatedOutput')}}
 
 
-def run(model, prompt, output, timeout, progress, *, env=None, executable='codex', image_generation=True):
+def run(model, prompt, output, timeout, progress, *, env=None, executable='codex', image_generation=True, preflight=None):
     env = dict(env if env is not None else os.environ)
     env['ARTCRAFT_OUTPUT_DIR'] = str(output)
     codex_home = Path(env.get('CODEX_HOME', str(Path.home() / '.codex')))
@@ -133,6 +133,7 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
     deadline = time.monotonic() + timeout
     startup_deadline = min(deadline, time.monotonic() + STARTUP_TIMEOUT)
     turn_accepted = False
+    thread_id, metadata_repairs = None, 0
     events = queue.Queue(maxsize=8)
     messages, active_tools = [], set()
     last_event = time.monotonic()
@@ -209,9 +210,10 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
                         config['model'] = model
                     request(2, 'thread/start', config)
                 elif ident == 2:
-                    request(3, 'turn/start', {'threadId': event['result']['thread']['id'],
+                    thread_id = event['result']['thread']['id']
+                    request(3, 'turn/start', {'threadId': thread_id,
                             'input': [{'type': 'text', 'text': prompt, 'text_elements': []}]})
-                if ident == 3 or method == 'turn/started':
+                if ident in (3, 4) or method == 'turn/started':
                     turn_accepted = True
                     if not active_tools:
                         progress.emit('waiting_model', 'Incarico accettato da Codex; attendo la risposta del modello')
@@ -242,6 +244,22 @@ def run(model, prompt, output, timeout, progress, *, env=None, executable='codex
                         category = {'unauthorized': 'Authentication required: ',
                                     'usageLimitExceeded': 'Usage limit exceeded: '}.get(kind, '') if isinstance(kind, str) else ''
                         raise RuntimeError('Codex: ' + category + str(error.get('message') or turn.get('status') or 'turno non concluso')[:1000])
+                    if preflight is not None:
+                        try:
+                            preflight()
+                        except (OSError, ValueError) as error:
+                            if metadata_repairs or deadline - time.monotonic() < 15:
+                                raise
+                            metadata_repairs += 1
+                            messages.clear()
+                            progress.emit('checking', 'Correggo i metadati nella stessa sandbox; prodotti conservati')
+                            request(4, 'turn/start', {'threadId':thread_id, 'input':[{'type':'text', 'text':
+                                'Il preflight della consegna non è superato: ' + str(error)[:2000] +
+                                '. Correggi soltanto handoff.json e i riferimenti ai file già esistenti. '
+                                'Non rigenerare o cambiare il prodotto, non promuovere failed/not_run a passed. '
+                                'Esegui /usr/bin/python3 /opt/studio/handoff.py validate "' + str(output) +
+                                '" e concludi. Un solo recupero nello stesso incarico e nel budget residuo.', 'text_elements':[]}]})
+                            continue
                     return '\n'.join(messages[-4:])
         finally:
             stop.set()

@@ -42,17 +42,21 @@ def studio_read_context(runtime: Runtime, path: str, sha256: str, offset: int = 
 
 def preserve_experience(workspace, runtime):
     from .experience import collect
-    from .lessons import pending, propose_findings
+    from .lessons import pending, propose_findings, automatic
     try:
         thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
         saved = collect(workspace, experience_root(runtime), thread)
         proposals = propose_findings(experience_root(runtime), thread)
+        if proposals:
+            sync_project_context(workspace, experience_root=experience_root(runtime))
         if saved or proposals:
             from .audit_log import append
             append(workspace, 'Memoria', 'Fonti esperienza archiviate', 'completed',
                    detail=f'{saved} nuove fonti; {len(proposals)} proposte. Archiviazione e apprendimento sono distinti.')
         sources = pending(experience_root(runtime), limit=3, source_thread=thread)
         return {'saved': saved, 'proposed_lessons': len(proposals), 'pending': len(pending(experience_root(runtime))),
+                'technical_active_in_library': len(automatic(experience_root(runtime))),
+                'notice': 'saved conta fonti archiviate, non lezioni apprese. Solo lezioni tecniche verificate o metodi accettati entrano nelle skills pertinenti.',
                 'sources_to_evaluate': [{k: s.get(k) for k in ('id', 'criterion', 'status')} for s in sources],
                 'instruction': 'Usa studio_lessons per valutare queste evidenze: generalizza poche cause/procedure utili, anche dai fallimenti, oppure motiva perché non sono trasferibili. Non inventare benefici né trasferire fatti specifici nelle skills. Un metodo proposto richiede accettazione; un test operativo serve solo per attivare automaticamente conoscenza tecnica.'}
     except (OSError, ValueError, TypeError):
@@ -165,6 +169,8 @@ def studio_lessons(runtime: Runtime, source_ids_json: str = '', lesson_json: str
     if bool(source_ids_json) != bool(lesson_json):
         raise ValueError('Indica sia le fonti sia la lezione generale')
     identifier = learn(root, json.loads(source_ids_json), json.loads(lesson_json), json.loads(impact_json) if impact_json else None) if lesson_json else None
+    if identifier:
+        sync_project_context(workspace_for(runtime), experience_root=root)
     return lesson_reply(runtime, {'saved_lesson': identifier, 'pending_sources': pending(root,source_thread=thread),
                        'instruction': 'Conserva solo la lezione generale e condizionale; le fonti restano separate e non dimostrano più di quanto verificato.'})
 
@@ -305,10 +311,14 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
         purpose=purpose, request_id=request_id, role=role))
     experience = preserve_experience(workspace, runtime)
     handoff = result.get('handoff') or {}
+    from .handoff import blocking_checks
+    from .control_memory import counts
     from .progress import clean_summary
     compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked',
         'product_verified', 'verified_products', 'available_results') if k in result}
     compact.update(error=clean_summary(result.get('error', '')),
+        check_counts=counts(handoff.get('checks', [])),
+        blocking_failed_checks=len(list(blocking_checks(handoff.get('checks', [])))),
         available_files=result.get('available_files', [])[:20],
         source_status=handoff.get('delivery', {}).get('source_status'),
         outputs=[{**{k: clean_summary(f.get(k, '')) for k in ('path', 'role', 'format', 'open_with', 'editability')},
@@ -317,6 +327,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
                   'limitations': [clean_summary(s) for s in f.get('limitations', [])[:3]]}
                  for f in handoff.get('delivery', {}).get('files', [])[:20]],
         checks=[{'name': clean_summary(c.get('name')), 'status': c.get('status'),
+                 **{k: c[k] for k in ('scope','superseded_by') if k in c},
                  'evidence': clean_summary(c.get('evidence'))} for c in sorted(handoff.get('checks', []), key=lambda c: c.get('status') == 'passed')[:10]],
         warnings=[clean_summary(w) for w in handoff.get('warnings', [])[:5]],
         review_notes=result.get('review_notes', [])[:8])

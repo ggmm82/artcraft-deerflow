@@ -12,6 +12,14 @@ from test_project_skills import role
 
 
 class ExperienceTests(unittest.TestCase):
+    def test_automatic_curation_does_not_turn_every_success_into_a_lesson(self):
+        experience.collect(self.workspace,self.library,'thread-a')
+        all_sources=lessons.pending(self.library,source_thread='thread-a')
+        meaningful=lessons.pending(self.library,source_thread='thread-a',meaningful_only=True)
+        self.assertTrue(any(s['status']=='passed' for s in all_sources))
+        self.assertTrue(meaningful)
+        self.assertTrue(all(s['status']=='failed' or s['corrections'] for s in meaningful))
+        self.assertLess(len(meaningful),len(all_sources))
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name); self.workspace = self.root / 'user-a/project'
@@ -256,6 +264,20 @@ class ExperienceTests(unittest.TestCase):
         lessons.accept(self.library, proposal, False)
         self.assertEqual(experience.select(self.library, [self.spec], projects.applications()), [])
         self.assertNotIn(proposal, lessons.automatic(self.library))
+
+    def test_compiled_role_receives_verified_note_but_not_a_different_tool_version(self):
+        self.verified_note()
+        experience.collect(self.workspace,self.library,'thread-a')
+        identifier,=lessons.propose_findings(self.library,'thread-a')
+        projects.sync_project_context(self.workspace,experience_root=self.library)
+        compiled=projects.read_project(self.workspace)['roles'][0]
+        self.assertEqual(compiled['experience']['ids'],[identifier])
+        self.assertIn('Riaprire le dipendenze',load_compiled(self.workspace,compiled))
+        apps=[{**a,'version':a['version']+'-changed'} if a['id']=='vectorcraft' else a for a in projects.applications()]
+        with patch('studio.projects.applications',return_value=apps):
+            projects.sync_project_context(self.workspace,experience_root=self.library)
+        self.assertEqual(projects.read_project(self.workspace)['roles'][0]['experience']['count'],0)
+        self.assertIn(identifier,lessons.automatic(self.library))
 
     def test_verified_operational_knowledge_is_retained_without_inventing_impact(self):
         self.verified_note()

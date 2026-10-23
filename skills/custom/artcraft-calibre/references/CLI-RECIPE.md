@@ -1,5 +1,9 @@
 # Ricette CLI verificate
 
+L’adattatore distingue i profili Qt: conversione e rendering usano Xvfb/xcb con OpenGL software; `inspect` e `check` del contenitore usano offscreen, senza dipendenza dal display. Un crash Qt/GLX non dimostra che il libro sia corrotto: conserva log ed exit code, ripeti il controllo nella configurazione pertinente e mantieni separato il fallimento storico dal risultato corrente. Non disattivare la validazione e non dichiarare compatibilità con lettori non provati.
+
+`check` conserva la severità nativa degli avvisi e indica separatamente `blocking`. Un `DanglingLink` (destinazione assente) blocca il prodotto anche quando Calibre lo chiama warning; `NonLinearItems` resta un avviso compatibile con percorsi interattivi intenzionali. Non ridurre tutti gli avvisi a errori e non ignorare una risorsa mancante per ottenere un passed.
+
 Sostituisci i percorsi con file reali del lavoro; output nuovi, mai l’originale. Queste prove minime verificano le API, non il livello del risultato richiesto.
 
 ```sh

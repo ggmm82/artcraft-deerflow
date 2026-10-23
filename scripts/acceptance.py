@@ -452,6 +452,37 @@ def calibre(c):
     rejected = subprocess.run(['calibre-cli', 'check', str(missing)], capture_output=True, text=True, timeout=60)
     c.check('Risorsa collegata mancante rilevata', rejected.returncode != 0, rejected.stdout[-1500:])
     c.check('Input originale intatto', hashlib.sha256(source.read_bytes()).hexdigest() == original, original)
+    # Hand-authored interactive publications exercise CSS and non-linear spine
+    # items differently from ebook-convert output (the observed Qt/GLX crash).
+    interactive = c.root / 'interactive.epub'
+    pages = {
+        'nav':'<nav epub:type="toc"><h1>Indice</h1><ol><li><a href="cerca.xhtml">Inizia</a></li></ol></nav>',
+        'cerca':'<h1>Scegli</h1><img src="cover.png" alt="Due colori"/><p><a href="blu.xhtml">Blu</a> <a href="rosso.xhtml">Rosso</a></p>',
+        'blu':'<h1>Riprova</h1><a href="cerca.xhtml">Torna alla scelta</a>',
+        'rosso':'<h1>Ben fatto</h1><a href="fine.xhtml">Continua</a>',
+        'fine':'<h1>Fine</h1><a href="nav.xhtml">Indice</a>'}
+    entries = {'mimetype':b'application/epub+zip',
+        'META-INF/container.xml':b'<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
+        'EPUB/stile.css':b'body{margin:1em;color:#302a20}img{max-width:100%;height:auto}a{padding:.5em}'}
+    items = ''.join(f'<item id="{name}" href="{name}.xhtml" media-type="application/xhtml+xml"' + (' properties="nav"' if name=='nav' else '') + '/>' for name in pages)
+    spine = ''.join(f'<itemref idref="{name}" linear="' + ('yes' if name in ('cerca','fine') else 'no') + '"/>' for name in pages)
+    entries['EPUB/package.opf'] = ('<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">urn:uuid:11111111-1111-4111-8111-111111111111</dc:identifier><dc:title>Prova interattiva</dc:title><dc:language>it</dc:language><meta property="dcterms:modified">2026-01-01T00:00:00Z</meta></metadata><manifest>' + items + '<item id="css" href="stile.css" media-type="text/css"/><item id="image" href="cover.png" media-type="image/png"/></manifest><spine>' + spine + '</spine></package>').encode()
+    entries['EPUB/cover.png'] = cover.read_bytes()
+    for name, body in pages.items():
+        entries[f'EPUB/{name}.xhtml'] = ('<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="it"><head><title>Prova</title><link href="stile.css" rel="stylesheet" type="text/css"/></head><body>' + body + '</body></html>').encode()
+    with zipfile.ZipFile(interactive,'w') as z:
+        for name,data in entries.items():z.writestr(name,data)
+    original = hashlib.sha256(interactive.read_bytes()).hexdigest()
+    for repeat in range(3):
+        check = json.loads(c.run('calibre-cli','check',interactive))
+        c.check(f'EPUB interattivo controllato offscreen, prova {repeat+1}',check['status']=='passed',check)
+    c.check('Collaudo non modifica EPUB interattivo',hashlib.sha256(interactive.read_bytes()).hexdigest()==original,original)
+    broken = c.root / 'interactive-broken.epub'
+    with zipfile.ZipFile(broken,'w') as z:
+        for name,data in entries.items():
+            z.writestr(name,data.replace(b'blu.xhtml',b'missing.xhtml') if name=='EPUB/cerca.xhtml' else data)
+    rejected = subprocess.run(['calibre-cli','check',str(broken)],capture_output=True,text=True,timeout=60)
+    c.check('Profilo offscreen rileva ancora link interattivo mancante',rejected.returncode!=0,rejected.stdout[-1500:])
 
 
 CASES = {name: globals()[name] for name in ('photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft',

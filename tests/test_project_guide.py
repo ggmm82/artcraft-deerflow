@@ -12,6 +12,17 @@ from studio.progress import Reporter, read_status
 
 
 class GuideTests(unittest.TestCase):
+    def test_followup_brief_does_not_relabel_previous_delivery(self):
+        self.production('first')
+        first=build(self.root,'first')
+        projects.create_plan(self.root,'An entirely new requested product',[])
+        self.production('followup')
+        earlier=build(self.root,'first')
+        self.assertEqual(earlier['title'],first['title'])
+        self.assertEqual(earlier['brief'],first['brief'])
+        self.assertNotIn('entirely new',earlier['brief'])
+        self.assertEqual(build(self.root)['brief'],'An entirely new requested product')
+
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)

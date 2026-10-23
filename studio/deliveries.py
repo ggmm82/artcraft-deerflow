@@ -7,10 +7,12 @@ try:
     from .source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
     from .acceptance import METHODS, evaluate, checkpoint_assessment, capabilities
     from .revision import actions, comparison
+    from .handoff import blocking_checks
 except ImportError:
     from source_packages import digest, verify_archive, sample, NATIVE, inspect_blend, inspect_ebook, inspect_freecad
     from acceptance import METHODS, evaluate, checkpoint_assessment, capabilities
     from revision import actions, comparison
+    from handoff import blocking_checks
 
 
 def read_review(handoff, output_dir, workspace, engine, acceptance=None):
@@ -138,7 +140,7 @@ def prepare_review_handoff(output_dir, workspace, engine, acceptance=None):
     for check in previous.get('checks', []) if isinstance(previous.get('checks'), list) else []:
         if (isinstance(check, dict) and check.get('status') in ('passed', 'failed', 'not_run')
                 and all(isinstance(check.get(k), str) and check[k].strip() for k in ('name', 'evidence'))):
-            handoff['checks'].append({k:check[k] for k in ('name','status','evidence')})
+            handoff['checks'].append({k:check[k] for k in ('name','status','evidence','scope','superseded_by') if k in check})
     # Validate the real product, criteria and baseline before writing anything.
     read_review(handoff, root, boundary, engine, acceptance)
     if original is not None:
@@ -267,10 +269,11 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
     issues.extend(coverage['issues'])
     if timing['status'] == 'failed':
         issues.extend(timing['issues'])
-    issues.extend(c['name'] + ': ' + c['evidence'][:300] for c in handoff['checks'] if c['status'] == 'failed')
+    issues.extend(c['name'] + ': ' + c['evidence'][:300] for c in blocking_checks(handoff['checks']))
     value = {'id': root.name, 'title': handoff['task'][:200], 'purpose': purpose,
              'technical_status': 'passed' if not issues else 'needs_revision',
              'issues': issues[:20], 'finalization_pending': finalization, 'files': files, 'source_status': delivery['source_status'],
+             'historical_checks': [c for c in handoff['checks'] if c.get('scope') == 'historical'],
              'source_coverage':coverage, 'timing':timing,
              'source_note': delivery['source_note'][:1000],
              'quality_status': 'not_reviewed',

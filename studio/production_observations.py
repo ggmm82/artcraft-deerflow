@@ -24,8 +24,9 @@ def observations(workspace, attempt, role, source_thread):
         checks = value.get('checks', [])
         if not isinstance(checks, list):
             return []
-        checks = [check for check in checks if isinstance(check, dict) and check.get('status') == 'failed'
-                  and isinstance(check.get('name'), str) and isinstance(check.get('evidence'), str)
+        from .handoff import blocking_checks
+        checks = [check for check in blocking_checks([c for c in checks if isinstance(c, dict)])
+                  if isinstance(check.get('name'), str) and isinstance(check.get('evidence'), str)
                   and check['evidence'].strip()][:3]
         if not checks:
             return []

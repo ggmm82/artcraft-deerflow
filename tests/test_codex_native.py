@@ -156,3 +156,18 @@ enable_request_compression = false
             self.assertEqual(run('gpt-5.4','Run the command.',out,40,progress,env=env,executable=BINARY,image_generation=False),'Done')
             self.assertEqual((out/'command-result.txt').read_text(),'native-cli-ok')
             self.assertTrue(any(c.args[1].get('item',{}).get('type')=='command_execution' for c in progress.cli_event.call_args_list))
+            command_enabled[0] = False; response_count[0] = 0
+            original=(out/'command-result.txt').read_bytes()
+            checked=Mock(side_effect=[ValueError('delivery.components[0].tool: massimo 48 caratteri'),None])
+            self.assertEqual(run('gpt-5.4','Finalize existing files.',out,40,progress,env=env,executable=BINARY,
+                                 image_generation=False,preflight=checked),'Done')
+            self.assertEqual(checked.call_count,2)
+            self.assertEqual(response_count[0],2)
+            self.assertEqual((out/'command-result.txt').read_bytes(),original)
+            checked=Mock(side_effect=ValueError('Still invalid'))
+            response_count[0]=0
+            with self.assertRaisesRegex(ValueError,'Still invalid'):
+                run('gpt-5.4','Finalize existing files.',out,40,progress,env=env,executable=BINARY,
+                    image_generation=False,preflight=checked)
+            self.assertEqual(checked.call_count,2)
+            self.assertEqual(response_count[0],2)

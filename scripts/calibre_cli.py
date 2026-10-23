@@ -100,12 +100,20 @@ def environment():
     return root
 
 
-def run(argv, root, label):
+def run(argv, root, label, *, structural=False):
     key = 'calibre-' + hashlib.sha256(json.dumps(argv).encode()).hexdigest()
-    display = shutil.which('xvfb-run')
-    if not display:
-        raise RuntimeError('Rendering Calibre non disponibile: aggiorna l’immagine sandbox con xvfb-run e le librerie XCB.')
-    command = [display, '--auto-servernum', '--server-args=-screen 0 1280x1024x24 -nolisten tcp', '--', *argv]
+    if structural:
+        # Container parsing and CSS checking do not render a book. The checker
+        # can crash in Qt/GLX under xcb even when ebook conversion works there.
+        # Keep a separate QPA profile instead of weakening or skipping checks.
+        os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+        os.environ['CALIBRE_HEADLESS_PLATFORM'] = 'offscreen'
+        command = argv
+    else:
+        display = shutil.which('xvfb-run')
+        if not display:
+            raise RuntimeError('Rendering Calibre non disponibile: aggiorna l’immagine sandbox con xvfb-run e le librerie XCB.')
+        command = [display, '--auto-servernum', '--server-args=-screen 0 1280x1024x24 -nolisten tcp', '--', *argv]
     completed, stats = supervise(command, root, key, timeout=1200, label='Calibre · ' + label)
     if completed.returncode:
         cause = 'Memoria esaurita. ' if stats.get('oom_kills') else ''
@@ -122,7 +130,7 @@ def native_info(action, source, root):
     if target.exists():
         target.unlink()
     run(['calibre-debug', '--exec-file', str(Path(__file__).resolve().with_name('calibre_job.py')), '--',
-         action, str(source), str(target)], root, 'Controllo struttura' if action == 'check' else 'Lettura metadati e struttura')
+         action, str(source), str(target)], root, 'Controllo struttura' if action == 'check' else 'Lettura metadati e struttura', structural=True)
     value = json.loads(target.read_text())
     if not isinstance(value, dict) or not value.get('spine'):
         raise ValueError('Pubblicazione senza ordine di lettura valido')

@@ -141,6 +141,8 @@ def delivery_summary(record):
         return None
     return {**{k: record.get(k) for k in ('id', 'title', 'purpose', 'technical_status', 'requirements', 'verified_products', 'source_status')},
         **{k:record[k] for k in ('source_coverage','timing','finalization_pending','reused_archive_checks') if record.get(k)},
+        'historical_checks': [{k:clean_summary(c.get(k, '')) for k in ('name','status','evidence','scope','superseded_by')}
+                              for c in record.get('historical_checks', [])[:8]],
         'issues': [clean_summary(s) for s in record.get('issues', [])[:8]],
         'files': [{**{k: f.get(k) for k in ('path', 'sha256', 'role')},
                    **{k: clean_summary(f.get(k, '')) for k in ('open_with', 'editability')},
@@ -725,6 +727,8 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
             contract_text += '\nUltimo incarico da riprendere: ' + json.dumps({k: previous.get(k) for k in
                 ('output_dir', 'output_files', 'error')}, ensure_ascii=False)
         attempt = {'started_at': utcnow(), 'status': 'running', 'gateway_session': GATEWAY_SESSION, 'context': context, 'task': clean_summary(task, 1500), 'role_id': role['id'] if role else '', 'role_title': role['title'] if role else ''}
+        attempt['project_brief'] = clean_summary(value.get('brief',''),4000)
+        attempt['project_title'] = clean_summary((value.get('outcome') or {}).get('title') or value.get('brief',''),400)
         installed = {app['id']: app['version'] for app in applications()}
         attempt['tool_environment'] = scoped_file(workspace, 'tool-environments/' + fingerprint(installed) + '.json', json.dumps(installed, sort_keys=True))
         if purpose == 'delivery':
@@ -760,16 +764,18 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
     except Exception as exc:
         result = {'ok': False, 'error': clean_summary(exc)}
     handoff = result.get('handoff') or {}
-    notes = [clean_summary(c.get('name')) for c in handoff.get('checks', []) if c.get('status') != 'passed']
+    notes = [clean_summary(c.get('name')) for c in handoff.get('checks', []) if c.get('status') != 'passed' and c.get('scope') != 'historical']
     with locked(workspace) as folder:
         value = load(folder, workspace)
         if value['id'] != project_id:
             raise RuntimeError('Progetto cambiato durante l’incarico')
         step = next(s for s in value['steps'] if s['id'] == sid)
         attempt = step['attempts'][-1]
-        failed_checks = [clean_summary(c.get('name')) for c in handoff.get('checks', []) if c.get('status') == 'failed']
+        from .handoff import blocking_checks
+        failed_checks = [clean_summary(c.get('name')) for c in blocking_checks(handoff.get('checks', []))]
         step['status'] = ('needs_revision' if failed_checks else 'completed') if result.get('ok') else 'paused'
         attempt.update(status=step['status'], finished_at=utcnow(), validated=bool(result.get('ok')),
+            runtime_image=clean_summary(result.get('runtime_image', ''), 512),
             delivery_record=delivery_summary(result.get('delivery_record')), quality_review=result.get('quality_review'),
             product_verified=bool(result.get('product_verified')),
             verified_products=result.get('verified_products', [])[:10],

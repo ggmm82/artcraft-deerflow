@@ -6,6 +6,16 @@ from pathlib import Path
 import sys
 
 
+def issue_record(error, warn_level):
+    # Calibre calls DanglingLink a warning, but delivering a navigation target
+    # which does not exist breaks the publication's actual behavior. Preserve
+    # the native severity and expose the adapter's blocking policy separately.
+    native_error = error.level > warn_level
+    return {'rule':error.rule_id, 'severity':'error' if native_error else 'warning',
+            'blocking':native_error or error.rule_id == 'DanglingLink',
+            'file':error.name, 'line':error.line, 'message':str(error)}
+
+
 def main():
     import calibre
     # The pinned checker uses detect_ncpus for both CSS pages and parser threads.
@@ -24,9 +34,8 @@ def main():
         from calibre.ebooks.oeb.polish.check.main import run_checks
         from calibre.ebooks.oeb.polish.check.base import WARN
         issues = run_checks(container)
-        value['issues'] = [{'rule': e.rule_id, 'severity': 'error' if e.level > WARN else 'warning',
-                            'file': e.name, 'line': e.line, 'message': str(e)} for e in issues]
-        value['status'] = 'failed' if any(e.level > WARN for e in issues) or not value['spine'] else 'passed'
+        value['issues'] = [issue_record(e, WARN) for e in issues]
+        value['status'] = 'failed' if any(e['blocking'] for e in value['issues']) or not value['spine'] else 'passed'
         value['note'] = 'Controllo strutturale nativo Calibre; non prova qualità editoriale, resa su lettori o conformità EPUBCheck.'
     Path(output).write_text(json.dumps(value, ensure_ascii=False, indent=2))
     close = getattr(container, 'close', None)

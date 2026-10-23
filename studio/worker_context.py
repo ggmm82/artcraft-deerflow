@@ -48,7 +48,8 @@ def build_prompt(job, selected, output_dir):
         'Se fallisce correggi il manifest nella stessa sessione senza rifare i prodotti; '
         'lo schema effettivo è disponibile con /usr/bin/python3 /opt/studio/handoff.py schema. '
         'Per i dettagli usa i riferimenti di artcraft-workspace. Non scambiare export riuscito per qualità. '
-        'Un controllo fallito resta failed; un controllo non svolto resta not_run. '
+        'Conserva failed e not_run. DELIVERY spiega historical/superseded_by per test superati da nuove prove; '
+        'REVIEW spiega supplementary senza requirement_id per controlli facoltativi fuori contratto. '
         'Le osservazioni negative sono utili anche se non hai ancora trovato una soluzione: preservale nel handoff. '
         'Una lezione sul metodo può essere proposta con prove e limiti; non richiede un test CLI positivo. '
         'L’attivazione automatica delle sole conoscenze tecniche richiede invece il test documentato.',

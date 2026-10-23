@@ -1,6 +1,7 @@
 """Validate specialist deliverables before reporting a successful run."""
 import json
 from pathlib import Path
+import zipfile
 
 
 DELIVERY_SCHEMA = {
@@ -26,7 +27,7 @@ DELIVERY_SCHEMA = {
 SOURCE_REF = {'type':'object','properties':{'path':{'type':'string'},'member':{'type':'string'}},
               'required':['path'],'additionalProperties':False}
 DELIVERY_SCHEMA['properties']['components'] = {'type':'array','minItems':1,'maxItems':12,'items':{
-    'type':'object','properties':{'name':{'type':'string'},'tool':{'type':'string'},
+    'type':'object','properties':{'name':{'type':'string','minLength':1,'maxLength':140},'tool':{'type':'string','minLength':1,'maxLength':48},
         'artifacts':{'type':'array','minItems':1,'maxItems':64,'items':SOURCE_REF},
         'sources':{'type':'array','minItems':1,'maxItems':24,'items':SOURCE_REF},
         'provided_inputs':{'type':'array','maxItems':64,'items':{'type':'string'}}},
@@ -47,7 +48,8 @@ HANDOFF_SCHEMA = {'type': 'object', 'properties': {
         'previews': {'type': 'array', 'items': {'type': 'string'}},
         'checks': {'type': 'array', 'minItems': 1, 'items': {'type': 'object', 'properties': {
             'name': {'type': 'string'}, 'status': {'type': 'string', 'enum': ['passed', 'failed', 'not_run']},
-            'evidence': {'type': 'string'}}, 'required': ['name', 'status', 'evidence'], 'additionalProperties': False}},
+            'evidence': {'type': 'string'}, 'scope': {'type':'string','enum':['current','historical']},
+            'superseded_by': {'type':'string','minLength':1}}, 'required': ['name', 'status', 'evidence'], 'additionalProperties': False}},
         'warnings': {'type': 'array', 'items': {'type': 'string'}}},
         'required': ['task', 'source_files', 'output_files', 'previews', 'checks', 'warnings', 'delivery'],
         'additionalProperties': False}
@@ -164,11 +166,43 @@ def validate_handoff(output_dir, workspace, *, require_delivery=False):
                 or not isinstance(check.get('name'), str) or not check['name'].strip()
                 or not isinstance(check.get('evidence'), str) or not check['evidence'].strip()):
             raise ValueError('handoff.json: check richiede name, status e evidence')
+        if check.get('scope', 'current') not in ('current', 'historical'):
+            raise ValueError('handoff.json: check.scope deve essere current o historical')
+        replacement = check.get('superseded_by')
+        if check.get('scope') == 'historical':
+            matches = [c for c in checks if isinstance(c, dict) and c.get('name') == replacement
+                       and c.get('scope', 'current') == 'current' and c.get('status') == 'passed']
+            if not isinstance(replacement, str) or not replacement.strip() or len(matches) != 1 or replacement == check['name']:
+                raise ValueError('handoff.json: un check historical richiede superseded_by con il nome univoco di un controllo current passed realmente eseguito')
+        elif replacement is not None:
+            raise ValueError('handoff.json: superseded_by ammesso soltanto per un controllo historical')
     if not isinstance(value.get('warnings'), list) or not all(isinstance(w, str) for w in value['warnings']):
         raise ValueError('handoff.json: warnings deve essere una lista di stringhe')
     if require_delivery or 'delivery' in value:
         validate_delivery(value)
+        if value['delivery'].get('components') is not None:
+            try:
+                from .component_sources import inspect_components
+            except ImportError:
+                from component_sources import inspect_components
+            try:
+                coverage = inspect_components(value, value['delivery']['files'], workspace=workspace, inventory_only=True)
+            except (zipfile.BadZipFile, zipfile.LargeZipFile, EOFError, RuntimeError, NotImplementedError) as error:
+                raise ValueError('handoff.json: archivio dei sorgenti non leggibile: ' + str(error)[:500]) from error
+            if coverage['issues']:
+                raise ValueError('handoff.json: ' + '; '.join(coverage['issues'][:8]))
     return value
+
+
+def blocking_checks(checks):
+    """Historical failures retain their outcome; only a validated successor retires them."""
+    for check in checks:
+        if check.get('status') != 'failed':
+            continue
+        replacements = [c for c in checks if c.get('name') == check.get('superseded_by')
+                        and c.get('scope', 'current') == 'current' and c.get('status') == 'passed']
+        if check.get('scope') != 'historical' or len(replacements) != 1 or check.get('superseded_by') == check.get('name'):
+            yield check
 
 
 def main():
@@ -191,7 +225,8 @@ def main():
             'instruction': 'Correggi soltanto il manifest usando i file esistenti. Conserva failed e not_run, esplicita i limiti; non rigenerare il prodotto per un errore di metadati.'}, ensure_ascii=False))
         return 1
     print(json.dumps({'ok': True, 'product_approved': False, 'output_count': len(handoff['output_files']),
-        'failed_checks': [c['name'] for c in handoff['checks'] if c['status'] == 'failed'],
+        'failed_checks': [c['name'] for c in blocking_checks(handoff['checks'])],
+        'historical_checks': [c for c in handoff['checks'] if c.get('scope') == 'historical'],
         'instruction': 'Manifest strutturalmente valido; compatibilità, qualità e contratto finale richiedono le rispettive verifiche.'}, ensure_ascii=False))
     return 0
 

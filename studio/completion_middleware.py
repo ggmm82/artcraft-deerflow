@@ -10,12 +10,20 @@ from .completion_policy import needs_continuation
 from .projects import read_project, mark_incomplete_turn
 
 
+def learning_sources(runtime):
+    from .tools import experience_root
+    from .lessons import pending
+    thread = (getattr(runtime, 'config', None) or {}).get('configurable', {}).get('thread_id')
+    return pending(experience_root(runtime), limit=3, source_thread=thread, meaningful_only=True) if thread else []
+
+
 class CompletionState(AgentState):
     studio_production_started: NotRequired[bool]
     studio_completion_nudges: NotRequired[int]
     studio_completion_reminder: NotRequired[str]
     studio_work_generation: NotRequired[int]
     studio_reminded_generation: NotRequired[int]
+    studio_learning_nudged: NotRequired[bool]
 
 
 class ProjectCompletionMiddleware(AgentMiddleware):
@@ -24,7 +32,7 @@ class ProjectCompletionMiddleware(AgentMiddleware):
 
     def before_agent(self, state, runtime):
         return {'studio_production_started': False, 'studio_completion_nudges': 0, 'studio_completion_reminder': '',
-                'studio_work_generation':0, 'studio_reminded_generation':-1}
+                'studio_work_generation':0, 'studio_reminded_generation':-1, 'studio_learning_nudged':False}
 
     async def abefore_agent(self, state, runtime):
         return self.before_agent(state, runtime)
@@ -38,6 +46,8 @@ class ProjectCompletionMiddleware(AgentMiddleware):
         if isinstance(getattr(runtime, 'context', None), dict) and runtime.context.get('stop_reason'):
             return update  # Native loop/token/time budgets retain authority.
         if last.tool_calls:
+            if any(c['name'] == 'studio_lessons' and (c.get('args',{}).get('lesson_json') or c.get('args',{}).get('dismiss_reason')) for c in last.tool_calls):
+                update['studio_learning_nudged'] = True
             if any(c['name'] == 'studio_delegate' and c.get('args', {}).get('purpose', 'work') != 'review'
                    for c in last.tool_calls):
                 update['studio_production_started'] = True
@@ -52,10 +62,29 @@ class ProjectCompletionMiddleware(AgentMiddleware):
         try:
             root = workspace_for(runtime)
             project = read_project(root)
-            if not needs_continuation(project):
-                return update
+            continuing = needs_continuation(project)
             count = state.get('studio_completion_nudges', 0)
             unchanged = count > 0 and state.get('studio_work_generation',0) == state.get('studio_reminded_generation',-1)
+            # One bounded learning pass at a genuine stopping point, never a
+            # render loop or mandatory approval of every observation.
+            if (project and (not continuing or count >= self.MAX_NUDGES or unchanged)
+                    and not state.get('studio_learning_nudged')
+                    and project.get('status') != 'clarifying'
+                    and not (project.get('user_control') or {}).get('paused')
+                    and (project.get('attention') or {}).get('code') not in ('provider_auth','provider_quota','resource_memory','work_cancelled')):
+                sources = learning_sources(runtime)
+                if sources:
+                    append(root, 'Memoria', 'Valutazione delle lezioni richiesta', 'progress',
+                           detail='Una sola valutazione di massimo tre fonti della conversazione; nessuna approvazione automatica di metodi.')
+                    return {**update, 'jump_to':'model', 'studio_learning_nudged':True,
+                        'studio_completion_reminder':'Prima di chiudere valuta brevemente le osservazioni già conservate con '
+                        'studio_lessons(current_project_only=true). Seleziona al massimo tre fonti significative: '
+                        + ', '.join(s['id'] for s in sources) + '. Leggi prove e limiti, generalizza solo singole lezioni utili '
+                        'o motiva perché non sono trasferibili. Le note tecniche richiedono il test verificabile per attivarsi; '
+                        'i metodi di realizzazione richiedono accettazione dell’utente. Non approvare metodi, non inventare prove, '
+                        'non rigenerare prodotti né bloccare la consegna per esaurire il backlog. Poi presenta risultato, limiti e prossimo passo reale.'}
+            if not continuing:
+                return update
             if count >= self.MAX_NUDGES or unchanged:
                 mark_incomplete_turn(root)
                 append(root, 'Coordinatore', 'Obiettivo non completato', 'failed',

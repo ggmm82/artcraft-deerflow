@@ -17,6 +17,32 @@ except ImportError:
 
 @unittest.skipIf(studio_delegate is None, 'Requires the pinned Gateway tool runtime')
 class AdaptiveToolTests(unittest.TestCase):
+    def test_learning_pass_is_bounded_project_scoped_and_respects_stop(self):
+        from langchain_core.messages import AIMessage
+        from langgraph.runtime import Runtime as GraphRuntime
+        from studio.completion_middleware import ProjectCompletionMiddleware
+        middleware=ProjectCompletionMiddleware()
+        runtime=GraphRuntime(context={'user_id':'owner'})
+        state={**middleware.before_agent({},runtime),'studio_production_started':True,'messages':[AIMessage('Result ready')]}
+        with tempfile.TemporaryDirectory() as directory, \
+                patch('studio.completion_middleware.workspace_for',return_value=Path(directory)), \
+                patch('studio.completion_middleware.read_project',return_value={'status':'ready'}), \
+                patch('studio.completion_middleware.learning_sources',return_value=[{'id':'a'*64}]) as pending:
+            result=middleware.after_model(state,runtime)
+            self.assertEqual(result['jump_to'],'model')
+            self.assertIn('current_project_only=true',result['studio_completion_reminder'])
+            self.assertIn('non inventare prove',result['studio_completion_reminder'])
+            state.update(result)
+            self.assertNotIn('jump_to',middleware.after_model(state,runtime))
+            self.assertEqual(pending.call_count,1)
+            state['studio_learning_nudged']=False
+            runtime.context['stop_reason']='budget'
+            self.assertNotIn('jump_to',middleware.after_model(state,runtime))
+            runtime.context.pop('stop_reason')
+            with patch('studio.completion_middleware.read_project',return_value={'status':'review','user_control':{'paused':True}}):
+                self.assertNotIn('jump_to',middleware.after_model(state,runtime))
+            self.assertEqual(pending.call_count,1)
+
     def test_native_completion_guard_resumes_incomplete_production_without_polluting_messages(self):
         from langchain_core.messages import AIMessage, HumanMessage
         from langgraph.runtime import Runtime as GraphRuntime
