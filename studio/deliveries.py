@@ -73,6 +73,8 @@ def read_review(handoff, output_dir, workspace, engine, acceptance=None):
             'status': status, 'checkpoint': checkpoint,
             'unavailable_methods': sorted({c['method'] for c in criteria if c['status'] == 'not_run'
                                            and not capabilities(engine).get(c['method'], False)}),
+            'input_hashes': {str(Path(p).resolve()): digest(p) for p in handoff.get('source_files', [])
+                             if Path(p).is_file() and Path(p).resolve().is_relative_to(Path(workspace).resolve())},
             'revision_actions': corrections, 'comparison': compared,
             'comparison_warning': comparison_warning, 'contract_hash': (acceptance or {}).get('hash'),
             'reference_hashes': reference_hashes,
@@ -151,7 +153,7 @@ def prepare_review_handoff(output_dir, workspace, engine, acceptance=None):
     return True
 
 
-def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=(), require_components=False, require_timing=False, workspace=None):
+def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent='', tools=(), require_components=False, require_timing=False, workspace=None, verified_archives=None):
     root = Path(output_dir)
     delivery = handoff['delivery']
     issues, files, packages = [], [], []
@@ -186,7 +188,11 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
             try:
                 if path.suffix.lower() != '.zip':
                     raise ValueError('Archivio sorgenti: usare ZIP per il collaudo di trasferimento')
-                record['verification'] = verify_archive(path, native=native)
+                cached = (verified_archives or {}).get(record['sha256'])
+                if cached and cached.get('status') == 'passed' and cached.get('sha256') == record['sha256']:
+                    record['verification'] = {**cached, 'reused': True}
+                else:
+                    record['verification'] = verify_archive(path, native=native)
                 if record['verification']['status'] != 'passed':
                     issues.append(path.name + ': controlli nativi del pacchetto non eseguiti')
                 packages.append(record)
@@ -236,10 +242,12 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
                 video = next(s for s in info['streams'] if s['codec_type'] == 'video')
                 matches = []
                 for rendered in renders:
+                    if rendered.get('sample_format') != 'rgb24-area-v1':
+                        continue
                     if (abs(float(info['format']['duration']) - rendered['duration']) > .15
                             or video['width'] != rendered['width'] or video['height'] != rendered['height']):
                         continue
-                    errors = [sum(abs(a-b) for a, b in zip(sample(item['path'], s['seconds']), s['luma'])) / 144
+                    errors = [sum(abs(a-b) for a, b in zip(sample(item['path'], s['seconds']), s['luma'])) / len(s['luma'])
                               for s in rendered['samples']]
                     if max(errors) <= 12:
                         matches.append({'source': rendered['file'], 'mean_luma_errors': errors})
@@ -266,6 +274,7 @@ def build_delivery(handoff, output_dir, *, purpose='work', native=True, agent=''
              'source_coverage':coverage, 'timing':timing,
              'source_note': delivery['source_note'][:1000],
              'quality_status': 'not_reviewed',
+             'reused_archive_checks': sum(bool(p.get('verification',{}).get('reused')) for p in packages),
              'note': 'I controlli tecnici non certificano qualità visiva, musicale o aderenza creativa al brief.'}
     # Owned by the runtime; never trust a model-authored file with this name.
     path = root / 'delivery-manifest.json'

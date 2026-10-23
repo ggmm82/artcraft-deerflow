@@ -5,11 +5,11 @@ import { fetch } from "@/core/api/fetcher";
 import { getBackendBaseURL } from "@/core/config";
 import { duration, jobHealth, secondsSince, terminalJob, type JobProgress } from "./delegate-progress-state";
 
-import { ConversationAudit } from "./conversation-audit";
+import { ConversationAudit, OperationDetails } from "./conversation-audit";
 import { ExperiencePanel } from "./experience-panel";
 
 const providers: Record<string, string> = { codex: "Codex", gemini: "Antigravity", deepseek: "DeepSeek", openai: "OpenAI compatibile" };
-type Delivery = { finalization_pending?: string[]; source_coverage?: { status: string; components: { name: string; tool: string; status: string; sources: {path: string; member?: string}[] }[] }; timing?: {status:string; cues:{name:string;status:string;delta_seconds:number}[]}; category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
+type Delivery = { unchanged_content?: boolean; change_kind?: string; content_version?: number | null; reused_archive_checks?: number; finalization_pending?: string[]; source_coverage?: { status: string; components: { name: string; tool: string; status: string; sources: {path: string; member?: string}[] }[] }; timing?: {status:string; cues:{name:string;status:string;delta_seconds:number}[]}; category?: string; version?: number | null; execution_status?: string; file_count?: number; role_title?: string; review?: { target_delivery_id: string | null; target_version?: number | null; target_label: string; status: string; validated: boolean; matches_current_brief: boolean; report_path: string; correction_count: number }; id: string; title: string; agent: string; at: string; current: boolean; contribution?: boolean; technical_status: string; issues: string[]; purpose: string };
 type MethodStrategy = { state: string; method: string; reason: string; user_action: string; stop_reason: string; alternatives: { method: string; reason: string; status: string; tools: string[]; evidence: { path: string; sha256: string }[] }[] };
 type RevisionAction = { requirement_id: string; action: string; reason?: string; priority: number; strategy: string };
 type Comparison = { baseline_path: string; criteria: { requirement_id: string; status: string; evidence: string }[] };
@@ -125,7 +125,7 @@ function JobCard({ job, now, threadId }: { job: JobProgress; now: number; thread
     </div>}
     {job.events.length > 0 && <details className="text-xs">
       <summary className="cursor-pointer">Cronologia operativa ({job.events.length} eventi recenti)</summary>
-      <ol className="mt-2 space-y-1">{job.events.map((event, i) => <li key={i}><time>{stamp(event.at)}</time> · {event.summary}</li>)}</ol>
+      <ol className="mt-2 space-y-1">{job.events.map((event, i) => <li key={i}><time>{stamp(event.at)}</time> · {event.summary}<OperationDetails value={event.context}/></li>)}</ol>
     </details>}
   </article>;
 }
@@ -176,7 +176,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
     .sort((a, b) => Number(b.execution_status === "running") - Number(a.execution_status === "running") || Number(b.current) - Number(a.current) || (b.version ?? 0) - (a.version ?? 0));
   const supporting = deliveries.filter(d => !versions.includes(d));
   const editing = versions.find(d => d.execution_status === "running");
-  const versionName = (delivery: Delivery) => delivery.category === "sample" || delivery.purpose === "preview" ? "Campione" : delivery.version ? `Versione ${delivery.version}` : delivery.current ? "Versione selezionata" : "Tentativo di consegna";
+  const versionName = (delivery: Delivery) => delivery.unchanged_content ? `${delivery.change_kind === "sources" ? "Sorgenti" : "Metadati"} aggiornati · versione ${delivery.content_version ?? "precedente"} invariata` : delivery.category === "sample" || delivery.purpose === "preview" ? "Campione" : delivery.version ? `Versione ${delivery.version}` : delivery.current ? "Versione selezionata" : "Tentativo di consegna";
   const currentResults = selectedDelivery ? results.filter((r) => r.delivery_id === selectedDelivery.id) : results;
   const media = [...currentResults].filter(r => r.role !== "dependency" && r.role !== "report").sort((a, b) => b.at.localeCompare(a.at)).filter((r) => kind(r.path) !== "source");
   const selected: Result | undefined = project?.product_path
@@ -414,6 +414,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {previewDelivery && <section className="space-y-1 text-sm" data-testid="selected-version">
           <p className="font-semibold">{versionName(previewDelivery)} · {ready ? "Consegna finale" : "Da valutare"}</p>
           <p>{previewDelivery.title}</p>
+          {!!previewDelivery.reused_archive_checks && <p className="text-muted-foreground text-xs">Verifiche sorgenti riutilizzate per {previewDelivery.reused_archive_checks} archivio/i identico/i nella stessa versione degli strumenti.</p>}
           {!!previewDelivery.finalization_pending?.length && <p className="text-muted-foreground">Prima della consegna finale: {previewDelivery.finalization_pending.join("; ")}</p>}
           {editing && editing.id !== previewDelivery.id && <p className="text-muted-foreground">{versionName(editing)} in lavorazione. Qui vedi ancora {versionName(previewDelivery).toLowerCase()}.</p>}
           <p className="text-muted-foreground text-xs">Anteprima, download e sorgenti sotto appartengono a questa lavorazione.</p>

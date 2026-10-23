@@ -9,7 +9,7 @@ flag o dettagli di implementazione.
 Per attivare automaticamente una lezione tecnica aggiungi al candidato
 `validation:{"operation_path":".../work/operations/<id>/status.json",
 "result_path":".../work/verifica.json","assertions":[{"pointer":"/reopened","equals":true}]}`.
-Esegui realmente il test con il supervisore e conserva il risultato JSON prodotto
+Puoi usare anche `work/commands/<id>/status.json`, registrato automaticamente dal runtime per un comando CLI concluso: il percorso è disponibile nel drill-down del Registro e nel lavoro della sandbox. Esegui realmente il test con la CLI o con il supervisore e conserva il risultato JSON prodotto
 dalla verifica, non un JSON di successo scritto senza controllare il prodotto.
 Il runtime richiede operazione conclusa senza errori e confronta i valori puntuali
 dei JSON Pointer (anche array) con il rapporto della stessa sandbox. Non usare
@@ -38,3 +38,9 @@ verificare. Senza queste misure usa observed o hypothesis.
 Le scoperte sono conservate con hash e versioni. I metodi di realizzazione (category=production_method) richiedono accettazione dell’utente. Le conoscenze operative delle CLI (category=tool_operation) si attivano dopo il test automatico documentato in artcraft-workspace; senza prova restano inattive nella sezione tecnica, senza chiedere approvazione all’utente. Un comando riuscito non certifica la
 qualità del prodotto e una preferenza non è una verifica tecnica indipendente.
 
+
+## Cosa rende trasferibile una scoperta
+
+Un fallimento del prodotto o del verificatore può insegnare una regola tecnica anche se il progetto non è ancora approvato. Distingui la circostanza concreta dalla causa generale: per esempio normalizzare rappresentazione, unità, colore e campionamento prima di confrontare due risultati, oppure salvare e riaprire una modifica prima di un’elaborazione lunga. Non liquidare una diagnosi riprodotta come «caso specifico» soltanto perché è emersa in un singolo progetto. Proponi la singola regola con condizioni e limiti; senza prova positiva della correzione resta un’ipotesi inattiva.
+
+Il test deve distinguere il problema dalla sua correzione e mantenere un controllo negativo: risultati equivalenti passano dopo la normalizzazione, risultati realmente diversi continuano a fallire. Non innalzare una soglia per far passare un caso e non presentare misure numeriche come giudizio estetico. Il runtime conserva i file di prova e il codice di uscita; la lezione deve descrivere la procedura, non i fatti della chat.

@@ -131,9 +131,12 @@ def propose_findings(root, source_thread, limit=3):
     for record in sorted(observations(root), key=lambda r: rank(r['observation'])):
         source = record['observation']
         impact = source.get('impact') or {}
+        tested_operation = (source.get('technical_validation', {}).get('status') == 'passed'
+                            and (source.get('suggested_lesson') or {}).get('category') == 'tool_operation')
         if (record['id'] in covered or source.get('source_thread') != source_thread
                 or source.get('kind') != 'sandbox_tool_use' or not source.get('evidence_files')
-                or impact.get('level') not in ('major', 'minor') or impact.get('basis') not in ('observed', 'measured')):
+                or (not tested_operation and (impact.get('level') not in ('major', 'minor')
+                    or impact.get('basis') not in ('observed', 'measured')))):
             continue
         try:
             lesson = validate(source.get('suggested_lesson'))

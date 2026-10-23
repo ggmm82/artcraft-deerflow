@@ -24,7 +24,7 @@ def technical_validation(workspace, directory, candidate, artifact):
         operation = artifact(workspace, check['operation_path'])
         result = artifact(workspace, check['result_path'])
         if (not operation or operation.name != 'status.json'
-                or operation.parent.parent != directory / 'work/operations'
+                or operation.parent.parent not in (directory / 'work/operations', directory / 'work/commands')
                 or not re.fullmatch(r'[a-f0-9]{24}', operation.parent.name)
                 or operation.stat().st_size > 16000 or not result
                 or not result.is_relative_to(directory) or result == operation

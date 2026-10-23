@@ -257,6 +257,19 @@ class ExperienceTests(unittest.TestCase):
         self.assertEqual(experience.select(self.library, [self.spec], projects.applications()), [])
         self.assertNotIn(proposal, lessons.automatic(self.library))
 
+    def test_verified_operational_knowledge_is_retained_without_inventing_impact(self):
+        self.verified_note()
+        path=self.product.parent/'work/tool-lessons.json'
+        value=json.loads(path.read_text());value['lessons'][0]['impact']={
+            'level':'unknown','basis':'hypothesis','reason':'Operation tested; improvement size not measured'}
+        path.write_text(json.dumps(value))
+        experience.collect(self.workspace,self.library,'thread-a')
+        proposal,=lessons.propose_findings(self.library,'thread-a')
+        self.assertIn(proposal,lessons.automatic(self.library))
+        item,=experience.summary(self.library)['lessons']
+        self.assertEqual(item['basis']['impact']['level'],'unknown')
+        self.assertEqual(lessons.propose_findings(self.library,'thread-a'),[])
+
     def test_production_method_never_auto_activates_even_with_a_technical_test(self):
         self.verified_note('production_method')
         experience.collect(self.workspace, self.library, 'thread-a')

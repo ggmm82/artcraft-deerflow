@@ -10,7 +10,7 @@ export type JobProgress = {
   last_activity_at: string; heartbeat_at: string;
   execution_state?: string; execution_started_at?: string; last_model_event_at?: string; last_file_change_at?: string;
   files: { name: string; size: number }[]; files_count: number;
-  events: { at: string; phase: string; summary: string }[];
+  events: { context?: import("./conversation-audit").OperationContext; at: string; phase: string; summary: string }[];
 };
 
 export const terminalJob = (job: JobProgress) =>

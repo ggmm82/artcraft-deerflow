@@ -5,6 +5,19 @@ from studio.revisions import annotate, number_attempts
 
 
 class RevisionTests(unittest.TestCase):
+    def test_identical_exports_are_labeled_as_source_or_metadata_updates(self):
+        attempts=[]
+        for index,source in enumerate(('source-a','source-b','source-b'),1):
+            attempts.append({'context':{'purpose':'delivery'},'version_number':index,'started_at':str(index),
+                'output_files':['/data/'+str(index)],'delivery_record':{'id':str(index),'files':[
+                    {'role':'export','sha256':'same-product'},{'role':'source_archive','sha256':source}]}})
+        project={'steps':[{'id':'deliver','attempts':attempts}]}
+        deliveries=annotate([{'id':str(i)} for i in (1,2,3)],project,None,lambda root,path:Path(path) if path else None)
+        self.assertEqual(deliveries[1]['change_kind'],'sources')
+        self.assertEqual(deliveries[2]['change_kind'],'metadata')
+        self.assertEqual(deliveries[2]['content_version'],1)
+        self.assertTrue(deliveries[2]['unchanged_content'])
+
     def test_version_numbers_are_stable_and_reviews_point_to_their_own_target(self):
         def attempt(identifier, purpose, at, **extra):
             return {'started_at': at, 'finished_at': at, 'context': {'purpose': purpose},
