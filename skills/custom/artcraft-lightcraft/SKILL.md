@@ -69,7 +69,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/lightcraft/tree/v0.8.0
+- https://github.com/storytold/lightcraft/tree/v0.13.0
 - https://github.com/storytold/lightcraft/releases
 
 ## Ruolo nella squadra

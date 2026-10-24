@@ -4,17 +4,17 @@ Il catalogo passa da 15 a 24 strumenti. I nuovi strumenti ereditano la configura
 
 | Strumento | Versione fissata | Capacità | Sorgenti e prova minima |
 |---|---|---|---|
-| FFmpeg | 5.1.9 Debian | Probe, conversione, estrazione audio, mux | Originali, ricetta e progetti di authoring; stream e parametri reali verificati |
-| Playwright | 1.62.0 | Chromium, interazioni, screenshot, trace | Test `.test.cjs`, codice del prodotto; click reale e asserzione, errore rilevato |
+| FFmpeg | 9.0.2 upstream | Probe, conversione, estrazione audio, mux | Originali, ricetta e progetti di authoring; stream e parametri reali verificati |
+| Playwright | 1.64.1 | Chromium, interazioni, screenshot, trace | Test `.test.cjs`, codice del prodotto; click reale e asserzione, errore rilevato |
 | aubio | 0.4.9 | Attacchi, battiti, pitch, note stimati | Audio, parametri e unità; tono noto e impulsi temporizzati |
-| FluidSynth | 2.3.1 | Sintesi offline MIDI + SF2 | MIDI, banca e licenza, impostazioni; rebuild dopo trasferimento |
+| FluidSynth | 2.6.1 | Sintesi offline MIDI + SF2 | MIDI, banca e licenza, impostazioni; rebuild dopo trasferimento |
 | EPUBCheck | 5.4.0 | Conformità EPUB indipendente | EPUB e sorgenti prodotti dalle app di authoring; capitolo mancante rifiutato |
 | Pandoc | 3.12.1 | Conversione strutturata, template, bibliografie | Input, asset e ricetta; DOCX riaperto e contenuti EPUB controllati |
 | Typst | 0.15.1 | Impaginazione PDF/SVG/PNG da codice | `.typ`, font, moduli e media; modifica e ricompilazione dopo trasferimento |
-| FreeCAD | 0.20.2 Debian | CAD parametrico headless, geometria, STEP | `.FCStd`, script e dipendenze; quota e vincoli sketch modificati, Pad ricalcolato, STEP riaperto senza solidi duplicati |
+| FreeCAD | 1.1.4 upstream | CAD parametrico headless, geometria, STEP | `.FCStd`, script e dipendenze; quota e vincoli sketch modificati, Pad ricalcolato, STEP riaperto senza solidi duplicati |
 | whisper.cpp | 1.9.5 | Parlato CPU multilingue, TXT/SRT/JSON | Originale, sottotitoli e parametri/modello; campione parlato riconosciuto offline |
 
-FreeCAD usa il pacchetto compatibile con Debian Bookworm, **non** la release upstream 1.x. Chromium è legato al pacchetto Playwright; modello Whisper tiny multilingue e banca TimGM6mb sono disponibili nell’immagine. Versioni, hash, dimensioni, provenienza e licenze di software/risorse sono in `versions.lock.json`; dipendenze Node hanno anche il lock con integrità. Le dipendenze Debian provengono dai repository autenticati della distribuzione. L’installazione dei pacchetti principali e delle risorse verifica SHA-256. Nessun download di browser o modelli durante il collaudo offline.
+FreeCAD usa la distribuzione ufficiale 1.1.4 con il Python incluso, estratta senza FUSE. FFmpeg e FluidSynth sono compilati dai tag upstream fissati; non usano più le vecchie versioni dei pacchetti Bookworm. Chromium è legato al pacchetto Playwright; modello Whisper tiny multilingue e banca TimGM6mb sono disponibili nell’immagine. Versioni, hash, dimensioni, provenienza e licenze di software/risorse sono in `versions.lock.json`; dipendenze Node hanno anche il lock con integrità. Le dipendenze Debian provengono dai repository autenticati della distribuzione. L’installazione dei pacchetti principali e delle risorse verifica SHA-256. Nessun download di browser o modelli durante il collaudo offline.
 
 ## Selezione e uso
 

@@ -5,7 +5,7 @@ Fonti aggiornate Google: [Antigravity CLI](ANTIGRAVITY.md). I riferimenti Gemini
 Verifica: 14/10/2026. Le configurazioni sono state controllate sul codice, non eseguite in Docker in questo ambiente.
 
 - DeerFlow: https://github.com/bytedance/deer-flow/tree/0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d
-- Codex CLI: https://github.com/openai/codex (npm `@openai/codex@0.162.1`)
+- Codex CLI: https://github.com/openai/codex (npm `@openai/codex@0.164.0`)
 - Gemini CLI: https://github.com/google-gemini/gemini-cli (npm `@google/gemini-cli@0.64.0`)
 - Autenticazione Codex: https://developers.openai.com/codex/auth/
 - Autenticazione Gemini headless: `packages/core/src/code_assist/oauth2.ts`, funzione `authWithUserCode` nel repository ufficiale.

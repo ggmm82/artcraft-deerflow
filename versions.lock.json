@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_date": "2026-10-21",
+  "verified_date": "2026-10-24",
   "deerflow": {
     "repository": "https://github.com/bytedance/deer-flow.git",
     "commit": "0bbcccfeb117a73cdeb7a8366f56ba71c25d6f5d"
@@ -13,7 +13,7 @@
       "role": "Immagini e ritocco",
       "description": "Ritocco, compositing raster e texture con livelli e maschere.",
       "repository": "https://github.com/storytold/photocraft",
-      "version": "v0.8.2",
+      "version": "v0.15.1",
       "executable": "photocraft-cli",
       "registry_args": [
         "commands"
@@ -27,16 +27,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "photocraft-0.8.2-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/photocraft/releases/download/v0.8.2/photocraft-0.8.2-linux-x86_64.tar.gz",
-          "sha256": "16c3089976eee2d290dbe73986db4835c1ec5a043c5c16b017b24848ff5ea827",
-          "size_bytes": 79671114
+          "name": "photocraft-0.15.1-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/photocraft/releases/download/v0.15.1/photocraft-0.15.1-linux-x86_64.tar.gz",
+          "sha256": "b622be40355513056f8152afe895d0a05c1bc3c344a027f772a9a12fa3d1c223",
+          "size_bytes": 85757901
         },
         "arm64": {
-          "name": "photocraft-0.8.2-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/photocraft/releases/download/v0.8.2/photocraft-0.8.2-linux-aarch64.tar.gz",
-          "sha256": "f3920f31406574d1d3f9ca152d46703c8e7f3b504e0d2b2e394f0ad10f0df348",
-          "size_bytes": 75507878
+          "name": "photocraft-0.15.1-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/photocraft/releases/download/v0.15.1/photocraft-0.15.1-linux-aarch64.tar.gz",
+          "sha256": "ff2ea1945df3b413b17c64ec7c0131c093b09c717994a47b4c46c0dabf1c822f",
+          "size_bytes": 81119043
         }
       },
       "checks": [
@@ -56,7 +56,7 @@
       "role": "Grafica vettoriale",
       "description": "Illustrazione vettoriale, loghi, icone, lettering e diagrammi modificabili.",
       "repository": "https://github.com/storytold/vectorcraft",
-      "version": "v0.11.0",
+      "version": "v0.16.0",
       "executable": "vectorcraft-cli",
       "registry_args": [
         "commands"
@@ -70,16 +70,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "vectorcraft-0.11.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.11.0/vectorcraft-0.11.0-linux-x86_64.tar.gz",
-          "sha256": "83ca62a455bbb1d1c61c6b05133bc41ceda1d1d99e4be7509d287c364ceb8f39",
-          "size_bytes": 120177805
+          "name": "vectorcraft-0.16.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.16.0/vectorcraft-0.16.0-linux-x86_64.tar.gz",
+          "sha256": "651fac17255271ad1dbc8ba1e8287db9f28e529ba9a14dd0383eca93a2cc5aa6",
+          "size_bytes": 127317438
         },
         "arm64": {
-          "name": "vectorcraft-0.11.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.11.0/vectorcraft-0.11.0-linux-aarch64.tar.gz",
-          "sha256": "fd594494e2f1498cb7dab01a3a10a70ec8ee69e8dd26a8ed468219a0f4192b53",
-          "size_bytes": 115307344
+          "name": "vectorcraft-0.16.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/vectorcraft/releases/download/v0.16.0/vectorcraft-0.16.0-linux-aarch64.tar.gz",
+          "sha256": "7a624f47c20c10e4a8c07bba90e30f3da2ff26e5653632f942c7c5404105d02e",
+          "size_bytes": 121971166
         }
       },
       "checks": [
@@ -98,7 +98,7 @@
       "role": "Montaggio video",
       "description": "Montaggio, sequenze, composizione di contributi, colore e master audiovisivo.",
       "repository": "https://github.com/storytold/filmcraft",
-      "version": "v0.7.2",
+      "version": "v0.12.0",
       "executable": "filmcraft-cli",
       "registry_args": [
         "commands"
@@ -108,16 +108,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "filmcraft-0.7.2-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-0.7.2-linux-x86_64.tar.gz",
-          "sha256": "4171c4bf5f57fd29475655f8a6df4719feda8c8f3ed95b2475d8dc112ad3be86",
-          "size_bytes": 69427996
+          "name": "filmcraft-0.12.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/filmcraft/releases/download/v0.12.0/filmcraft-0.12.0-linux-x86_64.tar.gz",
+          "sha256": "ddff0a2ec0d89e5e9e65644ed724b5b79959600b1602fd4ea6653b5a54bf88fd",
+          "size_bytes": 69907641
         },
         "arm64": {
-          "name": "filmcraft-0.7.2-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/filmcraft/releases/download/v0.7.2/filmcraft-0.7.2-linux-aarch64.tar.gz",
-          "sha256": "4af56f649a6fb19dcae386abd59921ec6c9190b725014517075fa4d81123c68a",
-          "size_bytes": 66526008
+          "name": "filmcraft-0.12.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/filmcraft/releases/download/v0.12.0/filmcraft-0.12.0-linux-aarch64.tar.gz",
+          "sha256": "83714c4a73774a3f54a3d2bf52ae0065d3fb8ca8c781deb7cb3450f9b4e74568",
+          "size_bytes": 66987637
         }
       },
       "checks": [
@@ -138,7 +138,7 @@
       "role": "Fotografia e RAW",
       "description": "Sviluppo fotografico/RAW, catalogazione, correzioni locali e serie coerenti.",
       "repository": "https://github.com/storytold/lightcraft",
-      "version": "v0.8.0",
+      "version": "v0.13.0",
       "executable": "lightcraft-cli",
       "registry_args": [
         "commands"
@@ -148,16 +148,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "lightcraft-0.8.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/lightcraft/releases/download/v0.8.0/lightcraft-0.8.0-linux-x86_64.tar.gz",
-          "sha256": "9fe0ecc69b7f1f3a35a1c630429b3c52fdb4419ba208b5579b4501b938f518d1",
-          "size_bytes": 104280626
+          "name": "lightcraft-0.13.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/lightcraft/releases/download/v0.13.0/lightcraft-0.13.0-linux-x86_64.tar.gz",
+          "sha256": "873c795e641ea8c345e02e4895f6c2659015e531420f68352ca3421aa9b8edcd",
+          "size_bytes": 110150449
         },
         "arm64": {
-          "name": "lightcraft-0.8.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/lightcraft/releases/download/v0.8.0/lightcraft-0.8.0-linux-aarch64.tar.gz",
-          "sha256": "ce563498ee01c16ba94520c823123e18c2e6d846edc58e7d1a0475828181c1c3",
-          "size_bytes": 99916376
+          "name": "lightcraft-0.13.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/lightcraft/releases/download/v0.13.0/lightcraft-0.13.0-linux-aarch64.tar.gz",
+          "sha256": "5f47cb0e71d17d21c130aa06bf9c3e0895185c5501b94f14633a9de6a587ca48",
+          "size_bytes": 105426065
         }
       },
       "checks": [
@@ -176,7 +176,7 @@
       "role": "Documenti PDF",
       "description": "Ispezione e modifica PDF, pagine, testo, moduli, OCR e prestampa.",
       "repository": "https://github.com/storytold/pdfcraft",
-      "version": "v0.8.0",
+      "version": "v0.13.0",
       "executable": "pdfcraft-cli",
       "registry_args": [
         "tools"
@@ -188,16 +188,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "pdfcraft-cli-0.8.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.8.0/pdfcraft-cli-0.8.0-linux-x86_64.tar.gz",
-          "sha256": "e57630c62e23288bacb1591ef86f0c530da1bd63743b800cae3ebc875a4708cd",
-          "size_bytes": 30371117
+          "name": "pdfcraft-cli-0.13.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.13.0/pdfcraft-cli-0.13.0-linux-x86_64.tar.gz",
+          "sha256": "fd40f80157856cadd4348a464ef0acde8f19894d831d78e9823708ecf70a3352",
+          "size_bytes": 31200527
         },
         "arm64": {
-          "name": "pdfcraft-cli-0.8.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.8.0/pdfcraft-cli-0.8.0-linux-aarch64.tar.gz",
-          "sha256": "b09ee57a56ad268c9f0d86fe78016d05dbf62a7ac175b574195fd38c392f63be",
-          "size_bytes": 28880799
+          "name": "pdfcraft-cli-0.13.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/pdfcraft/releases/download/v0.13.0/pdfcraft-cli-0.13.0-linux-aarch64.tar.gz",
+          "sha256": "1d1181757f281b2291ca218a0446ade4cfd54c5c258f3d4f22953fa1037dd29d",
+          "size_bytes": 29648957
         }
       },
       "checks": [
@@ -218,7 +218,7 @@
       "role": "Animazione ed effetti",
       "description": "Animazione 2D/3D, motion graphics, compositing, camera/luci ed effetti.",
       "repository": "https://github.com/storytold/effectcraft",
-      "version": "v0.10.0",
+      "version": "v0.16.0",
       "executable": "effectcraft-cli",
       "registry_args": [
         "commands"
@@ -232,16 +232,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "effectcraft-0.10.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/effectcraft/releases/download/v0.10.0/effectcraft-0.10.0-linux-x86_64.tar.gz",
-          "sha256": "76fbfc0a9ad34399701a18efeb1c178557d01d0a0f4b403514f2dac5d887572e",
-          "size_bytes": 63418958
+          "name": "effectcraft-0.16.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/effectcraft/releases/download/v0.16.0/effectcraft-0.16.0-linux-x86_64.tar.gz",
+          "sha256": "91b40da9e18be49157467a96db7b2fbf7c20b5182d8c415c59bed51591bc1de0",
+          "size_bytes": 64233249
         },
         "arm64": {
-          "name": "effectcraft-0.10.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/effectcraft/releases/download/v0.10.0/effectcraft-0.10.0-linux-aarch64.tar.gz",
-          "sha256": "967be5222b2e5480b7b1a0743e47379a0fa0ef018017ce31b2eda45046af019b",
-          "size_bytes": 59208803
+          "name": "effectcraft-0.16.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/effectcraft/releases/download/v0.16.0/effectcraft-0.16.0-linux-aarch64.tar.gz",
+          "sha256": "bf38cec1717b35432d73a6f48cfc075c0d2b110fae357fba5c4242d55c4aae97",
+          "size_bytes": 59955491
         }
       },
       "checks": [
@@ -261,7 +261,7 @@
       "role": "Impaginazione editoriale",
       "description": "Impaginazione multipagina, libri, riviste, fumetti e prestampa.",
       "repository": "https://github.com/storytold/designcraft",
-      "version": "v0.8.0",
+      "version": "v0.12.0",
       "executable": "designcraft-cli",
       "registry_args": [
         "commands"
@@ -271,16 +271,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "designcraft-0.8.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/designcraft/releases/download/v0.8.0/designcraft-0.8.0-linux-x86_64.tar.gz",
-          "sha256": "96a835fd89ebf6970b7dec93652e1b2f081123a69c78e19998ca6c84ca322d77",
-          "size_bytes": 71523941
+          "name": "designcraft-0.12.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/designcraft/releases/download/v0.12.0/designcraft-0.12.0-linux-x86_64.tar.gz",
+          "sha256": "0e7bbe349670f8d5eb178fa9bd4a1bf1c7c51d6a54e1b802b8dcdbb2ae68fe1d",
+          "size_bytes": 81822394
         },
         "arm64": {
-          "name": "designcraft-0.8.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/designcraft/releases/download/v0.8.0/designcraft-0.8.0-linux-aarch64.tar.gz",
-          "sha256": "86419263db3b4c7dfd0bf61948eb1931b32cea56ce9caca5b4b03cd146dd3926",
-          "size_bytes": 68368373
+          "name": "designcraft-0.12.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/designcraft/releases/download/v0.12.0/designcraft-0.12.0-linux-aarch64.tar.gz",
+          "sha256": "eb055f655ab26a137d5e46d63c6d7d91683148814766224a36de73ecbff7a6b3",
+          "size_bytes": 78038419
         }
       },
       "checks": [
@@ -301,7 +301,7 @@
       "role": "Fogli di calcolo",
       "description": "Fogli di calcolo, formule, tabelle, grafici, analisi e reporting.",
       "repository": "https://github.com/storytold/gridcraft",
-      "version": "v0.7.0",
+      "version": "v0.11.1",
       "executable": "gridcraft-cli",
       "registry_args": [
         "commands"
@@ -311,16 +311,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "gridcraft-0.7.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/gridcraft/releases/download/v0.7.0/gridcraft-0.7.0-linux-x86_64.tar.gz",
-          "sha256": "c01bc2dc4295556f53810dfed4a85a3f58388552c157a103e10626c069b39e1c",
-          "size_bytes": 19864229
+          "name": "gridcraft-0.11.1-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/gridcraft/releases/download/v0.11.1/gridcraft-0.11.1-linux-x86_64.tar.gz",
+          "sha256": "f2c83e6c26449a6c45983e903bf32c1d4c302b2042f263ead995271129c70e87",
+          "size_bytes": 20503035
         },
         "arm64": {
-          "name": "gridcraft-0.7.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/gridcraft/releases/download/v0.7.0/gridcraft-0.7.0-linux-aarch64.tar.gz",
-          "sha256": "b77591dba5f35c85ee8f227360e60bd6da342c48cc7d54394083bc2ee74768ce",
-          "size_bytes": 18367027
+          "name": "gridcraft-0.11.1-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/gridcraft/releases/download/v0.11.1/gridcraft-0.11.1-linux-aarch64.tar.gz",
+          "sha256": "16e4da4873867a9080ec41d76e38430a8d0e62fa22b43edb6d7b1dbde0925435",
+          "size_bytes": 19060544
         }
       },
       "checks": [
@@ -344,7 +344,7 @@
       "role": "Testi e documenti",
       "description": "Scrittura strutturata, documenti lunghi, revisioni e apparati editoriali.",
       "repository": "https://github.com/storytold/wordcraft",
-      "version": "v0.7.0",
+      "version": "v0.10.0",
       "executable": "wordcraft-cli",
       "registry_args": [
         "commands"
@@ -358,16 +358,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "wordcraft-0.7.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/wordcraft/releases/download/v0.7.0/wordcraft-0.7.0-linux-x86_64.tar.gz",
-          "sha256": "63009f88e3dbaea70ac1378fabc8555ae14775d32829175c5da2551abe03932f",
-          "size_bytes": 97305034
+          "name": "wordcraft-0.10.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.10.0/wordcraft-0.10.0-linux-x86_64.tar.gz",
+          "sha256": "ca99ea350ba0aea4103fc8020cad98f051c58d9e9fcf670c119d810108cc45ff",
+          "size_bytes": 102094935
         },
         "arm64": {
-          "name": "wordcraft-0.7.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/wordcraft/releases/download/v0.7.0/wordcraft-0.7.0-linux-aarch64.tar.gz",
-          "sha256": "b5fce7f31bbbf38828c1714d7d43244ae85f034bbe761dfa401e044f976ba45e",
-          "size_bytes": 94686149
+          "name": "wordcraft-0.10.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/wordcraft/releases/download/v0.10.0/wordcraft-0.10.0-linux-aarch64.tar.gz",
+          "sha256": "77e838120d9da38752ab355066a0987253d9bc95dfddad1c47bac1f180975bbb",
+          "size_bytes": 99191485
         }
       },
       "checks": [
@@ -388,7 +388,7 @@
       "role": "Presentazioni",
       "description": "Presentazioni editabili, sistemi di slide, diagrammi, media e animazioni.",
       "repository": "https://github.com/storytold/deckcraft",
-      "version": "v0.7.0",
+      "version": "v0.10.0",
       "executable": "deckcraft-cli",
       "registry_args": [
         "commands"
@@ -398,16 +398,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "deckcraft-0.7.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/deckcraft/releases/download/v0.7.0/deckcraft-0.7.0-linux-x86_64.tar.gz",
-          "sha256": "330a2fb2ef8890daded91084e5bfd29dfa411e33a2b27c01ac3b9e520ff98d9f",
-          "size_bytes": 76310611
+          "name": "deckcraft-0.10.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.10.0/deckcraft-0.10.0-linux-x86_64.tar.gz",
+          "sha256": "546616eb2300ce8efb20b44a53e60abfe6b96d71ac606b452a36fd21c6b1ff28",
+          "size_bytes": 81279161
         },
         "arm64": {
-          "name": "deckcraft-0.7.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/deckcraft/releases/download/v0.7.0/deckcraft-0.7.0-linux-aarch64.tar.gz",
-          "sha256": "cde1f7e27468e8e0da01bc954172aa66fbea57e719c09dc2320cf4f97b326d60",
-          "size_bytes": 74113266
+          "name": "deckcraft-0.10.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/deckcraft/releases/download/v0.10.0/deckcraft-0.10.0-linux-aarch64.tar.gz",
+          "sha256": "7be0594d90c4c0be15b812a597b85f6005271716be778b2999cb492f52c8676b",
+          "size_bytes": 78638573
         }
       },
       "checks": [
@@ -428,7 +428,7 @@
       "role": "Disegno CAD",
       "description": "Disegno tecnico, quote, blocchi, geometrie CAD e tavole di progetto.",
       "repository": "https://github.com/storytold/cadcraft",
-      "version": "v0.7.0",
+      "version": "v0.12.0",
       "executable": "cadcraft-cli",
       "registry_args": [
         "commands"
@@ -438,16 +438,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "cadcraft-0.7.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/cadcraft/releases/download/v0.7.0/cadcraft-0.7.0-linux-x86_64.tar.gz",
-          "sha256": "cf8d4aa86d046f34eb770ae6cd2df3eee17d1f3b129257f1558543046c955cc0",
-          "size_bytes": 60757626
+          "name": "cadcraft-0.12.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/cadcraft/releases/download/v0.12.0/cadcraft-0.12.0-linux-x86_64.tar.gz",
+          "sha256": "6ae27b9eabc3608caef356a00f69b9fdccbf1e408d6308b5614b6e6b256308de",
+          "size_bytes": 61176441
         },
         "arm64": {
-          "name": "cadcraft-0.7.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/cadcraft/releases/download/v0.7.0/cadcraft-0.7.0-linux-aarch64.tar.gz",
-          "sha256": "15c3cb08735d91090c6507aaa2338094aa2aa4a38788872689c153b2e8f2f6ce",
-          "size_bytes": 58319543
+          "name": "cadcraft-0.12.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/cadcraft/releases/download/v0.12.0/cadcraft-0.12.0-linux-aarch64.tar.gz",
+          "sha256": "29a674e41223c18532359c38f2afc936dde1aa774e2c6479ca1246d3f3bf97f6",
+          "size_bytes": 58749638
         }
       },
       "checks": [
@@ -467,7 +467,7 @@
       "role": "Produzione audio",
       "description": "Composizione MIDI, sintesi, sound design, montaggio e mix modificabile.",
       "repository": "https://github.com/storytold/soundcraft",
-      "version": "v0.7.0",
+      "version": "v0.12.1",
       "executable": "soundcraft-cli",
       "registry_args": [
         "commands"
@@ -481,16 +481,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "soundcraft-0.7.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/soundcraft/releases/download/v0.7.0/soundcraft-0.7.0-linux-x86_64.tar.gz",
-          "sha256": "8d7afbe5fe433cb338b7ccee0820285d6ce1bfc8c006d551ca8840c27a911ab2",
-          "size_bytes": 16365271
+          "name": "soundcraft-0.12.1-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/soundcraft/releases/download/v0.12.1/soundcraft-0.12.1-linux-x86_64.tar.gz",
+          "sha256": "b0a56bd6b5d27de6b12e354580c362be6f59125ea58f573044c84f6a7da87780",
+          "size_bytes": 16474930
         },
         "arm64": {
-          "name": "soundcraft-0.7.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/soundcraft/releases/download/v0.7.0/soundcraft-0.7.0-linux-aarch64.tar.gz",
-          "sha256": "5b5152464bd6a3ae6c48be026d80e0c4e0da58d581a45fe4b5803d6fcfbbe006",
-          "size_bytes": 14975129
+          "name": "soundcraft-0.12.1-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/soundcraft/releases/download/v0.12.1/soundcraft-0.12.1-linux-aarch64.tar.gz",
+          "sha256": "b16513d16be67a9715ec650db955ee6b41624db21fc182905ccaaa311547700d",
+          "size_bytes": 15088076
         }
       },
       "checks": [
@@ -510,7 +510,7 @@
       "role": "Interfacce e prototipi",
       "description": "Design di interfacce, componenti, layout adattivi e prototipi.",
       "repository": "https://github.com/storytold/figcraft",
-      "version": "v0.6.0",
+      "version": "v0.10.0",
       "executable": "figcraft-cli",
       "registry_args": [
         "commands"
@@ -520,16 +520,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "figcraft-0.6.0-linux-x86_64.tar.gz",
-          "url": "https://github.com/storytold/figcraft/releases/download/v0.6.0/figcraft-0.6.0-linux-x86_64.tar.gz",
-          "sha256": "b66dfa68fa5ee54e275f9270168974d54cdbe8b1f431c8b0e962cb7b6baa0660",
-          "size_bytes": 86466552
+          "name": "figcraft-0.10.0-linux-x86_64.tar.gz",
+          "url": "https://github.com/storytold/figcraft/releases/download/v0.10.0/figcraft-0.10.0-linux-x86_64.tar.gz",
+          "sha256": "b3e2ffdab54d203a3f6ed1a0018b8325300bd22dbed6a02f0af6757f3eb669da",
+          "size_bytes": 88888910
         },
         "arm64": {
-          "name": "figcraft-0.6.0-linux-aarch64.tar.gz",
-          "url": "https://github.com/storytold/figcraft/releases/download/v0.6.0/figcraft-0.6.0-linux-aarch64.tar.gz",
-          "sha256": "1bb4c2364c8ac5133b52db14f6a1314d5802df1e0ee87e8fb8893ae7d5b635cb",
-          "size_bytes": 83671880
+          "name": "figcraft-0.10.0-linux-aarch64.tar.gz",
+          "url": "https://github.com/storytold/figcraft/releases/download/v0.10.0/figcraft-0.10.0-linux-aarch64.tar.gz",
+          "sha256": "fd5d55f7999d95bf8dd5677559dde8eafead8021a397eed9eacdeb9a5abe1df9",
+          "size_bytes": 85962437
         }
       },
       "checks": [
@@ -550,10 +550,10 @@
       "role": "Modellazione e animazione 3D",
       "description": "Modellazione 3D, rig, materiali, simulazioni, animazione e rendering.",
       "repository": "https://projects.blender.org/blender/blender",
-      "version": "4.5.14",
+      "version": "5.2.3",
       "executable": "blender-cli",
       "binary": "blender",
-      "download_base": "https://download.blender.org/release/Blender4.5/",
+      "download_base": "https://download.blender.org/release/Blender5.2/",
       "registry_args": [
         "commands"
       ],
@@ -562,10 +562,10 @@
       ],
       "assets": {
         "amd64": {
-          "name": "blender-4.5.14-linux-x64.tar.xz",
-          "url": "https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz",
-          "sha256": "9ba871ff2ecd36526b77432745980b7e6664ecd0c7ca11c48849073dcfe06da3",
-          "size_bytes": 378045212
+          "name": "blender-5.2.3-linux-x64.tar.xz",
+          "url": "https://download.blender.org/release/Blender5.2/blender-5.2.3-linux-x64.tar.xz",
+          "sha256": "78486c018b4443efe5e75ab54c290ed8c15abafd249b862c2c9ce2530a918eec",
+          "size_bytes": 385331224
         }
       },
       "checks": [
@@ -585,7 +585,7 @@
       "role": "Conversione e controllo delle pubblicazioni digitali",
       "description": "Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie.",
       "repository": "https://github.com/kovidgoyal/calibre",
-      "version": "9.16.0",
+      "version": "9.17.0",
       "executable": "calibre-cli",
       "binary": "ebook-convert",
       "binary_paths": {
@@ -596,7 +596,7 @@
         "calibredb": "calibredb",
         "ebook-edit": "ebook-edit"
       },
-      "download_base": "https://download.calibre-ebook.com/9.16.0/",
+      "download_base": "https://download.calibre-ebook.com/9.17.0/",
       "registry_args": [
         "commands"
       ],
@@ -605,16 +605,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "calibre-9.16.0-x86_64.txz",
-          "url": "https://download.calibre-ebook.com/9.16.0/calibre-9.16.0-x86_64.txz",
-          "sha256": "03cd4fda43de23d65405a3c90b924bc4a5c84753e388589d4ca343d9ba561a1d",
-          "size_bytes": 199098600
+          "name": "calibre-9.17.0-x86_64.txz",
+          "url": "https://download.calibre-ebook.com/9.17.0/calibre-9.17.0-x86_64.txz",
+          "sha256": "953e4512a6482848cd803c88b6d942e6afca65dc3b67c7d1353ae048d616de53",
+          "size_bytes": 201590724
         },
         "arm64": {
-          "name": "calibre-9.16.0-arm64.txz",
-          "url": "https://download.calibre-ebook.com/9.16.0/calibre-9.16.0-arm64.txz",
-          "sha256": "82bf5de819a655fc0c8b789d388fef53c4583f9c2f9b83a14df42724519a197d",
-          "size_bytes": 186152052
+          "name": "calibre-9.17.0-arm64.txz",
+          "url": "https://download.calibre-ebook.com/9.17.0/calibre-9.17.0-arm64.txz",
+          "sha256": "3c72bb26196f8339cfb0914224d824ccbaccbb635f0df9c3a55540ae316199bd",
+          "size_bytes": 188047576
         }
       },
       "checks": [
@@ -635,7 +635,7 @@
       "role": "Collaudo browser e interfacce",
       "description": "Automazione browser, test di interazione, screenshot e trace su applicazioni web reali.",
       "repository": "https://github.com/microsoft/playwright",
-      "version": "1.62.0",
+      "version": "1.64.1",
       "license": "Apache-2.0",
       "executable": "playwright-cli",
       "registry_args": [
@@ -656,16 +656,16 @@
       ],
       "assets": {
         "amd64": {
-          "name": "test-1.62.0.tgz",
-          "url": "https://registry.npmjs.org/@playwright/test/-/test-1.62.0.tgz",
-          "sha256": "67cf35a14a9eabd4ad36ddf14eab87fbc373d332ff97485fd106206db2a7507a",
-          "size_bytes": 8749
+          "name": "test-1.64.1.tgz",
+          "url": "https://registry.npmjs.org/@playwright/test/-/test-1.64.1.tgz",
+          "sha256": "9bc8fb4bf5c8f395c1c6b6999e5480607a5aaaead17e9fe6e58181002b4086e3",
+          "size_bytes": 8748
         },
         "arm64": {
-          "name": "test-1.62.0.tgz",
-          "url": "https://registry.npmjs.org/@playwright/test/-/test-1.62.0.tgz",
-          "sha256": "67cf35a14a9eabd4ad36ddf14eab87fbc373d332ff97485fd106206db2a7507a",
-          "size_bytes": 8749
+          "name": "test-1.64.1.tgz",
+          "url": "https://registry.npmjs.org/@playwright/test/-/test-1.64.1.tgz",
+          "sha256": "9bc8fb4bf5c8f395c1c6b6999e5480607a5aaaead17e9fe6e58181002b4086e3",
+          "size_bytes": 8748
         }
       },
       "download_base": "https://registry.npmjs.org/@playwright/test/-/",
@@ -729,7 +729,7 @@
       "role": "Sintesi MIDI e SoundFont",
       "description": "Rendering offline MIDI con strumenti SF2, partitura e banca conservate per la riproduzione.",
       "repository": "https://github.com/FluidSynth/fluidsynth",
-      "version": "2.3.1",
+      "version": "2.6.1",
       "license": "LGPL-2.1-or-later",
       "executable": "fluidsynth-cli",
       "registry_args": [
@@ -750,26 +750,22 @@
       ],
       "assets": {
         "amd64": {
-          "name": "fluidsynth_2.3.1-2_amd64.deb",
-          "url": "https://deb.debian.org/debian/pool/main/f/fluidsynth/fluidsynth_2.3.1-2_amd64.deb",
-          "sha256": "3a5caae4bfe002c58947960f9f47d3b6dff07f63e9647cdfeb3d3df30bf9d85f",
-          "size_bytes": 51580,
-          "package": "fluidsynth",
-          "package_version": "2.3.1-2"
+          "name": "fluidsynth-2.6.1.tar.gz",
+          "url": "https://codeload.github.com/FluidSynth/fluidsynth/tar.gz/refs/tags/v2.6.1",
+          "sha256": "3d258a3bf97cc20c59eeebfe62c2432fae88adda74d3ad098681c76e0ebf446b",
+          "size_bytes": 2273951
         },
         "arm64": {
-          "name": "fluidsynth_2.3.1-2_arm64.deb",
-          "url": "https://deb.debian.org/debian/pool/main/f/fluidsynth/fluidsynth_2.3.1-2_arm64.deb",
-          "sha256": "191705bf23a636675e6f3d1ac62be12405861c839d37799cad830006184a259f",
-          "size_bytes": 51228,
-          "package": "fluidsynth",
-          "package_version": "2.3.1-2"
+          "name": "fluidsynth-2.6.1.tar.gz",
+          "url": "https://codeload.github.com/FluidSynth/fluidsynth/tar.gz/refs/tags/v2.6.1",
+          "sha256": "3d258a3bf97cc20c59eeebfe62c2432fae88adda74d3ad098681c76e0ebf446b",
+          "size_bytes": 2273951
         }
       },
-      "download_base": "https://deb.debian.org/debian/pool/",
+      "download_base": "https://codeload.github.com/FluidSynth/fluidsynth/tar.gz/refs/tags/",
       "install": {
-        "kind": "debian",
-        "native_path": "/usr/bin/fluidsynth"
+        "kind": "fluidsynth-cmake",
+        "source_dir": "fluidsynth-2.6.1"
       },
       "resources": [
         {
@@ -919,7 +915,7 @@
       "role": "CAD parametrico tridimensionale",
       "description": "Authoring parametrico .FCStd, misure geometriche e scambio STEP tramite motore headless nativo.",
       "repository": "https://github.com/FreeCAD/FreeCAD",
-      "version": "0.20.2",
+      "version": "1.1.4",
       "license": "LGPL-2.1-or-later",
       "executable": "freecad-cli",
       "registry_args": [
@@ -940,26 +936,20 @@
       ],
       "assets": {
         "amd64": {
-          "name": "freecad-python3_0.20.2+dfsg1-4+deb12u1_amd64.deb",
-          "url": "https://deb.debian.org/debian-security/pool/updates/main/f/freecad/freecad-python3_0.20.2+dfsg1-4+deb12u1_amd64.deb",
-          "sha256": "b65ef00b6d06ce78543098c7ab2d7069423b05afa60f27ab35798450cdc2eb2d",
-          "size_bytes": 46508,
-          "package": "freecad-python3",
-          "package_version": "0.20.2+dfsg1-4+deb12u1"
+          "name": "FreeCAD_1.1.4-Linux-x86_64-py311.AppImage",
+          "url": "https://github.com/FreeCAD/FreeCAD/releases/download/1.1.4/FreeCAD_1.1.4-Linux-x86_64-py311.AppImage",
+          "sha256": "f6dc6ba676e5ac96a565ebc8d657232f94c6158e85b4352141bd1a46f6b43434",
+          "size_bytes": 820812280
         },
         "arm64": {
-          "name": "freecad-python3_0.20.2+dfsg1-4+deb12u1_arm64.deb",
-          "url": "https://deb.debian.org/debian-security/pool/updates/main/f/freecad/freecad-python3_0.20.2+dfsg1-4+deb12u1_arm64.deb",
-          "sha256": "701e8859d392817616cb258377fdb21c305e15465bf4b5d1f06aa35fa78d75d2",
-          "size_bytes": 45672,
-          "package": "freecad-python3",
-          "package_version": "0.20.2+dfsg1-4+deb12u1"
+          "name": "FreeCAD_1.1.4-Linux-aarch64-py311.AppImage",
+          "url": "https://github.com/FreeCAD/FreeCAD/releases/download/1.1.4/FreeCAD_1.1.4-Linux-aarch64-py311.AppImage",
+          "sha256": "675d1a4295b2183e0e1d816a4b5557dcb63aeced4e60aaa28d6c3686f4c71dc9",
+          "size_bytes": 755591688
         }
       },
-      "download_base": "https://deb.debian.org/debian-security/pool/",
       "install": {
-        "kind": "debian",
-        "native_path": "/usr/lib/freecad/bin/freecadcmd-python3"
+        "kind": "freecad-appimage"
       }
     },
     {
@@ -1026,8 +1016,8 @@
       "role": "Conversione e verifica audio/video",
       "description": "Probe dei flussi, conversione codec e formati, estrazione audio e mux con parametri espliciti.",
       "repository": "https://github.com/FFmpeg/FFmpeg",
-      "version": "5.1.9",
-      "license": "GPL-2.0-or-later (Debian build; codec licenses vary)",
+      "version": "9.0.2",
+      "license": "GPL-2.0-or-later (GPL build; codec licenses vary)",
       "executable": "ffmpeg-cli",
       "registry_args": [
         "commands"
@@ -1036,28 +1026,24 @@
         "mcp"
       ],
       "adapter": true,
-      "download_base": "https://deb.debian.org/debian/pool/",
+      "download_base": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/",
       "assets": {
         "amd64": {
-          "name": "ffmpeg_5.1.9-0+deb12u1_amd64.deb",
-          "url": "https://deb.debian.org/debian/pool/main/f/ffmpeg/ffmpeg_5.1.9-0+deb12u1_amd64.deb",
-          "sha256": "2ba8ead87657c123ce6de2de5ecdbc1fb4ead9a4b317b85b8ec41e16c890fe01",
-          "size_bytes": 1821764,
-          "package": "ffmpeg",
-          "package_version": "7:5.1.9-0+deb12u1"
+          "name": "ffmpeg-9.0.2.tar.gz",
+          "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n9.0.2",
+          "sha256": "6e374ed621e48faa40639307dff48ba6fe574a509977956d2cce9669b7cc27e9",
+          "size_bytes": 17319950
         },
         "arm64": {
-          "name": "ffmpeg_5.1.9-0+deb12u1_arm64.deb",
-          "url": "https://deb.debian.org/debian/pool/main/f/ffmpeg/ffmpeg_5.1.9-0+deb12u1_arm64.deb",
-          "sha256": "7890aeb19a94d73e5d9281afa5ca07005804c1fca4f10791f4f2ce0df741b610",
-          "size_bytes": 1807012,
-          "package": "ffmpeg",
-          "package_version": "7:5.1.9-0+deb12u1"
+          "name": "ffmpeg-9.0.2.tar.gz",
+          "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/refs/tags/n9.0.2",
+          "sha256": "6e374ed621e48faa40639307dff48ba6fe574a509977956d2cce9669b7cc27e9",
+          "size_bytes": 17319950
         }
       },
       "install": {
-        "kind": "debian",
-        "native_path": "/usr/bin/ffmpeg"
+        "kind": "ffmpeg-source",
+        "source_dir": "FFmpeg-n9.0.2"
       },
       "checks": [
         "Verifica stream, frame rate, sample rate, canali, durata e destinazione.",
@@ -1071,7 +1057,8 @@
     }
   ],
   "cli_runtimes": {
-    "codex": "0.162.1",
-    "gemini": "0.64.0"
+    "codex": "0.164.0",
+    "gemini": "1.4.7",
+    "antigravity": "1.4.7"
   }
 }

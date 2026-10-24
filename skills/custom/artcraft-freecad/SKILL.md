@@ -5,7 +5,7 @@ description: "Authoring parametrico .FCStd, misure geometriche e scambio STEP tr
 
 # FreeCAD: CAD parametrico tridimensionale
 
-Versione **0.20.2**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
+Versione **1.1.4**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
 
 Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md), [CAPABILITIES.md](references/CAPABILITIES.md) e [QUALITY.md](references/QUALITY.md). Usa `craft capabilities freecad`, `craft commands freecad`, `craft tools freecad` per la scoperta mirata. `freecad-cli` è l’adattatore ArtCraft con CLI/MCP; gli ID MCP non sono comandi della CLI upstream. La mappa elenca le operazioni dell’adattatore, non l’intera API nativa.
 
@@ -15,7 +15,7 @@ Usa oggetti parametrici, sketch/vincoli e dipendenze quando il progetto richiede
 
 ## Limiti verificabili
 
-Motore FreeCAD headless Debian 0.20.2, non la release upstream 1.x. Le API vanno verificate contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita.
+Motore headless FreeCAD 1.1.4 dalla distribuzione ufficiale, con il Python incluso. Verifica le API contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita.
 
 Le operazioni hanno input assoluti nel workspace, output nuovi, log e supervisione comune. Non sovrascrivere una versione approvata. Per una revisione crea una nuova consegna collegata alla precedente; descrivi il cambiamento significativo e confrontalo con il riferimento. Dopo un errore conserva log e parziali, correggi la causa e riprendi soltanto il passaggio necessario. Non duplicare processi per aggirare il budget della sandbox.
 

@@ -1,6 +1,6 @@
 # Capacità operative: gridcraft
 
-Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v0.11.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Fogli di calcolo, formule, tabelle, grafici, analisi e reporting.
 **Sorgenti:** XLSX con formule/dati/grafici; export PDF/CSV separati.
@@ -29,5 +29,5 @@ Verificare ricalcolo, unità e formule reali; valori incollati o immagini non so
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 341 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `e587b34432eb12578e73aeb3c5fcb2d266642075ed34e85f8e9ce69bbb0d51d0`.
+Catalogo esaminato: 346 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `e843f5a6a45e65de78fd85fce23e16aba479b767cffb1b50429c363baaf30b4d`.
 Fonte: https://github.com/storytold/gridcraft/tree/v0.7.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

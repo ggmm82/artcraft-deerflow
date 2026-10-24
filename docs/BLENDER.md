@@ -4,7 +4,7 @@ Blender è il quattordicesimo specialista (`blender`), accanto ai 13 strumenti C
 
 ## Runtime e compatibilità
 
-- Distribuzione ufficiale **Blender 4.5.14 LTS**, checksum SHA-256 e dimensione fissati in `versions.lock.json`. Nessun aggiornamento automatico.
+- Distribuzione ufficiale **Blender 5.2.3**, checksum SHA-256 e dimensione fissati in `versions.lock.json`. Nessun aggiornamento automatico.
 - Release Linux **amd64**. La serie fissata non offre un binario ufficiale Linux ARM64: la build ARM si ferma con un errore esplicito prima di scaricare gli strumenti, senza saltare Blender in silenzio. Su Mac ARM per il container occorre emulazione `linux/amd64`; il `.blend` può essere aperto nella corrispondente app Blender per macOS.
 - Il container include librerie grafiche/CPU e l'adattatore ArtCraft; non servono GPU, server grafico o licenze in abbonamento. Il render verificato usa Cycles CPU. EEVEE/GPU richiedono collaudo specifico sull'host e non sono promessi.
 - Blender aggiunge circa 1,2 GB non compressi all'immagine sandbox. Render complessi richiedono RAM, tempo e spazio per i frame: salvare checkpoint e misurare un frame prima di promettere durata o prestazioni sul VPS. I limiti del worker continuano ad applicarsi.

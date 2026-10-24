@@ -75,7 +75,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/vectorcraft/tree/v0.11.0
+- https://github.com/storytold/vectorcraft/tree/v0.16.0
 - https://github.com/storytold/vectorcraft/releases
 
 ## Ruolo nella squadra

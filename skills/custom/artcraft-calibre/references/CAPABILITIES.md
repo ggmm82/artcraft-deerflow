@@ -1,6 +1,6 @@
 # Capacità operative: calibre
 
-Versione esaminata: **9.16.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **9.17.0**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse e librerie.
 **Sorgenti:** XHTML/CSS/OPF e risorse, ebook ricostruibile e input editoriali.

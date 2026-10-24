@@ -7,9 +7,9 @@ import sys
 
 
 def main():
-    # Debian's compiled FreeCAD module needs the distribution Python (3.11).
-    sys.path.insert(0, '/usr/lib/freecad-python3/lib')
-    sys.path.insert(0, '/usr/lib/freecad/lib')
+    # The adapter launches the official image's bundled Python and module path.
+    native_lib = os.environ.get('PATH_TO_FREECAD_LIBDIR')
+    if native_lib: sys.path.insert(0, native_lib)
     import FreeCAD as App
     # Embedded Python does not run FreeCADCmd's standard workbench discovery.
     # Include the packaged Mod roots (packages such as PartDesign) and each

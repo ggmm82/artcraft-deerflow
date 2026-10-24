@@ -7,8 +7,11 @@ from pathlib import Path
 
 def main():
     antigravity_version = json.loads(Path(__file__).with_name('antigravity.lock.json').read_text())['version']
+    lock = Path(__file__).resolve().parents[1] / 'versions.lock.json'
+    if not lock.is_file(): lock = Path(__file__).with_name('versions.lock.json')
+    codex_version = json.loads(lock.read_text())['cli_runtimes']['codex']
     contracts = [
-        (['codex', '--version'], ['0.162.1']),
+        (['codex', '--version'], [codex_version]),
         (['codex', 'login', '--help'], ['--device-auth']),
         (['codex', 'app-server', '--help'], ['--listen', 'stdio://', 'generate-json-schema']),
         (['codex', 'features', 'list'], ['image_generation']),

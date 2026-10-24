@@ -1,6 +1,6 @@
 # Capacità operative: whisper
 
-Versione esaminata: **v1.9.5**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v1.9.5**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Trascrizione parlato CPU multilingue in TXT, SRT e JSON con modello tiny fissato e disponibile offline.
 **Sorgenti:** Audio originale o riferimento autorizzato, TXT/SRT/JSON modificabili, lingua e configurazione, identificativo e hash del modello.

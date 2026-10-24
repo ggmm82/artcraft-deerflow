@@ -184,12 +184,14 @@ Il contratto comune di accettazione e la visibilità del prodotto durante le rev
 
 ### Blender 3D
 
-Lo specialista **Blender 4.5.14 LTS** crea scene, materiali, rig e animazioni e consegna `.blend` modificabili con risorse verificate. Usa la configurazione condivisa della squadra. [CLI, sorgenti, requisiti Linux amd64 e collaudo](docs/BLENDER.md).
+Lo specialista **Blender 5.2.3** crea scene, materiali, rig e animazioni e consegna `.blend` modificabili con risorse verificate. Usa la configurazione condivisa della squadra. [CLI, sorgenti, requisiti Linux amd64 e collaudo](docs/BLENDER.md).
 
 Il [budget comune per i lavori pesanti](docs/LAVORI-PESANTI.md) si imposta in La tua squadra; il supervisore controlla processi, avanzamento nativo e memoria senza aggiungere configurazioni per i singoli strumenti.
 
 ### Calibre e capacità dinamiche
 
-**Calibre 9.16.0** è una capacità selezionabile da qualunque ruolo di progetto, con il modello condiviso. Non introduce una squadra o un processo specifico per gli ebook. [Comandi, sorgenti, verifiche e limiti](docs/CALIBRE.md). Progetto, ruoli, attività e consegne usano la stessa interfaccia per tutti gli ambiti.
+**Calibre 9.17.0** è una capacità selezionabile da qualunque ruolo di progetto, con il modello condiviso. Non introduce una squadra o un processo specifico per gli ebook. [Comandi, sorgenti, verifiche e limiti](docs/CALIBRE.md). Progetto, ruoli, attività e consegne usano la stessa interfaccia per tutti gli ambiti.
 
 Il [controllo del progetto e delle decisioni](docs/CONTROLLO-PROGETTO.md) distingue esecuzione riuscita, qualità da correggere e attività della squadra attuale, mantenendo accessibili dettagli e cronologia.
+
+Le [release degli strumenti e delle CLI](docs/TOOL-RELEASES.md) riportano versioni fissate, fonti ufficiali e modalità di collaudo.

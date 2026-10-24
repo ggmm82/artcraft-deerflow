@@ -1,6 +1,6 @@
 # Calibre CLI come capacità disponibile
 
-Release ufficiale **9.16.0** fissata con URL, dimensione e SHA-256 per amd64 e arm64 in `versions.lock.json`. Il runtime completo resta linux/amd64 per il vincolo Blender. Nessun aggiornamento automatico al riavvio.
+Release ufficiale **9.17.0** fissata con URL, dimensione e SHA-256 per amd64 e arm64 in `versions.lock.json`. Il runtime completo resta linux/amd64 per il vincolo Blender. Nessun aggiornamento automatico al riavvio.
 
 L’installazione espone i launcher ufficiali dalla radice della distribuzione (`ebook-convert`, `ebook-meta`, `ebook-polish`, `calibre-debug`, `calibredb`, `ebook-edit`) e l’adattatore headless `calibre-cli`. Non installa il server Calibre, non pubblica porte, non connette librerie personali e non crea una configurazione modello separata. Qt usa offscreen nel worker isolato; nessuna GUI web viene promessa.
 

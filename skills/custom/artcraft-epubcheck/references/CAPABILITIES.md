@@ -1,6 +1,6 @@
 # Capacità operative: epubcheck
 
-Versione esaminata: **v5.4.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v5.4.0**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Controllo indipendente EPUB di contenitori, manifest, risorse e markup; errori distinti dagli avvisi.
 **Sorgenti:** EPUB e sorgenti XHTML/CSS/OPF, media e font prodotti dagli strumenti di authoring; report JSON come prova.

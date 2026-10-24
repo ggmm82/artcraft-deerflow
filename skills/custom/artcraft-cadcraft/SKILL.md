@@ -70,7 +70,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/cadcraft/tree/v0.7.0
+- https://github.com/storytold/cadcraft/tree/v0.12.0
 - https://github.com/storytold/cadcraft/releases
 
 ## Ruolo nella squadra

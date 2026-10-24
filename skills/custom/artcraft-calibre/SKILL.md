@@ -5,7 +5,7 @@ description: "Produzione e conversione editoriale, EPUB/AZW3, metadati, risorse 
 
 # Calibre: documenti e pubblicazioni digitali
 
-Calibre **9.16.0**, release ufficiale e SHA-256 fissati nel catalogo. Questa skill descrive uno strumento: non definisce professioni, una squadra editoriale obbligatoria o una sequenza di progetto. Un ruolo compilato dinamicamente può selezionarla quando serve una sua capacità. Eredita provider e modello condivisi.
+Calibre **9.17.0**, release ufficiale e SHA-256 fissati nel catalogo. Questa skill descrive uno strumento: non definisce professioni, una squadra editoriale obbligatoria o una sequenza di progetto. Un ruolo compilato dinamicamente può selezionarla quando serve una sua capacità. Eredita provider e modello condivisi.
 
 Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md) e [QUALITY.md](references/QUALITY.md). Scopri `craft help calibre`, `craft commands calibre`, `craft tools calibre`. `calibre-cli` è l’adattatore ArtCraft; `ebook-convert`, `ebook-meta`, `ebook-polish`, `calibre-debug`, `calibredb`, `ebook-edit` sono le CLI ufficiali. Non inventare comandi e non confondere i nomi MCP con quelli nativi.
 
@@ -35,7 +35,7 @@ Consegna prodotto richiesto, sorgente di authoring realmente usato e risorse com
 
 Prova estrazione, modifica di un contenuto campione e ricostruzione su una copia; riapri il risultato e controlla testo, indice, immagini e struttura. Per il pacchetto finale ripeti la riapertura dopo estrazione in una cartella diversa, senza dipendere da `/mnt/user-data`, cache o libreria locale. EPUB contiene già risorse interne: non necessita di una libreria Calibre per essere trasferito. Il runtime verifica EPUB/AZW3 anche negli ZIP con il checker nativo; non verifica automaticamente il layout del DOCX o la resa in tutte le app.
 
-In `handoff.json` registra OGNI file in `delivery.files`: prodotto `export`, EPUB o documento di authoring `editable_source`, ZIP `source_archive`, prove `report`/`preview`. Per l’EPUB indica `open_with: Calibre 9.16.0, Modifica libro (ebook-edit)` e che XHTML/CSS/OPF restano modificabili; per DOCX indica l’app effettivamente provata. Riporta `reopen` con comando ed evidenza reali, gli avvisi e i limiti. Mantieni i download fuori da `work/`. Distingui riapertura CLI provata, GUI non provata e qualità da valutare. Nessuna consegna completa se mancano sorgenti o dipendenze necessari.
+In `handoff.json` registra OGNI file in `delivery.files`: prodotto `export`, EPUB o documento di authoring `editable_source`, ZIP `source_archive`, prove `report`/`preview`. Per l’EPUB indica `open_with: Calibre 9.17.0, Modifica libro (ebook-edit)` e che XHTML/CSS/OPF restano modificabili; per DOCX indica l’app effettivamente provata. Riporta `reopen` con comando ed evidenza reali, gli avvisi e i limiti. Mantieni i download fuori da `work/`. Distingui riapertura CLI provata, GUI non provata e qualità da valutare. Nessuna consegna completa se mancano sorgenti o dipendenze necessari.
 
 ## Fonti
 
@@ -43,4 +43,4 @@ In `handoff.json` registra OGNI file in `delivery.files`: prodotto `export`, EPU
 - https://manual.calibre-ebook.com/generated/en/ebook-convert.html
 - https://manual.calibre-ebook.com/generated/en/calibre-debug.html
 - https://manual.calibre-ebook.com/edit.html
-- https://github.com/kovidgoyal/calibre/releases/tag/v9.16.0
+- https://github.com/kovidgoyal/calibre/releases/tag/v9.17.0

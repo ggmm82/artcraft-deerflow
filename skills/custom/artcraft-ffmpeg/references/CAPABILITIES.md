@@ -1,6 +1,6 @@
 # Capacità operative: ffmpeg
 
-Versione esaminata: **5.1.9**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **9.0.2**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Probe dei flussi, conversione codec e formati, estrazione audio e mux con parametri espliciti.
 **Sorgenti:** Input originali, progetti delle app di authoring, media collegati, ricetta/parametri di conversione e mux.
