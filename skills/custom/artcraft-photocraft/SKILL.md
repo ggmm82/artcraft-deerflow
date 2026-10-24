@@ -70,7 +70,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/photocraft/tree/v0.8.2
+- https://github.com/storytold/photocraft/tree/v0.15.1
 - https://github.com/storytold/photocraft/releases
 
 ## Ruolo nella squadra

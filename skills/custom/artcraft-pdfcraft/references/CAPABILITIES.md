@@ -1,6 +1,6 @@
 # Capacità operative: pdfcraft
 
-Versione esaminata: **v0.8.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v0.13.0**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Ispezione e modifica PDF, pagine, testo, moduli, OCR e prestampa.
 **Sorgenti:** PDF modificato e originali/ricetta; progetto editoriale da conservare separatamente.
@@ -29,5 +29,5 @@ OCR usa modelli installati. PDF strutturalmente valido o taggato non certifica q
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 163 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `20f92b2a99764c928a12b68cb4ffdb5c23338f69cd3144ce803ac652f4e34391`.
+Catalogo esaminato: 175 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `fde4a9de19f21da50f9229d287ef635d504cc04bf30c92b5be8f045fed273336`.
 Fonte: https://github.com/storytold/pdfcraft/tree/v0.8.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

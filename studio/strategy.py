@@ -102,9 +102,14 @@ def recovery(workspace, project):
     This gate only handles a coordinator declaring a quality failure blocked.
     It does not launch jobs, relax acceptance or claim a candidate will succeed.
     """
+    from .project_brief import orientation
+    active = set(orientation(project)['active_step_ids'])
+    contract = (project.get('acceptance') or {}).get('hash')
     failed = any(a.get('failed_checks') or (a.get('quality_review') or {}).get('status') == 'needs_revision'
-                 for s in project.get('steps', []) for a in s.get('attempts', []))
-    if not failed or project.get('attention'):
+                 for s in project.get('steps', []) if s['id'] in active for a in s.get('attempts', [])
+                 if not a.get('context',{}).get('contract') or a['context']['contract'] == contract)
+    stale_stop = (project.get('strategy') or {}).get('state') == 'needs_user' and (project.get('strategy') or {}).get('request_hash') != contract
+    if (not failed and not stale_stop) or project.get('attention'):
         return None
     strategy = project.get('strategy') or {}
     valid = strategy.get('request_hash') == (project.get('acceptance') or {}).get('hash')

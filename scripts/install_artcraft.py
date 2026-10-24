@@ -67,6 +67,49 @@ def install_toolkit(app, archive, destination, root, bin_dir, arch):
                        env={**os.environ, 'PLAYWRIGHT_BROWSERS_PATH': str(root / 'playwright-browsers')})
         subprocess.run(['npm', 'cache', 'clean', '--force'], check=True)
         return str(target / 'node_modules/playwright/cli.js')
+    if kind == 'freecad-appimage':
+        # Extract the verified official image: no FUSE/mount privilege required.
+        archive.chmod(0o755)
+        subprocess.run([str(archive), '--appimage-extract'], cwd=destination, check=True,
+                       stdout=subprocess.DEVNULL)
+        binary = destination / 'squashfs-root/usr/bin/python'
+        if not binary.is_file():
+            raise RuntimeError('Official FreeCAD image has no bundled Python')
+        return str(binary)
+    if kind in ('fluidsynth-cmake', 'ffmpeg-source'):
+        safe_extract(archive, destination)
+        source = destination / app['install']['source_dir']
+        prefix = destination / 'runtime'
+        if kind == 'fluidsynth-cmake':
+            build = destination / 'build'
+            subprocess.run(['cmake', '-S', str(source), '-B', str(build),
+                            '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_INSTALL_PREFIX=' + str(prefix),
+                            '-DBUILD_SHARED_LIBS=OFF', '-Denable-readline=OFF',
+                            '-Denable-pulseaudio=OFF', '-Denable-alsa=OFF', '-Denable-jack=OFF',
+                            '-Denable-portaudio=OFF', '-Denable-dbus=OFF', '-Denable-ladspa=OFF',
+                            '-Denable-network=OFF', '-Denable-libsndfile=ON'], check=True)
+            subprocess.run(['cmake', '--build', str(build), '--parallel', '2'], check=True)
+            subprocess.run(['cmake', '--install', str(build)], check=True)
+            names = ['fluidsynth']
+            shutil.rmtree(build)
+        else:
+            subprocess.run([str(source / 'configure'), '--prefix=' + str(prefix),
+                            '--disable-debug', '--disable-doc', '--disable-shared', '--enable-static',
+                            '--enable-gpl', '--enable-libx264', '--enable-libx265', '--enable-libvpx',
+                            '--enable-libopus', '--enable-libmp3lame', '--enable-libvorbis',
+                            '--enable-libass', '--enable-libfontconfig', '--enable-libfreetype',
+                            '--enable-libharfbuzz', '--enable-gnutls', '--enable-libwebp',
+                            '--enable-libaom', '--enable-libdav1d', '--enable-libsoxr',
+                            '--enable-librubberband'], cwd=source, check=True)
+            subprocess.run(['make', '-j2'], cwd=source, check=True)
+            subprocess.run(['make', 'install'], cwd=source, check=True)
+            names = ['ffmpeg', 'ffprobe']
+        for name in names:
+            binary = prefix / 'bin' / name
+            if not binary.is_file(): raise RuntimeError('Missing built executable: ' + name)
+            (bin_dir / name).symlink_to(binary)
+        shutil.rmtree(source)
+        return str(prefix / 'bin' / names[0])
     if kind == 'whisper-cmake':
         safe_extract(archive, destination)
         source = destination / app['install']['source_dir']

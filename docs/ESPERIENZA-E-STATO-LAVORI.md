@@ -123,7 +123,7 @@ una singola generazione è già in corso.
 
 ## Generazione nativa Codex
 
-Codex CLI è fissata alla **0.162.1**. Il worker usa il protocollo ufficiale
+Codex CLI è fissata alla **0.164.0**. Il worker usa il protocollo ufficiale
 `codex app-server` su stdio, senza aprire porte: `exec --json` di questa versione
 non pubblica gli eventi `imageGeneration`. Il bridge osserva avvio/conclusione
 reali e trasferisce soltanto il PNG indicato da `savedPath` all'interno di

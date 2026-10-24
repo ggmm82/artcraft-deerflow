@@ -1,6 +1,6 @@
 # Capacità operative: blender
 
-Versione esaminata: **4.5.14**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **5.2.3**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Modellazione 3D, rig, materiali, simulazioni, animazione e rendering.
 **Sorgenti:** .blend con risorse incorporate; GLB/FBX/video come export.

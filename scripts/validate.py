@@ -14,6 +14,13 @@ def main():
     cfg=yaml.safe_load((ROOT/'config/deerflow.yaml').read_text())
     local=yaml.safe_load((ROOT/'docker-compose.yaml').read_text())
     remote=yaml.safe_load((ROOT/'config/compose.hostinger.template.yaml').read_text())
+    agy=json.loads((ROOT/'scripts/antigravity.lock.json').read_text())
+    assert lock['cli_runtimes']['antigravity']==lock['cli_runtimes']['gemini']==agy['version']
+    assert all(p['version']==agy['version'] for p in agy['platforms'].values())
+    npm=json.loads((ROOT/'config/toolkit/package-lock.json').read_text())
+    browser=next(a['version'] for a in lock['applications'] if a['id']=='playwright')
+    assert npm['packages']['']['dependencies']['@playwright/test']==browser
+    assert npm['packages']['node_modules/@playwright/test']['version']==browser
     ids={a['id'] for a in lock['applications']}
     assert len(ids)==len(lock['applications']) and ids==set(cfg['subagents']['custom_agents'])
     expected_skills={'artcraft-'+identifier for identifier in ids}|{'artcraft-workspace','artcraft-studio'}

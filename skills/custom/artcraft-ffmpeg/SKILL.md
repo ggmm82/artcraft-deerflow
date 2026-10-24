@@ -5,7 +5,7 @@ description: "Conversione, filtri, mux e verifiche tecniche audio/video; scelta 
 
 # FFmpeg: conformazione, conversione e controllo dei media
 
-FFmpeg **5.1.9**, pacchetto Debian con SHA-256 fissato nel catalogo. Era già disponibile come dipendenza del runtime; ora ha una skill e un adattatore CLI/MCP espliciti. Eredita il modello della squadra; non definisce un ruolo professionale fisso.
+FFmpeg **9.0.2**, compilato dal tag upstream ufficiale con SHA-256 fissato nel catalogo. Era già disponibile come dipendenza del runtime; ora ha una skill e un adattatore CLI/MCP espliciti. Eredita il modello della squadra; non definisce un ruolo professionale fisso.
 
 Leggi `artcraft-workspace`, [CAPABILITIES.md](references/CAPABILITIES.md), [CLI-RECIPE.md](references/CLI-RECIPE.md), [QUALITY.md](references/QUALITY.md). `ffmpeg-cli` è l’adattatore ArtCraft; `ffmpeg` e `ffprobe` sono i binari upstream. Scopri prima `craft capabilities ffmpeg`, `craft commands ffmpeg`, `craft tools ffmpeg`.
 

@@ -75,13 +75,22 @@ def run(app, argv, root, *, env=None, allow_failure=False):
     return result
 
 
+def freecad_command(*args):
+    # Use the Python ABI and native libraries shipped in the official AppImage.
+    prefix = INSTALL / 'apps/freecad/squashfs-root/usr'
+    return ['/usr/bin/env', 'PYTHONHOME=' + str(prefix),
+            'PYTHONPATH=' + str(prefix / 'lib'), 'PATH_TO_FREECAD_LIBDIR=' + str(prefix / 'lib'),
+            'QT_QPA_PLATFORM=offscreen', str(prefix / 'bin/python'),
+            str(HERE / 'toolkit_job.py'), *map(str, args)]
+
+
 def native_version(app):
     commands = {
         'playwright': ['node', str(INSTALL / 'toolkit/node_modules/playwright/cli.js'), '--version'],
         'aubio': ['aubio', '--version'], 'fluidsynth': ['fluidsynth', '--version'],
         'pandoc': ['pandoc', '--version'], 'typst': ['typst', '--version'],
         'ffmpeg': ['ffmpeg', '-version'],
-        'freecad': ['/usr/bin/python3', str(HERE / 'toolkit_job.py'), 'version', '-', '-'],
+        'freecad': freecad_command('version', '-', '-'),
     }
     if app == 'epubcheck': commands[app] = ['java', '-Xmx512m', '-jar', str(epub_jar()), '--version']
     if app == 'whisper':
@@ -255,7 +264,7 @@ def invoke(app, action, args):
         argv += [source, output]
         completed = run(app, argv, root)
     elif app == 'freecad':
-        completed = run(app, ['/usr/bin/python3', HERE / 'toolkit_job.py', action, source, output], root,
+        completed = run(app, freecad_command(action, source, output), root,
                         env={'OMP_NUM_THREADS': '2'})
         if action == 'inspect':
             info = json.loads(output.read_text())

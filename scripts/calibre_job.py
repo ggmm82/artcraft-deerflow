@@ -33,7 +33,18 @@ def main():
     if action == 'check':
         from calibre.ebooks.oeb.polish.check.main import run_checks
         from calibre.ebooks.oeb.polish.check.base import WARN
-        issues = run_checks(container)
+        # Match the native checker's CLI lifecycle: finish and destroy its
+        # WebEngine pages while QApplication is still alive, before Python's
+        # interpreter teardown. Late atexit cleanup can race the GLX backend.
+        from calibre.ebooks.oeb.polish.check.css import shutdown as shutdown_css
+        try:
+            issues = run_checks(container)
+        finally:
+            shutdown_css()
+            from qt.core import QApplication
+            app = QApplication.instance()
+            if app is not None:
+                app.processEvents()
         value['issues'] = [issue_record(e, WARN) for e in issues]
         value['status'] = 'failed' if any(e['blocking'] for e in value['issues']) or not value['spine'] else 'passed'
         value['note'] = 'Controllo strutturale nativo Calibre; non prova qualità editoriale, resa su lettori o conformità EPUBCheck.'

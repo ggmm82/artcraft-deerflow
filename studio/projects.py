@@ -681,7 +681,20 @@ def execute_step(workspace, agent, task, step_id, invoke, *, provider=None, purp
         if role:
             step['role_id'] = role['id']
         previous = step['attempts'][-1] if step['attempts'] else {}
-        context = {'provider': provider, 'revision': step.get('revision_id', ''), 'purpose': purpose, 'request': request_id, 'role': role.get('version') if role else None}
+        context = {'provider': provider, 'revision': step.get('revision_id', ''), 'purpose': purpose, 'request': request_id,
+                   'contract':(value.get('acceptance') or {}).get('hash'), 'role': role.get('version') if role else None}
+        previews = [a for a in step['attempts'] if a.get('context',{}).get('purpose') == 'preview'
+                    and a.get('context',{}).get('revision','') == context['revision']
+                    and (not a.get('context',{}).get('contract') or a['context']['contract'] == context['contract'])]
+        if purpose == 'preview' and len(previews) >= 2 and all(a.get('status') == 'needs_revision' for a in previews[-2:]):
+            return json.dumps({'ok':False,'retry_blocked':True,'checkpoint_reassessment':True,
+                'error':'Due prove insufficienti sullo stesso checkpoint: rivaluta il contributo all’obiettivo prima di un altro ritocco.',
+                'goal':(value.get('outcome') or {}).get('result') or value['brief'],
+                'instruction':'Conserva i risultati e distingui requisito richiesto da dettaglio scelto dalla squadra. '
+                    'Puoi integrare/consegnare le parti valide o cambiare campione/metodo senza abbassare i requisiti dell’utente. '
+                    'Per riprovare questo checkpoint usa studio_plan(revise_step_id) con la decisione concreta: '
+                    'beneficio atteso sul prodotto finale, causa verificata e cosa cambia nella prova. Non chiedere procedi per il lavoro già autorizzato.',
+                'available_results':read_results(value,workspace)},ensure_ascii=False)
         if previous.get('context') == context and previous.get('error'):
             failure = failure_info(previous['error'])
             if not failure['retryable']:

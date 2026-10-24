@@ -1,6 +1,6 @@
 # Capacità operative: freecad
 
-Versione esaminata: **0.20.2**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **1.1.4**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Modellazione CAD 3D parametrica di oggetti, componenti e costruzioni; sorgenti modificabili e scambio STEP.
 **Sorgenti:** Documento nativo .FCStd con albero parametrico, script .py realmente usato, dati e riferimenti; STEP come export di scambio.
@@ -17,7 +17,7 @@ Gli ID sopra sono registrati dalla CLI, non una certificazione di ogni funzione.
 
 ## Limiti e scelta del metodo
 
-Motore FreeCAD headless Debian 0.20.2, non la release upstream 1.x. Le API vanno verificate contro questa versione. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita. Può costruire asset rigidi destinati ad altre app: il passaggio al renderer richiede un formato importabile, tassellazione, orientamento, unità e materiali verificati. L’adattatore espone STEP e script execute, non un’esportazione OBJ/GLB già certificata. Eventuali esportazioni mesh tramite API native vanno provate; STEP non è automaticamente importabile in un compositore. Non è un sostituto universale di rig, modellazione organica o animazione.
+Motore headless FreeCAD 1.1.4 dalla distribuzione ufficiale, eseguito con il Python incluso. Verifica le API della versione fissata. STEP conserva geometria di scambio, non lo storico parametrico .FCStd; nessuna certificazione ingegneristica o prova GUI implicita. Può costruire asset rigidi destinati ad altre app: il passaggio al renderer richiede un formato importabile, tassellazione, orientamento, unità e materiali verificati. L’adattatore espone STEP e script execute, non un’esportazione OBJ/GLB già certificata. Eventuali esportazioni mesh tramite API native vanno provate; STEP non è automaticamente importabile in un compositore. Non è un sostituto universale di rig, modellazione organica o animazione.
 
 ## Scoperta mirata
 

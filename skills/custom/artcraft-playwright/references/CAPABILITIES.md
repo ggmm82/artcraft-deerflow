@@ -1,6 +1,6 @@
 # Capacità operative: playwright
 
-Versione esaminata: **1.62.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **1.64.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Automazione browser, test di interazione, screenshot e trace su applicazioni web reali.
 **Sorgenti:** Codice applicativo, test .test.cjs o automazione .cjs, configurazione, screenshot e trace pertinenti.

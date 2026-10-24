@@ -1,6 +1,6 @@
 # Capacità operative: soundcraft
 
-Versione esaminata: **v0.7.0**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v0.12.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Composizione MIDI, sintesi, sound design, montaggio e mix modificabile.
 **Sorgenti:** .scraft con strumenti/note, clip, automazioni, media, stem e mix.
@@ -29,5 +29,5 @@ Sono presenti sintetizzatore sottrattivo, drum synth e sampler, non solo importa
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 478 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `9a48748c07ee928587a3782414163b9e685684a7612697e3f847052d207d2ab1`.
+Catalogo esaminato: 480 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `6febba88d4a0362184fa6acead566ab571531bf6dc552a7f3637c0b7ab043afe`.
 Fonte: https://github.com/storytold/soundcraft/tree/v0.7.0. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

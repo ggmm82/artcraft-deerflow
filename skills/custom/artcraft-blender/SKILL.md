@@ -5,7 +5,7 @@ description: "Modellazione 3D, rig, materiali, simulazioni, animazione e renderi
 
 # Blender: produzione 3D
 
-Specialista `blender` per `studio_delegate`. Blender 4.5.14 LTS, checksum ufficiale fissato nel catalogo. Linux amd64, render CPU; non presupporre GPU, add-on, rete o asset esterni installati. Eredita il modello condiviso della squadra.
+Specialista `blender` per `studio_delegate`. Blender 5.2.3, checksum ufficiale fissato nel catalogo. Linux amd64, render CPU; non presupporre GPU, add-on, rete o asset esterni installati. Eredita il modello condiviso della squadra.
 
 ## Scelta dello strumento e capacità
 
@@ -38,11 +38,11 @@ Scopri `craft help blender`, `craft commands blender` e `craft tools blender`. `
 
 ## Consegna: sorgenti modificabili e compatibilità
 
-Consegna `.blend` riaperto con Blender 4.5.14, export richiesti, anteprima e script di costruzione se utile. La geometria, i materiali, il rig e i keyframe devono restare modificabili. Usa `blender-cli pack input.blend consegna.blend` per incorporare texture/font/risorse supportate e poi `inspect` sul risultato. Per asset non incorporabili usa ZIP con percorsi relativi `//` e istruzioni di apertura; verifica dopo estrazione in una cartella diversa. Non distribuire riferimenti `/mnt/user-data` o `/tmp` irraggiungibili sul computer dell'utente.
+Consegna `.blend` riaperto con Blender 5.2.3, export richiesti, anteprima e script di costruzione se utile. La geometria, i materiali, il rig e i keyframe devono restare modificabili. Usa `blender-cli pack input.blend consegna.blend` per incorporare texture/font/risorse supportate e poi `inspect` sul risultato. Per asset non incorporabili usa ZIP con percorsi relativi `//` e istruzioni di apertura; verifica dopo estrazione in una cartella diversa. Non distribuire riferimenti `/mnt/user-data` o `/tmp` irraggiungibili sul computer dell'utente.
 
 `source_packages.py pack` prepara i formati Craft JSON, non i `.blend`: per Blender usa `blender-cli pack` e ZIP standard se serve. Il runtime riapre i `.blend` e controlla geometria e riferimenti anche negli ZIP. Simulazioni, cache di simulazione/bake o import di file nei Geometry Nodes, particelle, UDIM e sequenze/video richiedono collaudi specifici non ancora automatizzati: restano segnalati, non approvati automaticamente. Per la prima integrazione preferisci mesh, armature, keyframe e immagini singole incorporate, quando coerente col brief; altrimenti dichiara il limite senza sostituzioni arbitrarie.
 
-Compila `handoff.json` con `delivery.files` per OGNI download: `.blend` come `editable_source`, ZIP come `source_archive`, GLB/video come `export`, PNG come `preview`. Indica `open_with: Blender 4.5.14 LTS, File > Open`, editabilità reale, riapertura e limiti. Metti sorgenti e archivi in `output_files`, fuori da `work/`. Se mancano sorgenti o verifiche, dichiara consegna parziale, non conclusa.
+Compila `handoff.json` con `delivery.files` per OGNI download: `.blend` come `editable_source`, ZIP come `source_archive`, GLB/video come `export`, PNG come `preview`. Indica `open_with: Blender 5.2.3, File > Open`, editabilità reale, riapertura e limiti. Metti sorgenti e archivi in `output_files`, fuori da `work/`. Se mancano sorgenti o verifiche, dichiara consegna parziale, non conclusa.
 
 ## Fonti
 

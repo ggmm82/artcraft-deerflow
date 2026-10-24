@@ -1,6 +1,6 @@
 # Antigravity CLI con account Google
 
-La voce **Antigravity · abbonamento Google** in **La tua squadra** usa il binario ufficiale `agy` **1.4.0**, sia per il coordinatore sia per i 13 specialisti. Non occorre una chiave AI Studio. Le richieste usano l’account collegato e le quote che Google rende disponibili a quell’account; un abbonamento non garantisce accesso illimitato a ogni modello.
+La voce **Antigravity · abbonamento Google** in **La tua squadra** usa il binario ufficiale `agy` **1.4.7**, sia per il coordinatore sia per gli specialisti disponibili. Non occorre una chiave AI Studio. Le richieste usano l’account collegato e le quote che Google rende disponibili a quell’account; un abbonamento non garantisce accesso illimitato a ogni modello.
 
 ## Collegamento dal browser
 
@@ -30,7 +30,7 @@ Il timer **Working** usa la data di creazione persistita del run attivo, anche r
 
 ## Copertura del collaudo
 
-Aggiornamento alla **1.4.0**: archivi ufficiali Linux amd64/arm64 verificati tramite digest GitHub, installazione e comandi reali amd64, protocollo headless senza account e regressioni automatiche. La versione è fissata nel lock; la build non segue il canale `latest`. Il collaudo autenticato descritto sotto è stato eseguito sulla precedente **1.3.5** e non viene presentato come una nuova prova OAuth sulla 1.4.0.
+Aggiornamento alla **1.4.7**: archivi ufficiali Linux amd64/arm64 verificati tramite digest GitHub, installazione e comandi reali amd64, protocollo headless senza account e regressioni automatiche. La versione è fissata nel lock; la build non segue il canale `latest`. Il collaudo autenticato descritto sotto è stato eseguito sulla precedente **1.3.5** e non viene presentato come una nuova prova OAuth sulla 1.4.7.
 
 Verificati localmente il binario autentico 1.3.5, i flag, il protocollo e il login Google remoto completato con l’account fornito per il collaudo. La prova reale ha rilevato e corretto il formato del catalogo (tabulazioni, non soltanto spazi), i link OSC spezzati tra chunk del terminale e la necessità del tool nativo `finish` per ottenere `structured_output`. Catalogo autenticato e delega del coordinatore sono stati eseguiti con la CLI reale; le ulteriori evidenze della consegna sono riportate nella [PR #5](https://github.com/ggmm82/artcraft-deerflow/pull/5). I test automatici coprono scelta condivisa, migrazione, inoltro dei risultati degli strumenti, schema della delega, isolamento del coordinatore, copia selettiva dei token e rifiuto degli errori. Le risposte del modello nei test unitari sono fixture dichiarate.
 

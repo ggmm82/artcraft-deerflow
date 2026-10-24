@@ -475,14 +475,14 @@ def calibre(c):
     original = hashlib.sha256(interactive.read_bytes()).hexdigest()
     for repeat in range(3):
         check = json.loads(c.run('calibre-cli','check',interactive))
-        c.check(f'EPUB interattivo controllato offscreen, prova {repeat+1}',check['status']=='passed',check)
+        c.check(f'EPUB interattivo controllato con display virtuale software, prova {repeat+1}',check['status']=='passed',check)
     c.check('Collaudo non modifica EPUB interattivo',hashlib.sha256(interactive.read_bytes()).hexdigest()==original,original)
     broken = c.root / 'interactive-broken.epub'
     with zipfile.ZipFile(broken,'w') as z:
         for name,data in entries.items():
             z.writestr(name,data.replace(b'blu.xhtml',b'missing.xhtml') if name=='EPUB/cerca.xhtml' else data)
     rejected = subprocess.run(['calibre-cli','check',str(broken)],capture_output=True,text=True,timeout=60)
-    c.check('Profilo offscreen rileva ancora link interattivo mancante',rejected.returncode!=0,rejected.stdout[-1500:])
+    c.check('Display virtuale rileva ancora link interattivo mancante',rejected.returncode!=0,rejected.stdout[-1500:])
 
 
 CASES = {name: globals()[name] for name in ('photocraft', 'vectorcraft', 'filmcraft', 'lightcraft', 'pdfcraft',

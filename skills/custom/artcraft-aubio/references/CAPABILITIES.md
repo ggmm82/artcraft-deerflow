@@ -1,6 +1,6 @@
 # Capacità operative: aubio
 
-Versione esaminata: **0.4.9**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **0.4.9**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Stima di attacchi, battiti, altezza e note dal segnale audio, con unità esplicite.
 **Sorgenti:** Audio originale, parametri di analisi, report con unità, ricetta ripetibile; sorgenti musicali conservati dagli strumenti di authoring.

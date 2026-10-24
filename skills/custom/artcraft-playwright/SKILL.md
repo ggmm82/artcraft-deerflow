@@ -5,7 +5,7 @@ description: "Automazione browser, test di interazione, screenshot e trace su ap
 
 # Playwright: Collaudo browser e interfacce
 
-Versione **1.62.0**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
+Versione **1.64.1**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
 
 Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md), [CAPABILITIES.md](references/CAPABILITIES.md) e [QUALITY.md](references/QUALITY.md). Usa `craft capabilities playwright`, `craft commands playwright`, `craft tools playwright` per la scoperta mirata. `playwright-cli` è l’adattatore ArtCraft con CLI/MCP; gli ID MCP non sono comandi della CLI upstream. La mappa elenca le operazioni dell’adattatore, non l’intera API nativa.
 

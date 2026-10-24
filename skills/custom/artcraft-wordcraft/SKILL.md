@@ -21,7 +21,7 @@ Usa WordCraft per relazioni, testi strutturati, tabelle e DOCX. Per impaginati e
 ## Percorso rapido verificato: relazioni brevi DOCX e PDF
 
 Per creare da zero una relazione breve con titoli, paragrafi, elenchi e tabelle, usa **prima questo percorso**, senza esplorare tutti i comandi o ricostruire il documento con decine di operazioni MCP.
-La conversione Markdown → DOCX della release 0.7.0 conserva titoli semantici e tabelle (`Heading1`, `TableGrid`), verificati con `inspect`.
+La conversione Markdown → DOCX della release 0.10.0 conserva titoli semantici e tabelle (`Heading1`, `TableGrid`), verificati con `inspect`.
 
 1. Scrivi il contenuto completo in UTF-8 in `$ARTCRAFT_OUTPUT_DIR/work/relazione.md`. Usa titoli `#` e tabelle Markdown con riga separatrice. Mantieni dati e totale verificati, senza calcolarli di nuovo o inventare dettagli.
 2. Converti con le CLI native già installate. I percorsi completi funzionano anche quando una shell di login reimposta PATH:
@@ -92,7 +92,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/wordcraft/tree/v0.7.0
+- https://github.com/storytold/wordcraft/tree/v0.10.0
 - https://github.com/storytold/wordcraft/releases
 
 ## Ruolo nella squadra

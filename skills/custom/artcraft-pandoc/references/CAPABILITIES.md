@@ -1,6 +1,6 @@
 # Capacità operative: pandoc
 
-Versione esaminata: **3.12.1**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **3.12.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Conversione Markdown, DOCX, EPUB, HTML e altri formati, con bibliografia e template espliciti.
 **Sorgenti:** Documento strutturato originale, Markdown/AST quando usato, template, bibliografia CSL/BibTeX, font/media e ricetta di conversione.

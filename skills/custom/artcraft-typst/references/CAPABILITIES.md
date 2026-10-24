@@ -1,6 +1,6 @@
 # Capacità operative: typst
 
-Versione esaminata: **v0.15.1**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v0.15.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Composizione tipografica riproducibile in PDF, SVG o PNG da sorgenti .typ, font e risorse.
 **Sorgenti:** Sorgenti .typ, template e moduli locali, dati, immagini, font e ricetta di compilazione.

@@ -4,9 +4,11 @@
 
 Audit iniziale del 15 ottobre 2026 sul ramo della PR #1. Per i successivi deploy Hostinger e le generazioni reali Codex/DeepSeek vedere [il collaudo aggiornato](CORREZIONE-MODELLI-E-DELEGA.md); il login e i limiti di collaudo Google attuali sono descritti nella guida Antigravity.
 
-## Codex e Gemini CLI
+Versioni attuali: Codex **0.164.0**, Antigravity **1.4.7**. Il controllo `scripts/check_provider_clis.py` verifica i binari realmente installati. Dettagli delle release e dei collaudi: [TOOL-RELEASES.md](TOOL-RELEASES.md).
 
-Le versioni fissate sono Codex **0.162.1** e Gemini CLI **0.64.0**. `scripts/check_provider_clis.py` esegue i binari reali e verifica versione, comandi di login e flag del worker, senza credenziali o richieste di generazione. Il controllo passa anche nella build della sandbox.
+## Audit storico Codex e Gemini CLI
+
+Nell’audit iniziale le versioni fissate erano Codex **0.162.1** e Gemini CLI **0.64.0**. `scripts/check_provider_clis.py` esegue i binari reali e verifica versione, comandi di login e flag del worker, senza credenziali o richieste di generazione. Il controllo passa anche nella build della sandbox.
 
 Correzioni effettuate:
 

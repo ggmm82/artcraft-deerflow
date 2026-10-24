@@ -5,7 +5,7 @@ description: "Rendering offline MIDI con strumenti SF2, partitura e banca conser
 
 # FluidSynth: Sintesi MIDI e SoundFont
 
-Versione **2.3.1**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
+Versione **2.6.1**, fissata in `versions.lock.json`, con checksum verificati all’installazione. Questa skill descrive uno strumento disponibile: i ruoli si compilano dinamicamente dal progetto, senza professioni o sequenze obbligatorie. Eredita provider e modello condivisi della squadra.
 
 Leggi `artcraft-workspace`, [CLI-RECIPE.md](references/CLI-RECIPE.md), [CAPABILITIES.md](references/CAPABILITIES.md) e [QUALITY.md](references/QUALITY.md). Usa `craft capabilities fluidsynth`, `craft commands fluidsynth`, `craft tools fluidsynth` per la scoperta mirata. `fluidsynth-cli` è l’adattatore ArtCraft con CLI/MCP; gli ID MCP non sono comandi della CLI upstream. La mappa elenca le operazioni dell’adattatore, non l’intera API nativa.
 

@@ -71,7 +71,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/deckcraft/tree/v0.7.0
+- https://github.com/storytold/deckcraft/tree/v0.10.0
 - https://github.com/storytold/deckcraft/releases
 
 ## Ruolo nella squadra

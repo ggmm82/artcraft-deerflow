@@ -71,7 +71,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/figcraft/tree/v0.6.0
+- https://github.com/storytold/figcraft/tree/v0.10.0
 - https://github.com/storytold/figcraft/releases
 
 ## Ruolo nella squadra

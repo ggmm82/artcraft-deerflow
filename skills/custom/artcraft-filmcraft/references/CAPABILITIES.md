@@ -1,6 +1,6 @@
 # Capacità operative: filmcraft
 
-Versione esaminata: **v0.7.2**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **v0.12.0**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Montaggio, sequenze, composizione di contributi, colore e master audiovisivo.
 **Sorgenti:** .fcproj, media e pacchetto portabile; master separato.
@@ -29,5 +29,5 @@ Monta e tratta media; non implica generazione di scene, musica o ripristino dei 
 4. Apri un input pertinente, salva presto il sorgente e verifica una prova a finitura prevista. Riduci il perimetro prima della qualità.
 5. Verifica le proprietà salvate e un export effettivo; non trasformare il codice di uscita zero in una valutazione professionale.
 
-Catalogo esaminato: 700 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `c0b039c9cf15877794eac872ccbccb0c76ac99f6f53d3131324c4a488edc44f4`.
+Catalogo esaminato: 701 ID unici (le integrazioni con adattatore descrivono le operazioni esposte, non l’intera API upstream). SHA256 della rilevazione: `776fc8a8b45fd1073aacb4f30ec13cb642b141569ad1db76ed16c498ea97aa19`.
 Fonte: https://github.com/storytold/filmcraft/tree/v0.7.2. Il catalogo locale della versione fissata prevale sulla documentazione di versioni successive.

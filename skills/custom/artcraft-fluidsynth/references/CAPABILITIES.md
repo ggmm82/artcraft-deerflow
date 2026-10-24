@@ -1,6 +1,6 @@
 # Capacità operative: fluidsynth
 
-Versione esaminata: **2.3.1**. Audit del catalogo nativo: 2026-10-21.
+Versione esaminata: **2.6.1**. Audit del catalogo nativo: 2026-10-24.
 
 **Sceglilo per:** Rendering offline MIDI con strumenti SF2, partitura e banca conservate per la riproduzione.
 **Sorgenti:** MIDI, SoundFont SF2 effettivo, licenza della banca e render-settings.json; sessione SoundCraft e stem per il mix.

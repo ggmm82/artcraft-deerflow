@@ -71,7 +71,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/designcraft/tree/v0.8.0
+- https://github.com/storytold/designcraft/tree/v0.12.0
 - https://github.com/storytold/designcraft/releases
 
 ## Ruolo nella squadra

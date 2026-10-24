@@ -74,7 +74,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/effectcraft/tree/v0.10.0
+- https://github.com/storytold/effectcraft/tree/v0.16.0
 - https://github.com/storytold/effectcraft/releases
 
 ## Ruolo nella squadra

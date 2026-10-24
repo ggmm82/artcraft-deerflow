@@ -74,10 +74,13 @@ class NativeProtocolTests(unittest.TestCase):
     def test_real_cli_image_events_transfer_and_vector_feature_disable(self):
         self.assertTrue(BINARY, 'Pinned Codex executable missing')
         version = subprocess.check_output([BINARY, '--version'], text=True).strip()
-        if version != 'codex-cli 0.162.1':
+        lock = Path(__file__).resolve().parents[1] / 'versions.lock.json'
+        if not lock.is_file(): lock = Path('/opt/artcraft/versions.lock.json')
+        pinned = json.loads(lock.read_text())['cli_runtimes']['codex']
+        if version != 'codex-cli ' + pinned:
             if REQUIRE or os.getenv('CODEX_TEST_BINARY'):
-                self.fail('Contract requires codex-cli 0.162.1: ' + version)
-            self.skipTest('Contract targets pinned 0.162.1, installed ' + version)
+                self.fail('Contract requires codex-cli ' + pinned + ': ' + version)
+            self.skipTest('Contract targets pinned ' + pinned + ', installed ' + version)
         requests = []
         image_enabled = [True]
         command_enabled = [False]

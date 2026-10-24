@@ -71,7 +71,7 @@ Riapri ogni sorgente salvato con l’app di destinazione in una nuova sessione e
 
 ## Fonti
 
-- https://github.com/storytold/soundcraft/tree/v0.7.0
+- https://github.com/storytold/soundcraft/tree/v0.12.1
 - https://github.com/storytold/soundcraft/releases
 
 ## Ruolo nella squadra
