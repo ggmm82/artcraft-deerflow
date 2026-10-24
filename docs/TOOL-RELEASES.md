@@ -41,7 +41,7 @@ FreeCAD viene estratto dalla AppImage ufficiale senza FUSE ed eseguito con il pr
 
 ## Prove
 
-Il collaudo della nuova Calibre ha rilevato un crash QtWebEngine nei controlli CSS con piattaforme offscreen/headless prive di contesto grafico. Anche il controllo strutturale usa ora Xvfb e OpenGL software, come le conversioni. Restano attivi i controlli nativi su CSS, link, risorse e spine, con rifiuto dei casi negativi; non viene trasformato un crash in un risultato positivo.
+Il collaudo della nuova Calibre ha rilevato un crash QtWebEngine nei controlli CSS con piattaforme offscreen/headless prive di contesto grafico. Anche il controllo strutturale usa ora Xvfb e OpenGL software, come le conversioni. Restano attivi i controlli nativi su CSS, link, risorse e spine, con rifiuto dei casi negativi; non viene trasformato un crash in un risultato positivo. La sandbox installa esplicitamente `libxcb-shape0`/`libxcb-sync1`; il controllo di build verifica le dipendenze del plugin Qt e riporta il nome della libreria mancante. Il flusso Calibre completo è stato riprodotto e superato anche in un container Bookworm senza rete, con 1536 MiB, 1,5 CPU, 256 processi e capability disabilitate.
 
 Verificati localmente tutti i 13 registri Craft (7.057 ID complessivi includendo gli adattatori), i contratti CLI di Codex/Antigravity e il protocollo headless senza account. Le prove di authoring Craft comprendono apertura/esportazione e sorgenti, MIDI sintetizzato in SoundCraft e riapertura della sessione trasferita. FreeCAD 1.1.4 è stato provato con geometria parametrica, sketch vincolato, Pad, modifica quote, ricalcolo e riapertura STEP e ZIP dei sorgenti.
 

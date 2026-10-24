@@ -32,6 +32,16 @@ def main():
     for app in lock['applications']:
         reference = root / 'reference' / app['id']
         reference.mkdir(parents=True, exist_ok=True)
+        if app['id'] == 'calibre':
+            # Fail the build with the missing library's name instead of Qt's
+            # generic xcb-cursor warning during a later publication job.
+            bundle = root / 'apps/calibre'
+            linked = run(['env', 'LD_LIBRARY_PATH=' + str(bundle / 'lib'), 'ldd',
+                          str(bundle / 'plugins/platforms/libqxcb.so')])
+            missing = [line.strip() for line in (linked['stdout'] + linked['stderr']).splitlines() if 'not found' in line]
+            linked['ok'] = linked['returncode'] == 0 and not missing
+            if missing: linked['stderr'] = '\n'.join(missing)
+            checks.append(linked)
         version = run([app['executable'], '--version'])
         version['ok'] = version['returncode'] == 0 and app['version'].removeprefix('v') in version['stdout']
         checks.append(version)

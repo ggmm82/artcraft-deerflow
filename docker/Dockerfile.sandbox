@@ -33,6 +33,9 @@ RUN python3 /opt/artcraft/install_artcraft.py --arch "$TARGETARCH" && fc-cache -
            chmod 755 "/usr/bin/$name"; \
          fi; \
        done
+# Explicit Qt XCB dependencies: no longer inherited from Debian's FreeCAD package.
+RUN apt-get update && apt-get install -y --no-install-recommends libxcb-shape0 libxcb-sync1 \
+    && rm -rf /var/lib/apt/lists/*
 COPY scripts/runtime_policy.py /opt/artcraft/
 COPY scripts/craft.py scripts/smoke.py scripts/acceptance.py scripts/acceptance_toolkit.py /opt/artcraft/
 COPY scripts/blender_cli.py scripts/blender_job.py scripts/calibre_cli.py scripts/calibre_job.py /opt/artcraft/
