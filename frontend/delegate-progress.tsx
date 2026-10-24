@@ -527,10 +527,7 @@ export function DelegateProgress({ threadId, active, pending, coordinatorError =
         {!deliveries.length && <ul className="space-y-3">{results.map((r) => <DeliveryFile key={r.path} file={r} threadId={threadId} />)}</ul>}
         {!results.length && <p>I file appariranno qui quando saranno disponibili.</p>}
       </div>}
-      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} onCurate={!active && !working && onContinue ? async () => {
-        await onContinue(`Valuta al massimo tre osservazioni significative di questa conversazione (${threadId}) usando studio_lessons(current_project_only=true). Proponi solo singole lezioni generali con condizioni, procedura, verifiche e limiti, distinguendo benefici osservati da ipotesi. Valuta senza generalizzare le fonti che non contengono una lezione utile. Non produrre altri artefatti e non accettare lezioni al mio posto. Presenta poche proposte in ordine di impatto.`);
-        if (resumeOwner.current === threadId) setPanel(null);
-      } : undefined} />}
+      {tab === "experience" && <ExperiencePanel key={threadId} threadId={threadId} deliveries={deliveries} productionBusy={active || working || pending} />}
       {tab === "audit" && <ConversationAudit key={threadId} threadId={threadId} />}
       {tab === "activity" && <div className="space-y-3">{recent.map((job) => <JobCard key={job.job_id} job={job} now={now} threadId={threadId} />)}</div>}
       </div>

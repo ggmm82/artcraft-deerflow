@@ -170,7 +170,7 @@ def pending(root, limit=6, *, source_thread=None, meaningful_only=False):
             for r in sorted(observations(root), key=lambda r: rank(r['observation'])) if r['id'] not in covered and r['id'] not in excluded
             and (source_thread is None or r['observation'].get('source_thread')==source_thread)
             and (not meaningful_only or r['observation'].get('suggested_lesson')
-                 or r['observation'].get('status') in ('failed','reported_failure','needs_generalization')
+                 or r['observation'].get('status') in ('failed','reported_failure','needs_generalization','preferred_by_user')
                  or r['observation'].get('corrections')
                  or (r['observation'].get('impact') or {}).get('level') in ('major','minor'))][:limit]
 

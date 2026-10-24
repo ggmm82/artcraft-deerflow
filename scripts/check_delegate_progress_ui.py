@@ -118,6 +118,10 @@ window.showThread();
                 if self.path.endswith('/studio-experience/prefer'):
                     state['preferred_note'] = data['note']
                     self.do_GET(); return
+                if self.path.endswith('/studio-experience/curate'):
+                    state['curation_requested']=state.get('curation_requested',0)+1
+                    state['pending_observations']=0
+                    self.do_GET(); return
                 valid = self.path == '/api/threads/fixture/studio-delivery/accept' and data.get('delivery_id') == 'final'
                 if valid:
                     state['project'] = {**state['project'], 'status': 'ready', 'quality_status': 'accepted_by_user'}
@@ -192,6 +196,11 @@ window.showThread();
                                 'lesson': {**template['basis']['lesson'], 'title': title}}}
                             for i, (title, active) in enumerate([
                                 ('Keyframe persistenti verificati', True), ('Parametro senza prova', False)], start=7)]
+                    library['current_project']={'observations':1,'pending':state.get('pending_observations',0),
+                        'meaningful':state.get('current_pending',state.get('pending_observations',0)),
+                        'lessons':len(library['lessons']),'lesson_ids':[] if state.get('foreign_lessons_only') else [r['id'] for r in library['lessons']]}
+                    for record in library['observations']:record['observation']['source_thread']='fixture'
+                    if state.get('curation_requested'):library['curation']={'status':'completed','message':'Una lezione salvata senza modificare il progetto.'}
                     self.wfile.write(json.dumps(library).encode()); return
                 if self.path.endswith('/studio-jobs'):
                     self.send_response(503 if state['unavailable'] else 200)
@@ -328,7 +337,7 @@ window.showThread();
                 experience_panel.get_by_test_id('accepted-lessons').locator('summary').first.click()
                 experience_panel.get_by_role('button',name='Rimuovi dalle skills',exact=True).click()
                 expect(experience_panel).to_contain_text('Proposta: non ancora usata nelle skills')
-                experience_panel.get_by_text('Fonti, preferenze e archivio (1)', exact=True).click()
+                experience_panel.get_by_text('Fonti e preferenze · questo progetto (1)', exact=True).click()
                 expect(experience_panel).to_contain_text('Risorsa collegata mancante')
                 expect(page.get_by_role('button', name='Escludi dal riutilizzo', exact=True)).to_have_count(0)
                 page.get_by_label('Cosa vuoi riutilizzare?').fill('Cambiare metodo dopo il campione e verificare due scene')
@@ -647,11 +656,24 @@ window.showThread();
                 expect(page.get_by_role('button',name='Valuta le osservazioni',exact=True)).to_be_disabled()
                 page.evaluate("window.showThread('fixture',false,false,false)")
                 expect(page.get_by_role('button',name='Valuta le osservazioni',exact=True)).to_be_enabled()
+                continued_before=page.evaluate('window.continued')
                 page.get_by_role('button',name='Valuta le osservazioni',exact=True).click()
-                page.wait_for_function("window.lastContinueMessage?.includes('current_project_only=true')")
-                message=page.evaluate('window.lastContinueMessage')
-                assert '(fixture)' in message and 'non accettare' in message
+                expect(page.get_by_test_id('experience-panel')).to_contain_text('Una lezione salvata senza modificare il progetto.')
+                assert state.get('curation_requested')==1
+                assert page.evaluate('window.continued')==continued_before
                 assert state.get('lesson_accepted',False) is False
+                state['pending_observations']=99;state['current_pending']=0
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)")
+                section('Lezioni')
+                expect(page.get_by_role('button',name='Valuta le osservazioni',exact=True)).to_be_disabled()
+                expect(page.get_by_test_id('curation-controls')).to_contain_text('0 osservazioni significative')
+                state.pop('current_pending')
+                state['foreign_lessons_only']=True
+                page.reload();page.evaluate("window.showThread('fixture',false,false,false)");section('Lezioni')
+                expect(page.get_by_test_id('general-lesson')).to_have_count(0)
+                page.get_by_role('button',name='Archivio personale',exact=True).click()
+                expect(page.get_by_test_id('general-lesson')).to_have_count(1)
+                state.pop('foreign_lessons_only')
                 # The component source map and measured offset belong beside the
                 # selected delivery, rather than in a wall of execution messages.
                 state['project']={**project,'deliveries':[{**project['deliveries'][0],

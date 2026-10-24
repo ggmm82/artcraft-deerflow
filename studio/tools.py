@@ -314,7 +314,7 @@ def studio_delegate(agent: str, task: str, runtime: Runtime, step_id: str = '', 
     from .handoff import blocking_checks
     from .control_memory import counts
     from .progress import clean_summary
-    compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked',
+    compact = {k: result[k] for k in ('ok', 'activity', 'output_dir', 'attention', 'retry_blocked', 'checkpoint_reassessment','goal','instruction',
         'product_verified', 'verified_products', 'available_results') if k in result}
     compact.update(error=clean_summary(result.get('error', '')),
         check_counts=counts(handoff.get('checks', [])),

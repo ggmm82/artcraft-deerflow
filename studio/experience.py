@@ -262,18 +262,27 @@ def snapshot(workspace, root, specs, apps):
     return {**document, 'count': len(selected), 'ids': [r['id'] for r in selected]}
 
 
-def summary(root, export=False):
+def summary(root, export=False, *, source_thread=None):
     from .lessons import entries as lessons, pending, accepted, automatic, category, rank
     excluded = disabled(root)
     records, generalized = entries(root), lessons(root)
     approved = accepted(root)
     auto = automatic(root)
     sources = {r['id']: r['observation'] for r in records}
-    return {'total': len(records), 'excluded': len(excluded), 'pending': len(pending(root, limit=1000000)),
+    thread_sources = {r['id'] for r in records if r['observation'].get('source_thread') == source_thread}
+    current = [r for r in records if r['id'] in thread_sources]
+    all_pending = pending(root, limit=1000000)
+    visible = records if export else (current + [r for r in records if r['id'] not in thread_sources])[:200]
+    return {'total': len(records), 'excluded': len(excluded), 'pending': len(all_pending),
+            'current_project': {'thread_id':source_thread, 'observations':len(current),
+                'pending':sum(s.get('source_thread') == source_thread for s in all_pending),
+                'meaningful':len(pending(root,limit=1000000,source_thread=source_thread,meaningful_only=True)) if source_thread else 0,
+                'lessons':sum(bool(set(r['basis']['source_ids']) & thread_sources) for r in generalized),
+                'lesson_ids':[r['id'] for r in generalized if set(r['basis']['source_ids']) & thread_sources]},
             'lessons': [{**r, 'accepted': r['id'] in approved, 'category': category(r, sources),
                          'approval': 'automatic' if r['id'] in auto else 'manual' if r['id'] in approved else 'pending',
                          'excluded': r['id'] in excluded or bool(set(r['basis']['source_ids']) & excluded)} for r in sorted(generalized, key=rank)],
-            'observations': [{**r, 'excluded': r['id'] in excluded} for r in (records if export else records[:200])]}
+            'observations': [{**r, 'excluded': r['id'] in excluded} for r in visible]}
 
 
 def prefer(workspace, root, delivery_id, note, source_thread=None):

@@ -110,6 +110,43 @@ class ProgressRouteTests(unittest.TestCase):
                 self.assertEqual(client.get(experience_url, headers={'X-Test-User':'other'}).status_code, 404)
                 self.assertEqual(client.get(experience_url, headers={'X-Test-User':'no-permission'}).status_code, 403)
                 self.assertEqual(client.get(experience_url, headers={'X-Test-User':'owner'}).json()['total'], 0)
+                curate_url=experience_url+'/curate'
+                self.assertEqual(client.post(curate_url).status_code,401)
+                self.assertEqual(client.post(curate_url,headers={'X-Test-User':'other'}).status_code,404)
+                self.assertEqual(client.post(curate_url,headers={'X-Test-User':'no-permission'}).status_code,403)
+                with patch('studio.lesson_curation.generate') as generate:
+                    empty=client.post(curate_url,headers={'X-Test-User':'owner'})
+                    self.assertEqual(empty.status_code,200,empty.text)
+                    self.assertEqual(empty.json()['curation']['status'],'no_sources')
+                    generate.assert_not_called()
+                with patch('studio.lessons.pending',return_value=[{'id':'a'*64}]), \
+                     patch('studio.progress_routes.production_running',new=AsyncMock(return_value=True)), \
+                     patch('studio.lesson_curation.curate') as curate:
+                    busy=client.post(curate_url,headers={'X-Test-User':'owner'})
+                    self.assertEqual(busy.status_code,409)
+                    curate.assert_not_called()
+                import json
+                from studio.acceptance import fingerprint
+                from studio.state import atomic_json
+                from langchain_core.messages import AIMessage
+                observation={'source_thread':'conversation','status':'failed','criterion':'Resource links',
+                    'method':'functional','evidence':'A linked resource was absent','tools':{},'corrections':[]}
+                identifier=fingerprint(observation)
+                library=root/'owner/artcraft-experience';library.mkdir(exist_ok=True)
+                atomic_json(library/(identifier+'.json'),{'id':identifier,'at':'2026-10-24T00:00:00Z','observation':observation})
+                proposal={'source_ids':[identifier],'lesson':{'category':'production_method','title':'Check portable resources',
+                    'applies_when':'A deliverable has linked resources','procedure':['Resolve links before delivery'],
+                    'verification':['Reopen the transferred package'],'limits':'Not an aesthetic evaluation','tools':[]},
+                    'impact':{'level':'unknown','basis':'hypothesis','reason':'A missing file suggests a check, not a measured improvement'}}
+                model=SimpleNamespace(invoke=lambda messages:AIMessage(content=json.dumps({'proposals':[proposal],'dismissed':[]})))
+                with patch('studio.progress_routes.production_running',new=AsyncMock(return_value=False)), \
+                     patch('deerflow.models.create_chat_model',return_value=model) as factory:
+                    saved=client.post(curate_url,headers={'X-Test-User':'owner'})
+                    self.assertEqual(saved.status_code,200,saved.text)
+                    self.assertEqual(saved.json()['curation']['saved'],1)
+                    self.assertEqual(saved.json()['current_project']['lessons'],1)
+                    self.assertFalse(saved.json()['lessons'][0]['accepted'])
+                    self.assertEqual(factory.call_args.args[0],'studio-codex')
                 self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'other'}).status_code, 404)
                 self.assertEqual(client.post(experience_url+'/collect', headers={'X-Test-User':'owner'}).status_code, 200)
                 self.assertEqual(client.put(experience_url,json={'id':'a'*64,'excluded':True},headers={'X-Test-User':'other'}).status_code,404)

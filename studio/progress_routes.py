@@ -13,6 +13,12 @@ from .projects import read_project, accept_delivery
 router = APIRouter()
 
 
+async def production_running(request, thread_id):
+    from app.gateway.deps import get_run_manager
+    records = await get_run_manager(request).list_by_thread(str(thread_id),user_id=get_effective_user_id())
+    return any(getattr(r.status,'value',r.status) in ('pending','running') for r in records)
+
+
 @router.get('/api/threads/{thread_id}/studio-guide')
 @require_permission('threads', 'read', owner_check=True, require_existing=True)
 async def project_guide(thread_id: ThreadId, request: Request, response: Response,
@@ -140,7 +146,37 @@ def experience_root():
 async def experience_list(thread_id: ThreadId, request: Request, response: Response, export: bool = False):
     from .experience import summary
     response.headers['Cache-Control'] = 'no-store'
-    return await run_in_threadpool(summary, experience_root(), export)
+    return await run_in_threadpool(summary, experience_root(), export,source_thread=str(thread_id))
+
+
+@router.post('/api/threads/{thread_id}/studio-experience/curate')
+@require_permission('threads', 'write', owner_check=True, require_existing=True)
+async def experience_curate(thread_id: ThreadId, request: Request, response: Response):
+    from .lesson_curation import curate
+    from .experience import summary
+    from .lessons import pending
+    from .docker_runtime import EXECUTION_LOCK
+    root=experience_root()
+    workspace=get_paths().sandbox_user_data_dir(thread_id,user_id=get_effective_user_id())
+    from .experience import collect
+    try:
+        await run_in_threadpool(collect,workspace,root,str(thread_id))
+    except (ValueError,OSError) as error:
+        raise HTTPException(409,'Fonti non disponibili: la produzione non è stata modificata.') from error
+    # Never submit a competing human turn or cancel a run. No sources means
+    # no provider request, even when another project is using the worker.
+    sources=await run_in_threadpool(pending,root,limit=3,source_thread=str(thread_id),meaningful_only=True)
+    if sources and (await production_running(request,thread_id) or EXECUTION_LOCK.locked()):
+        raise HTTPException(409,'Produzione in corso: la valutazione non è stata avviata. Il lavoro continua; riprova al termine.')
+    response.headers['Cache-Control']='no-store'
+    try:
+        outcome=await run_in_threadpool(curate,workspace,root,str(thread_id))
+        data=await run_in_threadpool(summary,root,source_thread=str(thread_id))
+        return audited(workspace,'Lezioni valutate senza modificare il turno di produzione',{**data,'curation':outcome})
+    except (ValueError,OSError) as error:
+        raise HTTPException(409,'Valutazione non completata: '+str(error)[:250]) from error
+    except Exception as error:
+        raise HTTPException(503,'Modello di valutazione non disponibile. Il progetto e le osservazioni sono conservati.') from error
 
 
 @router.post('/api/threads/{thread_id}/studio-experience/collect')
@@ -152,7 +188,7 @@ async def experience_collect(thread_id: ThreadId, request: Request, response: Re
         await run_in_threadpool(collect, workspace, experience_root(), str(thread_id))
         from .lessons import propose_findings
         await run_in_threadpool(propose_findings, experience_root(), str(thread_id))
-        return audited(workspace, 'Recupero esperienza richiesto', await run_in_threadpool(summary, experience_root()))
+        return audited(workspace, 'Recupero esperienza richiesto', await run_in_threadpool(summary, experience_root(),source_thread=str(thread_id)))
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Recupero esperienza non completato') from error
 
@@ -163,7 +199,7 @@ async def experience_select(thread_id: ThreadId, body: ExperienceSelection, requ
     from .experience import exclude, summary
     try:
         await run_in_threadpool(exclude, experience_root(), body.id, body.excluded)
-        return await run_in_threadpool(summary, experience_root())
+        return await run_in_threadpool(summary, experience_root(),source_thread=str(thread_id))
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Esperienza non disponibile') from error
 
@@ -183,7 +219,7 @@ async def lesson_accept(thread_id: ThreadId, body: LessonAcceptance, request: Re
         await run_in_threadpool(accept, experience_root(), body.id, body.accepted)
         workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
         audited(workspace, 'Lezione accettata' if body.accepted else 'Accettazione lezione revocata', None)
-        return await run_in_threadpool(summary, experience_root())
+        return await run_in_threadpool(summary, experience_root(),source_thread=str(thread_id))
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Lezione non disponibile') from error
 
@@ -200,7 +236,7 @@ async def experience_prefer(thread_id: ThreadId, body: PreferredMethod, request:
     workspace = get_paths().sandbox_user_data_dir(thread_id, user_id=get_effective_user_id())
     try:
         await run_in_threadpool(prefer, workspace, experience_root(), body.delivery_id, body.note, str(thread_id))
-        return await run_in_threadpool(summary, experience_root())
+        return await run_in_threadpool(summary, experience_root(),source_thread=str(thread_id))
     except (OSError, ValueError) as error:
         raise HTTPException(409, 'Metodo non conservato: verifica lavorazione, file e descrizione') from error
 

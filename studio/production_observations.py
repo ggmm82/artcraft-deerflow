@@ -73,8 +73,12 @@ def observations(workspace, attempt, role, source_thread):
 
 def recent_context(workspace, project):
     """Carry observed defects across role changes, not only formal review reports."""
-    attempts = sorted((a for s in project.get('steps', []) for a in s.get('attempts', [])
-                       if a.get('status') != 'running'), key=lambda a: a.get('finished_at', ''), reverse=True)
+    from .project_brief import orientation
+    active = set(orientation(project)['active_step_ids'])
+    contract = (project.get('acceptance') or {}).get('hash')
+    attempts = sorted((a for s in project.get('steps', []) if s['id'] in active for a in s.get('attempts', [])
+                       if a.get('status') != 'running' and (not a.get('context',{}).get('contract')
+                           or a['context']['contract'] == contract)), key=lambda a: a.get('finished_at', ''), reverse=True)
     result, directories = [], set()
     for attempt in attempts:
         directory = attempt.get('output_dir')

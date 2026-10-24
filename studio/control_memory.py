@@ -213,7 +213,7 @@ def reply(workspace, payload, kind):
     if len(json.dumps(value, ensure_ascii=False)) > LIMIT:
         # All exceptions survive in the addressed full result; counters signal
         # that an omitted list is not evidence of success.
-        keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'check_counts', 'blocking_failed_checks', 'review_counts', 'required_review_counts',
+        keys = ('ok', 'decision', 'error', 'activity', 'delivery', 'checkpoint_reassessment','goal','instruction', 'check_counts', 'blocking_failed_checks', 'review_counts', 'required_review_counts',
                 'attention', 'retry_blocked', 'experience', 'handoff_path', 'quality_review', 'next_action', 'revision_instruction', 'continuation', 'presentation')
         if kind == 'plan':
             p = value.get('project') or {}
