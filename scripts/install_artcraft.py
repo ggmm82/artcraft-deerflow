@@ -98,7 +98,9 @@ def install_toolkit(app, archive, destination, root, bin_dir, arch):
                             '--enable-gpl', '--enable-libx264', '--enable-libx265', '--enable-libvpx',
                             '--enable-libopus', '--enable-libmp3lame', '--enable-libvorbis',
                             '--enable-libass', '--enable-libfontconfig', '--enable-libfreetype',
-                            '--enable-libharfbuzz'], cwd=source, check=True)
+                            '--enable-libharfbuzz', '--enable-gnutls', '--enable-libwebp',
+                            '--enable-libaom', '--enable-libdav1d', '--enable-libsoxr',
+                            '--enable-librubberband'], cwd=source, check=True)
             subprocess.run(['make', '-j2'], cwd=source, check=True)
             subprocess.run(['make', 'install'], cwd=source, check=True)
             names = ['ffmpeg', 'ffprobe']
