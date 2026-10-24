@@ -29,18 +29,17 @@ class CalibreTests(unittest.TestCase):
         self.assertEqual(issue_record(issue,1)['severity'],'error')
         self.assertTrue(issue_record(issue,1)['blocking'])
 
-    def test_structural_checks_use_offscreen_and_retain_real_failures(self):
+    def test_structural_checks_use_virtual_display_and_retain_real_failures(self):
         import os
-        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{}), patch.object(cli.shutil,'which',return_value=None):
+        with tempfile.TemporaryDirectory() as temp, patch.dict(os.environ,{}), patch.object(cli.shutil,'which',return_value='/usr/bin/xvfb-run'):
             with patch.object(cli,'supervise',return_value=(subprocess.CompletedProcess([],0,'verified',''),{})) as supervised:
                 argv=['calibre-debug','--exec-file','calibre_job.py','--','check','book.epub','result.json']
-                self.assertEqual(cli.run(argv,Path(temp),'Structural',structural=True),'verified')
-                self.assertEqual(supervised.call_args.args[0],argv)
-                self.assertEqual(os.environ['QT_QPA_PLATFORM'],'offscreen')
-                self.assertEqual(os.environ['CALIBRE_HEADLESS_PLATFORM'],'offscreen')
+                self.assertEqual(cli.run(argv,Path(temp),'Structural'),'verified')
+                self.assertEqual(supervised.call_args.args[0][0],'/usr/bin/xvfb-run')
+                self.assertEqual(supervised.call_args.args[0][-len(argv):],argv)
             with patch.object(cli,'supervise',return_value=(subprocess.CompletedProcess([],139,'crashed',''),{})):
                 with self.assertRaisesRegex(RuntimeError,'139'):
-                    cli.run(argv,Path(temp),'Structural',structural=True)
+                    cli.run(argv,Path(temp),'Structural')
 
     def test_official_multi_binary_distribution_uses_declared_root_launchers(self):
         with tempfile.TemporaryDirectory() as temp:
